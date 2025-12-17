@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
 import DashboardLayout from '@/components/DashboardLayout'
-import { sampleProducts } from '@/lib/sampleData'
 
 interface Product {
   id: string
@@ -44,16 +43,26 @@ export default function AdminProducts() {
       return
     }
     
-    // Load products from sample data
-    setTimeout(() => {
-      const productsWithDates = sampleProducts.map(product => ({
-        ...product,
-        createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
-      }))
-      setProducts(productsWithDates)
-      setLoading(false)
-    }, 1000)
+    // Load products from database API
+    fetchProducts()
   }, [user, router])
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/products?limit=100')
+      const data = await response.json()
+      
+      if (data.products) {
+        setProducts(data.products)
+      }
+    } catch (error) {
+      console.error('Failed to fetch products:', error)
+      alert('Fehler beim Laden der Produkte')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('de-DE', {
@@ -62,23 +71,72 @@ export default function AdminProducts() {
     }).format(price)
   }
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     if (confirm(t.admin.confirmDelete)) {
-      setProducts(prev => prev.filter(p => p.id !== productId))
-      alert(t.admin.productDeleted)
+      try {
+        const response = await fetch(`/api/products/${productId}`, {
+          method: 'DELETE'
+        })
+        
+        if (response.ok) {
+          setProducts(prev => prev.filter(p => p.id !== productId))
+          alert(t.admin.productDeleted)
+        } else {
+          alert('Fehler beim Löschen des Produkts')
+        }
+      } catch (error) {
+        console.error('Failed to delete product:', error)
+        alert('Fehler beim Löschen des Produkts')
+      }
     }
   }
 
-  const handleToggleActive = (productId: string) => {
-    setProducts(prev => prev.map(p => 
-      p.id === productId ? { ...p, isActive: !p.isActive } : p
-    ))
+  const handleToggleActive = async (productId: string) => {
+    const product = products.find(p => p.id === productId)
+    if (!product) return
+
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !product.isActive })
+      })
+      
+      if (response.ok) {
+        setProducts(prev => prev.map(p => 
+          p.id === productId ? { ...p, isActive: !p.isActive } : p
+        ))
+      } else {
+        alert('Fehler beim Aktualisieren des Produkts')
+      }
+    } catch (error) {
+      console.error('Failed to update product:', error)
+      alert('Fehler beim Aktualisieren des Produkts')
+    }
   }
 
-  const handleToggleFeatured = (productId: string) => {
-    setProducts(prev => prev.map(p => 
-      p.id === productId ? { ...p, featured: !p.featured } : p
-    ))
+  const handleToggleFeatured = async (productId: string) => {
+    const product = products.find(p => p.id === productId)
+    if (!product) return
+
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featured: !product.featured })
+      })
+      
+      if (response.ok) {
+        setProducts(prev => prev.map(p => 
+          p.id === productId ? { ...p, featured: !p.featured } : p
+        ))
+      } else {
+        alert('Fehler beim Aktualisieren des Produkts')
+      }
+    } catch (error) {
+      console.error('Failed to update product:', error)
+      alert('Fehler beim Aktualisieren des Produkts')
+    }
   }
 
   const filteredProducts = products.filter(product => {
@@ -115,12 +173,26 @@ export default function AdminProducts() {
                 Verwalten Sie Ihr Produktsortiment
               </p>
             </div>
-            <Link
-              href="/admin/products/new"
-              className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
-            >
-              {t.admin.addProduct}
-            </Link>
+            <div className="flex items-center space-x-3">
+              <Link
+                href="/admin/products/import"
+                className="border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                Import/Export
+              </Link>
+              <Link
+                href="/admin/products/bulk"
+                className="border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                Bulk-Operationen
+              </Link>
+              <Link
+                href="/admin/products/new"
+                className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+              >
+                {t.admin.addProduct}
+              </Link>
+            </div>
           </div>
         </div>
 

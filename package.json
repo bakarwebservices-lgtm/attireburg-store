@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:setup": "node scripts/setup-db.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "curl -X POST http://localhost:3000/api/seed -H 'Content-Type: application/json' -d '{\"type\":\"all\"}'"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

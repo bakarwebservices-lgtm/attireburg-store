@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
 import DashboardLayout from '@/components/DashboardLayout'
+import DatabaseStats from '@/components/admin/DatabaseStats'
 
 interface DashboardStats {
   totalProducts: number
@@ -147,6 +148,9 @@ export default function AdminDashboard() {
             Hier ist eine Übersicht über Ihren Online-Shop und die aktuellen Aktivitäten.
           </p>
         </div>
+
+        {/* Database Status */}
+        <DatabaseStats />
 
         {/* Stats Cards */}
         {loading ? (

@@ -1,36 +1,67 @@
 # Attireburg E-commerce Store
 
-Premium clothing brand e-commerce platform built with Next.js 15, TypeScript, and Prisma.
+Premium German clothing brand e-commerce platform built with Next.js 15, TypeScript, and Prisma.
 
-## Setup Instructions
+## Features
+
+✅ **Complete Admin Portal** - Product management, orders, analytics  
+✅ **Advanced Product System** - Categories, variations, attributes, inventory  
+✅ **Media Library** - File management with folders and organization  
+✅ **Bilingual Support** - German (primary) and English  
+✅ **User Management** - Customer accounts, wishlists, order history  
+✅ **Order System** - Complete checkout flow with PayPal integration  
+✅ **Database Integration** - PostgreSQL with comprehensive schema  
+
+## Quick Start
 
 ### 1. Install Dependencies
 ```bash
 npm install
 ```
 
-### 2. Setup Database
-- Create a free PostgreSQL database at [Neon.tech](https://neon.tech)
-- Copy your connection string
-- Paste it in `.env.local` file (replace `your-postgres-connection-string-here`)
-
-### 3. Initialize Database
+### 2. Database Setup
 ```bash
-npx prisma db push
+# Copy environment template
+cp .env.example .env.local
+
+# Edit .env.local with your PostgreSQL connection string
+# DATABASE_URL="postgresql://username:password@localhost:5432/attireburg_db"
+
+# Complete database setup (generates client, pushes schema, seeds data)
+npm run db:setup
 ```
 
-### 4. Run Development Server
+### 3. Start Development Server
 ```bash
 npm run dev
 ```
 
-Visit http://localhost:3000
+Visit:
+- **Store:** http://localhost:3000
+- **Admin Panel:** http://localhost:3000/admin
+- **Login:** admin@attireburg.de / admin123
+
+## Database Setup
+
+For detailed database setup instructions, see [DATABASE_SETUP.md](./DATABASE_SETUP.md)
+
+### Quick Commands
+```bash
+npm run db:setup     # Complete setup with sample data
+npm run db:generate  # Generate Prisma client
+npm run db:push      # Push schema changes
+npm run db:studio    # Open database GUI
+npm run db:seed      # Seed sample data
+```
 
 ## Tech Stack
+
 - **Framework:** Next.js 15 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **Database:** PostgreSQL with Prisma ORM
-- **Deployment:** Vercel
+- **Language:** TypeScript 5.6
+- **Database:** PostgreSQL with Prisma ORM 5.22
+- **Styling:** Tailwind CSS 3.4
+- **Authentication:** JWT with bcrypt
+- **File Upload:** Built-in media management
+- **Deployment:** Vercel-ready
 
 ## Project Structure
