@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get('sortOrder') || 'desc'
     const featured = searchParams.get('featured')
     const onSale = searchParams.get('onSale')
+    const includeInactive = searchParams.get('includeInactive') === 'true'
 
     const skip = (page - 1) * limit
 
@@ -22,8 +23,11 @@ export async function GET(request: NextRequest) {
 
     try {
       // Build where clause
-      const where: any = {
-        isActive: true,
+      const where: any = {}
+      
+      // Only filter by isActive if not explicitly including inactive products (for admin)
+      if (!includeInactive) {
+        where.isActive = true
       }
 
       if (category) {
@@ -149,6 +153,99 @@ export async function GET(request: NextRequest) {
     console.error('Products fetch error:', error)
     return NextResponse.json(
       { error: 'Fehler beim Laden der Produkte' },
+      { status: 500 }
+    )
+  }
+}
+// POST /api/products - Create new product
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    console.log('Creating product with data:', body)
+
+    // Validate required fields
+    if (!body.name || !body.sku || !body.price) {
+      return NextResponse.json(
+        { error: 'Name, SKU und Preis sind erforderlich' },
+        { status: 400 }
+      )
+    }
+
+    // Check if SKU already exists
+    const existingProduct = await prisma.product.findUnique({
+      where: { sku: body.sku }
+    })
+
+    if (existingProduct) {
+      return NextResponse.json(
+        { error: 'SKU bereits vorhanden' },
+        { status: 400 }
+      )
+    }
+
+    // Create product
+    const product = await prisma.product.create({
+      data: {
+        name: body.name,
+        nameEn: body.nameEn || body.name,
+        description: body.description || '',
+        descriptionEn: body.descriptionEn || body.description || '',
+        price: parseFloat(body.price),
+        salePrice: body.salePrice ? parseFloat(body.salePrice) : null,
+        sku: body.sku,
+        stock: parseInt(body.stock) || 0,
+        category: body.category || 'Uncategorized',
+        sizes: body.sizes || [],
+        colors: body.colors || [],
+        tags: body.tags || [],
+        images: body.images || [],
+        featured: body.featured || false,
+        onSale: !!body.salePrice,
+        weight: body.weight ? parseFloat(body.weight) : null,
+        metaTitle: body.metaTitle || null,
+        metaDescription: body.metaDescription || null,
+        isActive: body.isActive !== false, // Default to true unless explicitly false
+        hasVariants: body.hasVariants || false,
+        attributes: body.attributes || null
+      }
+    })
+
+    console.log('Product created:', product)
+
+    // Handle variants if they exist
+    if (body.hasVariants && body.variants && Array.isArray(body.variants) && body.variants.length > 0) {
+      console.log('Creating variants:', body.variants)
+      
+      const variantData = body.variants.map((variant: any) => ({
+        productId: product.id,
+        sku: variant.sku,
+        price: variant.price ? parseFloat(variant.price) : null,
+        salePrice: variant.salePrice ? parseFloat(variant.salePrice) : null,
+        stock: parseInt(variant.stock) || 0,
+        images: variant.images || [],
+        attributes: variant.attributes || {},
+        isActive: variant.isActive !== undefined ? variant.isActive : true
+      }))
+      
+      await prisma.productVariant.createMany({
+        data: variantData
+      })
+      
+      console.log('Variants created for product:', product.id)
+    }
+
+    return NextResponse.json({
+      success: true,
+      product,
+      message: 'Produkt erfolgreich erstellt'
+    })
+  } catch (error) {
+    console.error('Error creating product:', error)
+    return NextResponse.json(
+      { 
+        error: 'Fehler beim Erstellen des Produkts',
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
+      },
       { status: 500 }
     )
   }

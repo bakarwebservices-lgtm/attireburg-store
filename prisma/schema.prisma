@@ -30,16 +30,43 @@ model Product {
   metaTitle   String?
   metaDescription String?
   isActive    Boolean  @default(true)
+  // New fields for variant support
+  hasVariants Boolean  @default(false)
+  attributes  Json?    // Store product attributes as JSON
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   orderItems  OrderItem[]
   reviews     Review[]
   cartItems   CartItem[]
+  variants    ProductVariant[]
+  waitlistSubscriptions WaitlistSubscription[]
+  restockSchedules RestockSchedule[]
 
   @@index([category])
   @@index([featured])
   @@index([isActive])
   @@index([onSale])
+}
+
+model ProductVariant {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku         String   @unique
+  price       Float?   // Override parent price if different
+  salePrice   Float?   // Override parent sale price if different
+  stock       Int      @default(0)
+  images      String[] // Variant-specific images
+  attributes  Json     // Store variant attributes (e.g., {"color": "red", "size": "L"})
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  waitlistSubscriptions WaitlistSubscription[]
+  restockSchedules RestockSchedule[]
+
+  @@index([productId])
+  @@index([sku])
+  @@index([isActive])
 }
 
 model User {
@@ -63,6 +90,7 @@ model User {
   wishlist  Wishlist[]
   reviews   Review[]
   cart      Cart?
+  waitlistSubscriptions WaitlistSubscription[]
 }
 
 model Order {
@@ -77,12 +105,18 @@ model Order {
   shippingAddress String
   shippingCity    String
   shippingPostal  String
+  // Backorder system fields
+  orderType       String      @default("standard") // "standard", "backorder", "preorder"
+  expectedFulfillmentDate DateTime?
+  backorderPriority Int?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   items           OrderItem[]
 
   @@index([userId])
   @@index([status])
+  @@index([orderType])
+  @@index([expectedFulfillmentDate])
 }
 
 model OrderItem {
@@ -91,12 +125,15 @@ model OrderItem {
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String
   product   Product @relation(fields: [productId], references: [id])
+  variantId String? // Optional variant reference
   quantity  Int
   size      String
+  color     String?
   price     Float
 
   @@index([orderId])
   @@index([productId])
+  @@index([variantId])
 }
 
 model Wishlist {
@@ -133,13 +170,15 @@ model CartItem {
   cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId String
   product   Product @relation(fields: [productId], references: [id])
+  variantId String? // Optional variant reference
   quantity  Int
   size      String
   color     String?
   createdAt DateTime @default(now())
 
-  @@unique([cartId, productId, size, color])
+  @@unique([cartId, productId, variantId, size, color])
   @@index([cartId])
+  @@index([variantId])
 }
 
 model Review {
@@ -194,4 +233,58 @@ model ContactMessage {
 
   @@index([isRead])
   @@index([createdAt])
+}
+
+// Backorder System Models
+
+model WaitlistSubscription {
+  id          String   @id @default(cuid())
+  email       String
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  notifications RestockNotification[]
+
+  @@unique([email, productId, variantId])
+  @@index([productId])
+  @@index([variantId])
+  @@index([userId])
+  @@index([isActive])
+}
+
+model RestockNotification {
+  id                    String              @id @default(cuid())
+  waitlistSubscriptionId String
+  waitlistSubscription  WaitlistSubscription @relation(fields: [waitlistSubscriptionId], references: [id], onDelete: Cascade)
+  sentAt                DateTime            @default(now())
+  emailOpened           Boolean             @default(false)
+  linkClicked           Boolean             @default(false)
+  purchaseCompleted     Boolean             @default(false)
+
+  @@index([waitlistSubscriptionId])
+  @@index([sentAt])
+}
+
+model RestockSchedule {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  expectedDate DateTime?
+  actualDate  DateTime?
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([productId, variantId])
+  @@index([productId])
+  @@index([variantId])
+  @@index([expectedDate])
 }

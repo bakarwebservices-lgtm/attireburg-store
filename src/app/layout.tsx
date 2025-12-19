@@ -16,6 +16,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="de">
+      <head>
+        {/* Google Pay API */}
+        <script src="https://pay.google.com/gp/p/js/pay.js" async></script>
+      </head>
       <body className={inter.className}>
         <ClientLayout>
           {children}

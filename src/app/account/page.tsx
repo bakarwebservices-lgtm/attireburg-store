@@ -16,12 +16,25 @@ interface Order {
   items: number
 }
 
+interface BackorderSummary {
+  totalBackorders: number
+  pendingBackorders: number
+  totalValue: number
+}
+
+interface WaitlistSummary {
+  totalSubscriptions: number
+  activeSubscriptions: number
+}
+
 export default function AccountOverview() {
   const { lang } = useLanguage()
   const { user } = useAuth()
   const router = useRouter()
   const t = translations[lang]
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
+  const [backorderSummary, setBackorderSummary] = useState<BackorderSummary>({ totalBackorders: 0, pendingBackorders: 0, totalValue: 0 })
+  const [waitlistSummary, setWaitlistSummary] = useState<WaitlistSummary>({ totalSubscriptions: 0, activeSubscriptions: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -30,36 +43,82 @@ export default function AccountOverview() {
       return
     }
     
-    // Simulate loading recent orders
-    setTimeout(() => {
-      setRecentOrders([
-        {
-          id: '1',
-          orderNumber: 'ATB-001234',
-          date: '2024-01-15',
-          status: 'DELIVERED',
-          total: 159.99,
-          items: 2
-        },
-        {
-          id: '2',
-          orderNumber: 'ATB-001235',
-          date: '2024-01-20',
-          status: 'SHIPPED',
-          total: 89.99,
-          items: 1
-        },
-        {
-          id: '3',
-          orderNumber: 'ATB-001236',
-          date: '2024-01-25',
-          status: 'PROCESSING',
-          total: 249.99,
-          items: 3
+    // Load account data
+    const loadAccountData = async () => {
+      try {
+        // Load recent orders
+        setRecentOrders([
+          {
+            id: '1',
+            orderNumber: 'ATB-001234',
+            date: '2024-01-15',
+            status: 'DELIVERED',
+            total: 159.99,
+            items: 2
+          },
+          {
+            id: '2',
+            orderNumber: 'ATB-001235',
+            date: '2024-01-20',
+            status: 'SHIPPED',
+            total: 89.99,
+            items: 1
+          },
+          {
+            id: '3',
+            orderNumber: 'ATB-001236',
+            date: '2024-01-25',
+            status: 'PROCESSING',
+            total: 249.99,
+            items: 3
+          }
+        ])
+
+        // Load backorder summary
+        if (user.id) {
+          try {
+            const backorderResponse = await fetch(`/api/backorders/status?userId=${user.id}`)
+            if (backorderResponse.ok) {
+              const backorderData = await backorderResponse.json()
+              const backorders = backorderData.backorders || []
+              const pendingBackorders = backorders.filter((b: any) => b.status === 'PENDING')
+              const totalValue = backorders.reduce((sum: number, b: any) => sum + b.totalAmount, 0)
+              
+              setBackorderSummary({
+                totalBackorders: backorders.length,
+                pendingBackorders: pendingBackorders.length,
+                totalValue
+              })
+            }
+          } catch (error) {
+            console.error('Error loading backorder summary:', error)
+          }
         }
-      ])
-      setLoading(false)
-    }, 1000)
+
+        // Load waitlist summary
+        if (user.email) {
+          try {
+            const waitlistResponse = await fetch(`/api/waitlist/subscriptions?email=${encodeURIComponent(user.email)}`)
+            if (waitlistResponse.ok) {
+              const waitlistData = await waitlistResponse.json()
+              const subscriptions = waitlistData.subscriptions || []
+              const activeSubscriptions = subscriptions.filter((s: any) => s.isActive !== false)
+              
+              setWaitlistSummary({
+                totalSubscriptions: subscriptions.length,
+                activeSubscriptions: activeSubscriptions.length
+              })
+            }
+          } catch (error) {
+            console.error('Error loading waitlist summary:', error)
+          }
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadAccountData()
   }, [user, router])
 
   const formatPrice = (price: number) => {
@@ -98,7 +157,7 @@ export default function AccountOverview() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center">
               <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
@@ -115,6 +174,40 @@ export default function AccountOverview() {
 
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center">
+              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Vorbestellungen</p>
+                <p className="text-2xl font-semibold text-gray-900">{backorderSummary.totalBackorders}</p>
+                {backorderSummary.pendingBackorders > 0 && (
+                  <p className="text-xs text-orange-600">{backorderSummary.pendingBackorders} ausstehend</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 1 0-15 0v5h5l-5 5-5-5h5V7a12 12 0 1 1 24 0v10z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Wartelisten</p>
+                <p className="text-2xl font-semibold text-gray-900">{waitlistSummary.totalSubscriptions}</p>
+                {waitlistSummary.activeSubscriptions > 0 && (
+                  <p className="text-xs text-blue-600">{waitlistSummary.activeSubscriptions} aktiv</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
@@ -123,7 +216,7 @@ export default function AccountOverview() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Gesamtausgaben</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {formatPrice(recentOrders.reduce((sum, order) => sum + order.total, 0))}
+                  {formatPrice(recentOrders.reduce((sum, order) => sum + order.total, 0) + backorderSummary.totalValue)}
                 </p>
               </div>
             </div>
@@ -225,6 +318,107 @@ export default function AccountOverview() {
           </div>
         </div>
 
+        {/* Backorder & Waitlist Summary */}
+        {(backorderSummary.totalBackorders > 0 || waitlistSummary.totalSubscriptions > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Backorder Summary */}
+            {backorderSummary.totalBackorders > 0 && (
+              <div className="bg-white rounded-lg shadow-sm">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Aktuelle Vorbestellungen
+                    </h3>
+                    <Link
+                      href="/account/backorders"
+                      className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                    >
+                      Alle anzeigen
+                    </Link>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-2xl font-bold text-gray-900">{backorderSummary.totalBackorders}</p>
+                      <p className="text-sm text-gray-600">Vorbestellungen insgesamt</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold text-gray-900">{formatPrice(backorderSummary.totalValue)}</p>
+                      <p className="text-sm text-gray-600">Gesamtwert</p>
+                    </div>
+                  </div>
+                  {backorderSummary.pendingBackorders > 0 && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium text-orange-800">
+                            {backorderSummary.pendingBackorders} Vorbestellung{backorderSummary.pendingBackorders !== 1 ? 'en' : ''} ausstehend
+                          </p>
+                          <p className="text-xs text-orange-600">
+                            Sie erhalten eine Benachrichtigung, sobald Ihre Artikel verfügbar sind
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Waitlist Summary */}
+            {waitlistSummary.totalSubscriptions > 0 && (
+              <div className="bg-white rounded-lg shadow-sm">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Wartelisten-Abonnements
+                    </h3>
+                    <Link
+                      href="/account/waitlist"
+                      className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                    >
+                      Alle anzeigen
+                    </Link>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-2xl font-bold text-gray-900">{waitlistSummary.totalSubscriptions}</p>
+                      <p className="text-sm text-gray-600">Abonnements insgesamt</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold text-gray-900">{waitlistSummary.activeSubscriptions}</p>
+                      <p className="text-sm text-gray-600">Aktiv</p>
+                    </div>
+                  </div>
+                  {waitlistSummary.activeSubscriptions > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium text-blue-800">
+                            {waitlistSummary.activeSubscriptions} aktive Benachrichtigung{waitlistSummary.activeSubscriptions !== 1 ? 'en' : ''}
+                          </p>
+                          <p className="text-xs text-blue-600">
+                            Sie werden benachrichtigt, sobald Produkte wieder verfügbar sind
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
@@ -258,6 +452,24 @@ export default function AccountOverview() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
                 <span>Wunschliste anzeigen</span>
+              </Link>
+              <Link
+                href="/account/backorders"
+                className="flex items-center space-x-3 text-gray-700 hover:text-primary-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <span>Vorbestellungen verwalten</span>
+              </Link>
+              <Link
+                href="/account/waitlist"
+                className="flex items-center space-x-3 text-gray-700 hover:text-primary-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 1 0-15 0v5h5l-5 5-5-5h5V7a12 12 0 1 1 24 0v10z" />
+                </svg>
+                <span>Wartelisten anzeigen</span>
               </Link>
             </div>
           </div>

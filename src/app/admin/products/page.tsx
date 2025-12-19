@@ -50,11 +50,17 @@ export default function AdminProducts() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/products?limit=100')
+      console.log('Fetching products from API...')
+      const response = await fetch('/api/products?limit=100&includeInactive=true')
+      console.log('API response status:', response.status)
       const data = await response.json()
+      console.log('API response data:', data)
       
       if (data.products) {
         setProducts(data.products)
+        console.log('Products set:', data.products.length)
+      } else {
+        console.log('No products in response')
       }
     } catch (error) {
       console.error('Failed to fetch products:', error)

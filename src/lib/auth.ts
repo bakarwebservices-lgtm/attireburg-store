@@ -8,6 +8,8 @@ export interface AuthUser {
   id: string
   email: string
   name: string
+  firstName?: string
+  lastName?: string
   isAdmin: boolean
 }
 
@@ -25,6 +27,8 @@ export function generateToken(user: AuthUser): string {
       id: user.id, 
       email: user.email, 
       name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       isAdmin: user.isAdmin 
     },
     JWT_SECRET,
@@ -48,6 +52,8 @@ export async function authenticateUser(email: string, password: string): Promise
         id: true,
         email: true,
         name: true,
+        firstName: true,
+        lastName: true,
         password: true,
         isAdmin: true,
         isActive: true,
@@ -73,6 +79,8 @@ export async function authenticateUser(email: string, password: string): Promise
       id: user.id,
       email: user.email,
       name: user.name,
+      firstName: user.firstName || undefined,
+      lastName: user.lastName || undefined,
       isAdmin: user.isAdmin
     }
   } catch (error) {

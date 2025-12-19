@@ -160,31 +160,10 @@ export default function Checkout() {
   }
 
   const validateStep2 = (): boolean => {
-    const newErrors: Record<string, string> = {}
-
-    if (paymentMethod === 'card') {
-      if (!cardDetails.cardNumber.trim()) {
-        newErrors.cardNumber = t.checkout.errors.required
-      } else if (!/^\d{16}$/.test(cardDetails.cardNumber.replace(/\s/g, ''))) {
-        newErrors.cardNumber = t.checkout.errors.cardNumber
-      }
-      if (!cardDetails.expiryDate.trim()) {
-        newErrors.expiryDate = t.checkout.errors.required
-      } else if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardDetails.expiryDate)) {
-        newErrors.expiryDate = t.checkout.errors.expiryDate
-      }
-      if (!cardDetails.cvv.trim()) {
-        newErrors.cvv = t.checkout.errors.required
-      } else if (!/^\d{3,4}$/.test(cardDetails.cvv)) {
-        newErrors.cvv = t.checkout.errors.cvv
-      }
-      if (!cardDetails.cardholderName.trim()) {
-        newErrors.cardholderName = t.checkout.errors.required
-      }
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    // No validation needed for PayPal, Google Pay, or COD
+    // PayPal and Google Pay handle their own validation
+    setErrors({})
+    return true
   }
 
   const handleNext = () => {
@@ -228,14 +207,14 @@ export default function Checkout() {
         shippingAddress: sameAsShipping ? shippingAddress : shippingAddress,
         billingAddress: sameAsShipping ? shippingAddress : billingAddress,
         paymentMethod,
-        totalAmount: totalPrice,
+        totalAmount: finalTotal,
         shippingCost,
         tax: vatBreakdown.vatAmount,
         codFee,
       }
 
-      // Submit order
-      const response = await fetch('/api/orders', {
+      // Create order first
+      const orderResponse = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,15 +223,107 @@ export default function Checkout() {
         body: JSON.stringify(orderData),
       })
 
-      const result = await response.json()
+      const orderResult = await orderResponse.json()
 
-      if (response.ok) {
-        // Clear cart and redirect to success page
-        clearCart()
-        router.push('/checkout/success')
-      } else {
-        setErrors({ general: result.error || 'Fehler beim Aufgeben der Bestellung' })
+      if (!orderResponse.ok) {
+        setErrors({ general: orderResult.error || 'Fehler beim Aufgeben der Bestellung' })
+        return
       }
+
+      // Handle different payment methods
+      if (paymentMethod === 'paypal') {
+        // Create PayPal order
+        const paypalResponse = await fetch('/api/payments/paypal/create-order', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            amount: finalTotal,
+            currency: 'EUR',
+            orderId: orderResult.orderId,
+            items: items.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: item.salePrice || item.price
+            })),
+            shippingAddress
+          }),
+        })
+
+        const paypalResult = await paypalResponse.json()
+
+        if (paypalResponse.ok && paypalResult.approvalUrl) {
+          // Store order ID for later use
+          localStorage.setItem('pending_order_id', orderResult.orderId)
+          localStorage.setItem('paypal_order_id', paypalResult.paypalOrderId)
+          
+          // Redirect to PayPal
+          window.location.href = paypalResult.approvalUrl
+          return
+        } else {
+          setErrors({ general: 'Fehler bei der PayPal-Integration' })
+          return
+        }
+      } else if (paymentMethod === 'googlepay') {
+        // Handle Google Pay
+        try {
+          // Check if Google Pay is available
+          const { googlePayService } = await import('@/lib/googlepay')
+          const isReady = await googlePayService.isReadyToPay()
+          
+          if (!isReady) {
+            setErrors({ general: 'Google Pay ist nicht verfügbar' })
+            return
+          }
+
+          // Request Google Pay payment
+          const paymentData = await googlePayService.requestPayment({
+            amount: finalTotal,
+            currency: 'EUR',
+            orderId: orderResult.orderId,
+            items: items.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: item.salePrice || item.price
+            }))
+          })
+
+          // Process the payment
+          const processResponse = await fetch('/api/payments/googlepay/process', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              paymentData,
+              orderId: orderResult.orderId
+            }),
+          })
+
+          const processResult = await processResponse.json()
+
+          if (processResponse.ok && processResult.success) {
+            clearCart()
+            router.push(`/checkout/success?orderId=${orderResult.orderId}`)
+          } else {
+            setErrors({ general: 'Google Pay Zahlung fehlgeschlagen' })
+          }
+        } catch (error) {
+          console.error('Google Pay error:', error)
+          setErrors({ general: 'Google Pay Zahlung wurde abgebrochen' })
+        }
+      } else if (paymentMethod === 'cod') {
+        // Cash on delivery - order is complete
+        clearCart()
+        router.push(`/checkout/success?orderId=${orderResult.orderId}`)
+      } else {
+        // Default case - should not reach here with current payment options
+        setErrors({ general: 'Bitte wählen Sie eine gültige Zahlungsmethode' })
+      }
+
     } catch (error) {
       console.error('Order placement error:', error)
       setErrors({ general: 'Fehler beim Aufgeben der Bestellung' })
@@ -473,13 +544,164 @@ export default function Checkout() {
 
                     {!sameAsShipping && (
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                          {t.checkout.billingAddress}
-                        </h3>
-                        {/* Billing address fields would go here - similar structure to shipping */}
-                        <p className="text-sm text-gray-600">
-                          Rechnungsadresse Felder würden hier erscheinen...
-                        </p>
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {t.checkout.billingAddress}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => setBillingAddress({
+                              firstName: shippingAddress.firstName,
+                              lastName: shippingAddress.lastName,
+                              company: shippingAddress.company,
+                              street: shippingAddress.street,
+                              city: shippingAddress.city,
+                              postalCode: shippingAddress.postalCode,
+                              country: shippingAddress.country,
+                              phone: shippingAddress.phone,
+                              email: shippingAddress.email,
+                            })}
+                            className="text-sm text-primary-600 hover:text-primary-700 underline"
+                          >
+                            Von Lieferadresse kopieren
+                          </button>
+                        </div>
+                        
+                        {/* Billing Address Form */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              {t.checkout.firstName} *
+                            </label>
+                            <input
+                              type="text"
+                              value={billingAddress.firstName}
+                              onChange={(e) => setBillingAddress(prev => ({ ...prev, firstName: e.target.value }))}
+                              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 ${
+                                errors.billingFirstName ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                            />
+                            {errors.billingFirstName && <p className="text-red-500 text-sm mt-1">{errors.billingFirstName}</p>}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              {t.checkout.lastName} *
+                            </label>
+                            <input
+                              type="text"
+                              value={billingAddress.lastName}
+                              onChange={(e) => setBillingAddress(prev => ({ ...prev, lastName: e.target.value }))}
+                              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 ${
+                                errors.billingLastName ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                            />
+                            {errors.billingLastName && <p className="text-red-500 text-sm mt-1">{errors.billingLastName}</p>}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            {t.checkout.companyOptional}
+                          </label>
+                          <input
+                            type="text"
+                            value={billingAddress.company}
+                            onChange={(e) => setBillingAddress(prev => ({ ...prev, company: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            {t.checkout.street} *
+                          </label>
+                          <input
+                            type="text"
+                            value={billingAddress.street}
+                            onChange={(e) => setBillingAddress(prev => ({ ...prev, street: e.target.value }))}
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 ${
+                              errors.billingStreet ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                          />
+                          {errors.billingStreet && <p className="text-red-500 text-sm mt-1">{errors.billingStreet}</p>}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              {t.checkout.city} *
+                            </label>
+                            <input
+                              type="text"
+                              value={billingAddress.city}
+                              onChange={(e) => setBillingAddress(prev => ({ ...prev, city: e.target.value }))}
+                              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 ${
+                                errors.billingCity ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                            />
+                            {errors.billingCity && <p className="text-red-500 text-sm mt-1">{errors.billingCity}</p>}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              {t.checkout.postalCode} *
+                            </label>
+                            <input
+                              type="text"
+                              value={billingAddress.postalCode}
+                              onChange={(e) => setBillingAddress(prev => ({ ...prev, postalCode: e.target.value }))}
+                              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 ${
+                                errors.billingPostalCode ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                              placeholder="12345"
+                            />
+                            {errors.billingPostalCode && <p className="text-red-500 text-sm mt-1">{errors.billingPostalCode}</p>}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            {t.checkout.country} *
+                          </label>
+                          <select
+                            value={billingAddress.country}
+                            onChange={(e) => setBillingAddress(prev => ({ ...prev, country: e.target.value }))}
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 ${
+                              errors.billingCountry ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                          >
+                            <option value="Deutschland">{t.common.germany}</option>
+                          </select>
+                          {errors.billingCountry && <p className="text-red-500 text-sm mt-1">{errors.billingCountry}</p>}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              {t.checkout.phone}
+                            </label>
+                            <input
+                              type="tel"
+                              value={billingAddress.phone}
+                              onChange={(e) => setBillingAddress(prev => ({ ...prev, phone: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
+                              placeholder="+49 123 456789"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              {t.checkout.email}
+                            </label>
+                            <input
+                              type="email"
+                              value={billingAddress.email}
+                              onChange={(e) => setBillingAddress(prev => ({ ...prev, email: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
+                            />
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -495,32 +717,7 @@ export default function Checkout() {
                 </h2>
 
                 <div className="space-y-4 mb-6">
-                  {/* Credit/Debit Card */}
-                  <div className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                    paymentMethod === 'card' ? 'border-primary-600 bg-primary-50' : 'border-gray-200'
-                  }`} onClick={() => setPaymentMethod('card')}>
-                    <div className="flex items-center">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="card"
-                        checked={paymentMethod === 'card'}
-                        onChange={() => setPaymentMethod('card')}
-                        className="h-4 w-4 text-primary-600 focus:ring-primary-500"
-                      />
-                      <label className="ml-3 flex items-center">
-                        <span className="text-sm font-medium text-gray-900">
-                          {t.checkout.paymentMethods.card}
-                        </span>
-                        <div className="ml-2 flex space-x-1">
-                          <div className="w-8 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center">VISA</div>
-                          <div className="w-8 h-5 bg-red-600 rounded text-white text-xs flex items-center justify-center">MC</div>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* PayPal */}
+                  {/* PayPal (includes cards) */}
                   <div className={`border rounded-lg p-4 cursor-pointer transition-colors ${
                     paymentMethod === 'paypal' ? 'border-primary-600 bg-primary-50' : 'border-gray-200'
                   }`} onClick={() => setPaymentMethod('paypal')}>
@@ -535,12 +732,21 @@ export default function Checkout() {
                       />
                       <label className="ml-3 flex items-center">
                         <span className="text-sm font-medium text-gray-900">
-                          {t.checkout.paymentMethods.paypal}
+                          PayPal & Kreditkarten
                         </span>
-                        <div className="ml-2 w-16 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center">PayPal</div>
+                        <div className="ml-2 flex space-x-1">
+                          <div className="w-16 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center">PayPal</div>
+                          <div className="w-8 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center">VISA</div>
+                          <div className="w-8 h-5 bg-red-600 rounded text-white text-xs flex items-center justify-center">MC</div>
+                        </div>
                       </label>
                     </div>
+                    <p className="text-xs text-gray-600 mt-2 ml-7">
+                      Zahlen Sie mit PayPal-Konto oder Kreditkarte (ohne PayPal-Konto)
+                    </p>
                   </div>
+
+
 
                   {/* Google Pay */}
                   <div className={`border rounded-lg p-4 cursor-pointer transition-colors ${
@@ -589,78 +795,13 @@ export default function Checkout() {
                   </div>
                 </div>
 
-                {/* Card Details Form */}
-                {paymentMethod === 'card' && (
-                  <div className="border-t border-gray-200 pt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      {t.checkout.cardDetails}
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          {t.checkout.cardNumber} *
-                        </label>
-                        <input
-                          type="text"
-                          value={cardDetails.cardNumber}
-                          onChange={(e) => setCardDetails(prev => ({ ...prev, cardNumber: e.target.value }))}
-                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 ${
-                            errors.cardNumber ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="1234 5678 9012 3456"
-                        />
-                        {errors.cardNumber && <p className="text-red-500 text-sm mt-1">{errors.cardNumber}</p>}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            {t.checkout.expiryDate} *
-                          </label>
-                          <input
-                            type="text"
-                            value={cardDetails.expiryDate}
-                            onChange={(e) => setCardDetails(prev => ({ ...prev, expiryDate: e.target.value }))}
-                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 ${
-                              errors.expiryDate ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                            placeholder="MM/YY"
-                          />
-                          {errors.expiryDate && <p className="text-red-500 text-sm mt-1">{errors.expiryDate}</p>}
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            {t.checkout.cvv} *
-                          </label>
-                          <input
-                            type="text"
-                            value={cardDetails.cvv}
-                            onChange={(e) => setCardDetails(prev => ({ ...prev, cvv: e.target.value }))}
-                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 ${
-                              errors.cvv ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                            placeholder="123"
-                          />
-                          {errors.cvv && <p className="text-red-500 text-sm mt-1">{errors.cvv}</p>}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          {t.checkout.cardholderName} *
-                        </label>
-                        <input
-                          type="text"
-                          value={cardDetails.cardholderName}
-                          onChange={(e) => setCardDetails(prev => ({ ...prev, cardholderName: e.target.value }))}
-                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 ${
-                            errors.cardholderName ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="Max Mustermann"
-                        />
-                        {errors.cardholderName && <p className="text-red-500 text-sm mt-1">{errors.cardholderName}</p>}
-                      </div>
+                {/* Payment Method Info */}
+                {paymentMethod === 'cod' && (
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="bg-amber-50 rounded-lg p-3">
+                      <p className="text-sm text-amber-800">
+                        Zusätzliche Gebühr: {formatPrice(codFee)}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -704,19 +845,42 @@ export default function Checkout() {
                   ))}
                 </div>
 
-                {/* Shipping Address Summary */}
+                {/* Address Summary */}
                 <div className="border-t border-gray-200 pt-6 mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    {t.checkout.shippingAddress}
-                  </h3>
-                  <div className="text-sm text-gray-600">
-                    <p>{shippingAddress.firstName} {shippingAddress.lastName}</p>
-                    {shippingAddress.company && <p>{shippingAddress.company}</p>}
-                    <p>{shippingAddress.street}</p>
-                    <p>{shippingAddress.postalCode} {shippingAddress.city}</p>
-                    <p>{shippingAddress.country}</p>
-                    <p>{shippingAddress.phone}</p>
-                    <p>{shippingAddress.email}</p>
+                  <div className={`grid ${!sameAsShipping ? 'grid-cols-1 md:grid-cols-2 gap-6' : 'grid-cols-1'}`}>
+                    {/* Shipping Address */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        {t.checkout.shippingAddress}
+                      </h3>
+                      <div className="text-sm text-gray-600">
+                        <p>{shippingAddress.firstName} {shippingAddress.lastName}</p>
+                        {shippingAddress.company && <p>{shippingAddress.company}</p>}
+                        <p>{shippingAddress.street}</p>
+                        <p>{shippingAddress.postalCode} {shippingAddress.city}</p>
+                        <p>{shippingAddress.country}</p>
+                        <p>{shippingAddress.phone}</p>
+                        <p>{shippingAddress.email}</p>
+                      </div>
+                    </div>
+
+                    {/* Billing Address (only show if different) */}
+                    {!sameAsShipping && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                          {t.checkout.billingAddress}
+                        </h3>
+                        <div className="text-sm text-gray-600">
+                          <p>{billingAddress.firstName} {billingAddress.lastName}</p>
+                          {billingAddress.company && <p>{billingAddress.company}</p>}
+                          <p>{billingAddress.street}</p>
+                          <p>{billingAddress.postalCode} {billingAddress.city}</p>
+                          <p>{billingAddress.country}</p>
+                          {billingAddress.phone && <p>{billingAddress.phone}</p>}
+                          {billingAddress.email && <p>{billingAddress.email}</p>}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

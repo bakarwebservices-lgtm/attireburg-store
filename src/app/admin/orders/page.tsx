@@ -39,19 +39,10 @@ export default function AdminOrders() {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    if (!user) {
-      router.push('/login')
-      return
-    }
-    
-    if (!user.isAdmin) {
-      router.push('/account')
-      return
-    }
-    
-    // Simulate loading orders
-    setTimeout(() => {
+  const fetchOrders = async () => {
+    try {
+      // For admin, we need a different endpoint to get all orders
+      // For now, we'll use mock data since we need to implement admin-specific order fetching
       setOrders([
         {
           id: '1',
@@ -67,67 +58,27 @@ export default function AdminOrders() {
             { id: '1', name: 'Premium Wollpullover Classic', quantity: 1, price: 129.99, size: 'L', color: 'Grau' },
             { id: '2', name: 'Versandkosten', quantity: 1, price: 4.99 }
           ]
-        },
-        {
-          id: '2',
-          orderNumber: 'ATB-001239',
-          customerName: 'Anna Schmidt',
-          customerEmail: 'anna@example.com',
-          total: 89.99,
-          status: 'PROCESSING',
-          paymentMethod: 'Kreditkarte',
-          shippingAddress: 'Hauptstraße 456, 20095 Hamburg',
-          date: '2024-01-25T09:15:00Z',
-          items: [
-            { id: '3', name: 'Hoodie Urban Comfort', quantity: 1, price: 89.99, size: 'M', color: 'Schwarz' }
-          ]
-        },
-        {
-          id: '3',
-          orderNumber: 'ATB-001238',
-          customerName: 'Thomas Weber',
-          customerEmail: 'thomas@example.com',
-          total: 249.99,
-          status: 'SHIPPED',
-          paymentMethod: 'PayPal',
-          shippingAddress: 'Gartenstraße 789, 80331 München',
-          date: '2024-01-24T14:20:00Z',
-          items: [
-            { id: '4', name: 'Winterjacke Alpine Pro', quantity: 1, price: 249.99, size: 'XL', color: 'Schwarz' }
-          ]
-        },
-        {
-          id: '4',
-          orderNumber: 'ATB-001237',
-          customerName: 'Lisa Müller',
-          customerEmail: 'lisa@example.com',
-          total: 199.98,
-          status: 'DELIVERED',
-          paymentMethod: 'Nachnahme',
-          shippingAddress: 'Kirchstraße 321, 50667 Köln',
-          date: '2024-01-23T16:45:00Z',
-          items: [
-            { id: '5', name: 'Strickjacke Heritage', quantity: 1, price: 159.99, size: 'S', color: 'Beige' },
-            { id: '6', name: 'Langarmshirt Essential', quantity: 1, price: 49.99, size: 'S', color: 'Weiß' }
-          ]
-        },
-        {
-          id: '5',
-          orderNumber: 'ATB-001236',
-          customerName: 'Michael Klein',
-          customerEmail: 'michael@example.com',
-          total: 79.99,
-          status: 'CANCELLED',
-          paymentMethod: 'PayPal',
-          shippingAddress: 'Bahnhofstraße 654, 60329 Frankfurt',
-          date: '2024-01-22T11:30:00Z',
-          items: [
-            { id: '7', name: 'Fleecejacke Outdoor', quantity: 1, price: 79.99, size: 'L', color: 'Blau' }
-          ]
         }
       ])
       setLoading(false)
-    }, 1000)
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!user) {
+      router.push('/login')
+      return
+    }
+    
+    if (!user.isAdmin) {
+      router.push('/account')
+      return
+    }
+    
+    fetchOrders()
   }, [user, router])
 
   const formatPrice = (price: number) => {

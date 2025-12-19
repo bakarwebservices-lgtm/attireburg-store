@@ -14,6 +14,7 @@ interface ProductVariation {
   price: number
   salePrice?: number
   stock: number
+  images?: string[] // Variant-specific images
   weight?: number
   dimensions?: {
     length: number
@@ -112,7 +113,7 @@ export default function NewProduct() {
     shortDescription: '',
     shortDescriptionEn: '',
     price: 0,
-    sku: '',
+    sku: `ATB-${Date.now()}`, // Generate a default SKU
     manageStock: true,
     stock: 0,
     lowStockThreshold: 5,
@@ -156,7 +157,7 @@ export default function NewProduct() {
     setFormData(prev => ({
       ...prev,
       [parent]: {
-        ...prev[parent as keyof ProductFormData],
+        ...(prev[parent as keyof ProductFormData] as object || {}),
         [field]: value
       }
     }))
@@ -201,6 +202,73 @@ export default function NewProduct() {
     }))
   }
 
+  // Generate all possible variants from attributes marked for variation
+  const generateVariants = () => {
+    console.log('Generate variants clicked!')
+    console.log('Current attributes:', formData.attributes)
+    
+    if (!formData.attributes || formData.attributes.length === 0) {
+      alert('Keine Eigenschaften definiert. Bitte fügen Sie Eigenschaften hinzu.')
+      return
+    }
+
+    // Get attributes marked for variation
+    const variationAttributes = formData.attributes.filter(attr => attr.variation && attr.values.length > 0)
+    console.log('Variation attributes found:', variationAttributes)
+    
+    if (variationAttributes.length === 0) {
+      alert('Keine Eigenschaften für Varianten markiert. Bitte markieren Sie mindestens eine Eigenschaft mit "Für Varianten verwenden".')
+      return
+    }
+
+    // Generate all combinations
+    const combinations = generateCombinations(variationAttributes)
+    console.log('Generated combinations:', combinations)
+    
+    // Create variations from combinations
+    const newVariations: ProductVariation[] = combinations.map((combo, index) => {
+      const attributeString = Object.entries(combo)
+        .map(([key, value]) => `${key}-${value}`)
+        .join('_')
+      
+      return {
+        id: `var-${Date.now()}-${index}`,
+        attributes: combo,
+        sku: `${formData.sku}-${attributeString}`,
+        price: formData.price,
+        salePrice: formData.salePrice,
+        stock: 0,
+        images: [],
+        weight: formData.weight
+      }
+    })
+
+    console.log('Generated variations:', newVariations)
+    setFormData(prev => ({ ...prev, variations: newVariations }))
+    alert(`${newVariations.length} Varianten erfolgreich generiert!`)
+  }
+
+  // Helper function to generate all combinations of attributes
+  const generateCombinations = (attributes: ProductAttribute[]) => {
+    if (attributes.length === 0) return [{}]
+    
+    const [first, ...rest] = attributes
+    const restCombinations = generateCombinations(rest)
+    
+    const combinations: Record<string, string>[] = []
+    
+    for (const value of first.values) {
+      for (const restCombo of restCombinations) {
+        combinations.push({
+          [first.name]: value,
+          ...restCombo
+        })
+      }
+    }
+    
+    return combinations
+  }
+
   const removeAttribute = (index: number) => {
     setFormData(prev => ({
       ...prev,
@@ -211,15 +279,90 @@ export default function NewProduct() {
   const handleSave = async (status: 'draft' | 'published') => {
     setLoading(true)
     try {
-      // Here we would save to database
-      console.log('Saving product:', { ...formData, status })
+      // Validate required fields
+      console.log('Form data before validation:', formData)
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      if (!formData.name || !formData.name.trim()) {
+        alert('Produktname ist erforderlich')
+        return
+      }
+      if (!formData.sku || !formData.sku.trim()) {
+        alert('SKU ist erforderlich')
+        return
+      }
+      if (!formData.price || formData.price <= 0) {
+        alert('Preis muss größer als 0 sein')
+        return
+      }
+
+      // Prepare data for API
+      const productData: any = {
+        name: formData.name,
+        nameEn: formData.nameEn || formData.name,
+        description: formData.description,
+        descriptionEn: formData.descriptionEn || formData.description,
+        price: formData.price,
+        salePrice: formData.salePrice,
+        sku: formData.sku,
+        stock: formData.manageStock ? formData.stock : 0,
+        category: formData.category || 'Uncategorized',
+        sizes: [], // Will be populated from attributes
+        colors: [], // Will be populated from attributes
+        tags: formData.tags,
+        images: formData.images,
+        featured: formData.featured,
+        onSale: !!formData.salePrice,
+        weight: formData.weight,
+        metaTitle: formData.seo.metaTitle,
+        metaDescription: formData.seo.metaDescription,
+        isActive: status === 'published',
+        hasVariants: formData.variations.length > 0,
+        attributes: formData.attributes
+      }
+
+      // Extract sizes and colors from attributes
+      const sizeAttr = formData.attributes.find(attr => attr.name.toLowerCase() === 'größe' || attr.name.toLowerCase() === 'size')
+      const colorAttr = formData.attributes.find(attr => attr.name.toLowerCase() === 'farbe' || attr.name.toLowerCase() === 'color')
       
+      if (sizeAttr) productData.sizes = sizeAttr.values
+      if (colorAttr) productData.colors = colorAttr.values
+      
+      // Add variants if they exist
+      if (formData.variations.length > 0) {
+        productData.variants = formData.variations.map(variation => ({
+          sku: variation.sku,
+          price: variation.price,
+          salePrice: variation.salePrice,
+          stock: variation.stock,
+          images: variation.images || [],
+          attributes: variation.attributes,
+          isActive: true
+        }))
+      }
+
+      console.log('Saving product:', productData)
+      
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(productData)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Fehler beim Speichern')
+      }
+
+      const result = await response.json()
+      console.log('Product saved:', result)
+      
+      alert(`Produkt erfolgreich ${status === 'published' ? 'veröffentlicht' : 'als Entwurf gespeichert'}!`)
       router.push('/admin/products')
     } catch (error) {
       console.error('Error saving product:', error)
+      alert(`Fehler beim Speichern: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`)
     } finally {
       setLoading(false)
     }
@@ -794,12 +937,21 @@ export default function NewProduct() {
                 <div className="p-6 space-y-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-gray-900">Produkteigenschaften</h2>
-                    <button
-                      onClick={addAttribute}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-                    >
-                      Eigenschaft hinzufügen
-                    </button>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={generateVariants}
+                        disabled={!formData.attributes?.some(attr => attr.variation)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Varianten generieren
+                      </button>
+                      <button
+                        onClick={addAttribute}
+                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                      >
+                        Eigenschaft hinzufügen
+                      </button>
+                    </div>
                   </div>
 
                   {formData.attributes.length === 0 ? (
@@ -994,17 +1146,9 @@ export default function NewProduct() {
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-gray-900">Produktvarianten</h2>
                     <button
-                      onClick={() => {
-                        // Generate variations from attributes
-                        const variationAttributes = formData.attributes.filter(attr => attr.variation)
-                        if (variationAttributes.length === 0) {
-                          alert('Bitte definieren Sie zuerst Eigenschaften für Varianten im Eigenschaften-Tab.')
-                          return
-                        }
-                        // This would generate all possible combinations
-                        console.log('Generate variations from:', variationAttributes)
-                      }}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                      onClick={generateVariants}
+                      disabled={!formData.attributes?.some(attr => attr.variation)}
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Varianten generieren
                     </button>
@@ -1068,40 +1212,77 @@ export default function NewProduct() {
                                   </svg>
                                 </button>
                               </div>
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">SKU</label>
-                                  <input
-                                    type="text"
-                                    value={variation.sku}
-                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-600"
-                                    placeholder="VAR-001"
-                                  />
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">SKU</label>
+                                    <input
+                                      type="text"
+                                      value={variation.sku}
+                                      onChange={(e) => {
+                                        const newVariations = [...formData.variations]
+                                        newVariations[index] = { ...variation, sku: e.target.value }
+                                        setFormData(prev => ({ ...prev, variations: newVariations }))
+                                      }}
+                                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-600"
+                                      placeholder="VAR-001"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Preis (€)</label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={variation.price}
+                                      onChange={(e) => {
+                                        const newVariations = [...formData.variations]
+                                        newVariations[index] = { ...variation, price: parseFloat(e.target.value) || 0 }
+                                        setFormData(prev => ({ ...prev, variations: newVariations }))
+                                      }}
+                                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-600"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Angebotspreis (€)</label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={variation.salePrice || ''}
+                                      onChange={(e) => {
+                                        const newVariations = [...formData.variations]
+                                        newVariations[index] = { ...variation, salePrice: e.target.value ? parseFloat(e.target.value) : undefined }
+                                        setFormData(prev => ({ ...prev, variations: newVariations }))
+                                      }}
+                                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-600"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Lagerbestand</label>
+                                    <input
+                                      type="number"
+                                      value={variation.stock}
+                                      onChange={(e) => {
+                                        const newVariations = [...formData.variations]
+                                        newVariations[index] = { ...variation, stock: parseInt(e.target.value) || 0 }
+                                        setFormData(prev => ({ ...prev, variations: newVariations }))
+                                      }}
+                                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-600"
+                                    />
+                                  </div>
                                 </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">Preis (€)</label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    value={variation.price}
-                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-600"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">Angebotspreis (€)</label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    value={variation.salePrice || ''}
-                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-600"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">Lagerbestand</label>
-                                  <input
-                                    type="number"
-                                    value={variation.stock}
-                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-600"
+                                
+                                {/* Variant Images */}
+                                <div className="mt-4">
+                                  <ImageUpload
+                                    images={variation.images || []}
+                                    onImagesChange={(newImages) => {
+                                      const newVariations = [...formData.variations]
+                                      newVariations[index] = { ...variation, images: newImages }
+                                      setFormData(prev => ({ ...prev, variations: newVariations }))
+                                    }}
+                                    maxImages={5}
+                                    title={`Bilder für Variante ${index + 1}`}
+                                    description={`Spezifische Bilder für ${Object.entries(variation.attributes).map(([k, v]) => `${k}: ${v}`).join(', ')}`}
                                   />
                                 </div>
                               </div>
@@ -1129,11 +1310,8 @@ export default function NewProduct() {
                       onChange={(e) => handleInputChange('purchaseNote', e.target.value)}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-                      placeholder="Wichtige Hinweise für den Kunden nach dem Kauf..."
+                      placeholder="Hinweis für Kunden nach dem Kauf (z.B. Pflegehinweise)"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Wird dem Kunden nach dem Kauf angezeigt
-                    </p>
                   </div>
 
                   {/* Menu Order */}
@@ -1149,72 +1327,22 @@ export default function NewProduct() {
                       placeholder="0"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Niedrigere Zahlen erscheinen zuerst (0 = Standard)
+                      Niedrigere Zahlen erscheinen zuerst
                     </p>
                   </div>
 
-                  {/* Reviews Settings */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-gray-900">Bewertungen</h3>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="enableReviews"
-                        checked={formData.enableReviews}
-                        onChange={(e) => handleInputChange('enableReviews', e.target.checked)}
-                        className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
-                      />
-                      <label htmlFor="enableReviews" className="ml-2 text-sm text-gray-700">
-                        Bewertungen für dieses Produkt aktivieren
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Product Data */}
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                    <h3 className="text-sm font-medium text-gray-900">Produktdaten</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Erstellt:</span>
-                        <span className="ml-2 text-gray-900">Wird beim Speichern gesetzt</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Zuletzt geändert:</span>
-                        <span className="ml-2 text-gray-900">Wird beim Speichern aktualisiert</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Status:</span>
-                        <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
-                          formData.status === 'published' 
-                            ? 'bg-green-100 text-green-800'
-                            : formData.status === 'draft'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {formData.status === 'published' ? 'Veröffentlicht' : 
-                           formData.status === 'draft' ? 'Entwurf' : 'Privat'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Sichtbarkeit:</span>
-                        <span className="ml-2 text-gray-900">
-                          {formData.catalogVisibility === 'visible' ? 'Sichtbar' :
-                           formData.catalogVisibility === 'catalog' ? 'Nur Katalog' :
-                           formData.catalogVisibility === 'search' ? 'Nur Suche' : 'Versteckt'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Danger Zone */}
-                  <div className="border border-red-200 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-red-900 mb-2">Gefahrenbereich</h3>
-                    <p className="text-sm text-red-700 mb-3">
-                      Diese Aktionen können nicht rückgängig gemacht werden.
-                    </p>
-                    <button className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50">
-                      Produkt löschen
-                    </button>
+                  {/* Enable Reviews */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="enableReviews"
+                      checked={formData.enableReviews}
+                      onChange={(e) => handleInputChange('enableReviews', e.target.checked)}
+                      className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+                    />
+                    <label htmlFor="enableReviews" className="ml-2 text-sm font-medium text-gray-700">
+                      Bewertungen aktivieren
+                    </label>
                   </div>
                 </div>
               )}

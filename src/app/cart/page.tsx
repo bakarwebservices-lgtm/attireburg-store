@@ -64,8 +64,13 @@ export default function Cart() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-sm">
               <div className="p-6">
-                <div className="space-y-6">
-                  {items.map((item) => (
+                {/* Regular Items */}
+                {items.filter(item => !item.isBackorder).length > 0 && (
+                  <div className="space-y-6">
+                    <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
+                      Sofort lieferbar
+                    </h3>
+                    {items.filter(item => !item.isBackorder).map((item) => (
                     <div key={item.id} className="flex items-center space-x-4 py-4 border-b border-gray-200 last:border-b-0">
                       <div className="flex-shrink-0 w-20 h-20">
                         {item.image ? (
@@ -82,12 +87,28 @@ export default function Cart() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate">
-                          {lang === 'de' ? item.name : item.nameEn}
-                        </h3>
+                        <div className="flex items-center space-x-2">
+                          <h3 className="text-lg font-semibold text-gray-900 truncate">
+                            {lang === 'de' ? item.name : item.nameEn}
+                          </h3>
+                          {item.isBackorder && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              Vorbestellung
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                           {item.size && <span>{t.cart.size}: {item.size}</span>}
                           {item.color && <span>{t.cart.color}: {item.color}</span>}
+                          {item.isBackorder && item.expectedFulfillmentDate && (
+                            <span className="text-orange-600">
+                              Lieferung: {new Intl.DateTimeFormat('de-DE', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              }).format(item.expectedFulfillmentDate)}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center space-x-4 mt-2">
                           <div className="flex items-center space-x-2">
@@ -100,7 +121,7 @@ export default function Cart() {
                             <span className="w-8 text-center font-semibold">{item.quantity}</span>
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              disabled={item.quantity >= item.stock}
+                              disabled={!item.isBackorder && item.quantity >= item.stock}
                               className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               +
@@ -137,8 +158,109 @@ export default function Cart() {
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Backorder Items */}
+                {items.filter(item => item.isBackorder).length > 0 && (
+                  <div className="space-y-6 mt-8">
+                    <div className="flex items-center space-x-2 border-b border-gray-200 pb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Vorbestellungen
+                      </h3>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                        Zahlung sofort, Lieferung bei Verfügbarkeit
+                      </span>
+                    </div>
+                    {items.filter(item => item.isBackorder).map((item) => (
+                      <div key={item.id} className="flex items-center space-x-4 py-4 border-b border-gray-200 last:border-b-0 bg-orange-50 rounded-lg px-4">
+                        <div className="flex-shrink-0 w-20 h-20">
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt={lang === 'de' ? item.name : item.nameEn}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
+                              <span className="text-gray-400 text-xs">{t.common.noImage}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <h3 className="text-lg font-semibold text-gray-900 truncate">
+                              {lang === 'de' ? item.name : item.nameEn}
+                            </h3>
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              Vorbestellung
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                            {item.size && <span>{t.cart.size}: {item.size}</span>}
+                            {item.color && <span>{t.cart.color}: {item.color}</span>}
+                            {item.expectedFulfillmentDate && (
+                              <span className="text-orange-600 font-medium">
+                                Voraussichtliche Lieferung: {new Intl.DateTimeFormat('de-DE', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                }).format(item.expectedFulfillmentDate)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-4 mt-2">
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                              >
+                                -
+                              </button>
+                              <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                              <button
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => removeItem(item.id)}
+                              className="text-red-600 hover:text-red-700 text-sm font-medium"
+                            >
+                              {t.cart.remove}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="flex flex-col items-end space-y-1">
+                            {item.salePrice ? (
+                              <>
+                                <span className="text-lg font-bold text-red-600">
+                                  {formatPrice(item.salePrice * item.quantity)}
+                                </span>
+                                <span className="text-sm text-gray-500 line-through">
+                                  {formatPrice(item.price * item.quantity)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-lg font-bold text-gray-900">
+                                {formatPrice(item.price * item.quantity)}
+                              </span>
+                            )}
+                            <span className="text-sm text-gray-600">
+                              {formatPrice(item.salePrice || item.price)} {t.common.perPiece}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <div className="flex justify-between items-center">
