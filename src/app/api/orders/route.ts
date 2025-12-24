@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { inventoryService } from '@/lib/inventory'
+import { emailService } from '@/lib/email/EmailService'
+import { errorLogger } from '@/lib/logging/ErrorLogger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,10 +48,12 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({ orders })
     } catch (dbError) {
+      errorLogger.logDatabaseError('fetch', 'orders', dbError as Error, { userId: user.id })
       console.log('Database not available, returning empty orders')
       return NextResponse.json({ orders: [] })
     }
   } catch (error) {
+    errorLogger.logAPIError('/api/orders', 'GET', error as Error)
     console.error('Orders fetch error:', error)
     return NextResponse.json(
       { error: 'Fehler beim Laden der Bestellungen' },
@@ -162,6 +166,33 @@ export async function POST(request: NextRequest) {
       // Here you would integrate with payment processors
       // For now, we'll simulate successful payment processing
       
+      // Send order confirmation email
+      try {
+        await emailService.sendOrderConfirmation({
+          orderNumber: `ATB-${order.id.slice(-6).toUpperCase()}`,
+          customerName: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+          customerEmail: shippingAddress.email,
+          items: items.map((item: any) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.salePrice || item.price,
+            size: item.size,
+            color: item.color
+          })),
+          totalAmount: totalAmount + (shippingCost || 0) + (tax || 0) + (codFee || 0),
+          shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.company ? shippingAddress.company + '\n' : ''}${shippingAddress.street}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.country}`,
+          paymentMethod: paymentMethod === 'cod' ? 'Nachnahme' : paymentMethod === 'paypal' ? 'PayPal' : 'Google Pay',
+          estimatedDelivery: '2-3 Werktage'
+        })
+      } catch (emailError) {
+        errorLogger.error('Failed to send order confirmation email', { 
+          orderId: order.id,
+          customerEmail: shippingAddress.email 
+        }, emailError as Error)
+        console.error('Failed to send order confirmation email:', emailError)
+        // Don't fail the order if email fails
+      }
+      
       return NextResponse.json({
         orderId: order.id,
         orderNumber: `ATB-${order.id.slice(-6).toUpperCase()}`,
@@ -169,6 +200,11 @@ export async function POST(request: NextRequest) {
         message: 'Bestellung erfolgreich aufgegeben'
       })
     } catch (dbError) {
+      errorLogger.logDatabaseError('create', 'orders', dbError as Error, { 
+        userId: user.id,
+        itemCount: items.length,
+        totalAmount 
+      })
       console.log('Database not available, simulating order creation')
       
       // Simulate order creation when database is not available
@@ -182,6 +218,24 @@ export async function POST(request: NextRequest) {
       })
     }
   } catch (error) {
+    const errorContext: Record<string, any> = {}
+    
+    try {
+      const authHeader = request.headers.get('authorization')
+      const token = authHeader?.replace('Bearer ', '')
+      if (token) {
+        const userFromToken = verifyToken(token)
+        if (userFromToken) errorContext.userId = userFromToken.id
+      }
+    } catch {}
+    
+    try {
+      const body = await request.json()
+      if (body.items) errorContext.itemCount = body.items.length
+      if (body.paymentMethod) errorContext.paymentMethod = body.paymentMethod
+    } catch {}
+
+    errorLogger.logAPIError('/api/orders', 'POST', error as Error, errorContext)
     console.error('Order creation error:', error)
     return NextResponse.json(
       { error: 'Fehler beim Erstellen der Bestellung' },

@@ -107,10 +107,21 @@
 
 
 
+
+
   - Create inventory tracking service for variants
+
+
+
+
   - Add real-time stock updates during order processing
 
+
+
+
   - Implement inventory restoration for cancelled orders
+
+
 
   - _Requirements: 6.3, 6.4_
 

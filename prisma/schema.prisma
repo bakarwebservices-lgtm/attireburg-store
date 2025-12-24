@@ -39,6 +39,7 @@ model Product {
   reviews     Review[]
   cartItems   CartItem[]
   variants    ProductVariant[]
+  wishlist    Wishlist[]
   waitlistSubscriptions WaitlistSubscription[]
   restockSchedules RestockSchedule[]
 
@@ -141,6 +142,7 @@ model Wishlist {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@unique([userId, productId])

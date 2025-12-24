@@ -1,1 +1,444 @@
-'use client'\nimport { useEffect, useState } from 'react'\nimport { useRouter } from 'next/navigation'\nimport Link from 'next/link'\nimport { useAuth } from '@/contexts/AuthContext'\nimport DashboardLayout from '@/components/DashboardLayout'\n\ninterface BackorderItem {\n  id: string\n  productId: string\n  productName: string\n  variantId?: string\n  variantSku?: string\n  quantity: number\n  size: string\n  color?: string\n  price: number\n}\n\ninterface Backorder {\n  id: string\n  userId: string\n  userEmail: string\n  userName: string\n  orderType: string\n  status: string\n  totalAmount: number\n  currency: string\n  expectedFulfillmentDate?: Date\n  backorderPriority: number\n  createdAt: Date\n  items: BackorderItem[]\n}\n\nexport default function AdminBackorderDashboard() {\n  const { user } = useAuth()\n  const router = useRouter()\n  const [backorders, setBackorders] = useState<Backorder[]>([])\n  const [loading, setLoading] = useState(true)\n  const [error, setError] = useState<string | null>(null)\n  const [selectedBackorders, setSelectedBackorders] = useState<Set<string>>(new Set())\n  const [bulkAction, setBulkAction] = useState('')\n  const [filterStatus, setFilterStatus] = useState('all')\n  const [sortBy, setSortBy] = useState('priority')\n\n  useEffect(() => {\n    if (!user) {\n      router.push('/login')\n      return\n    }\n    \n    if (!user.isAdmin) {\n      router.push('/account')\n      return\n    }\n\n    fetchBackorders()\n  }, [user, router])\n\n  const fetchBackorders = async () => {\n    try {\n      setLoading(true)\n      const response = await fetch('/api/admin/backorders')\n      \n      if (response.ok) {\n        const data = await response.json()\n        setBackorders(data.backorders || [])\n      } else {\n        setError('Fehler beim Laden der Vorbestellungen')\n      }\n    } catch (error) {\n      console.error('Error fetching backorders:', error)\n      setError('Fehler beim Laden der Vorbestellungen')\n    } finally {\n      setLoading(false)\n    }\n  }\n\n  const handleFulfillBackorder = async (backorderId: string) => {\n    if (!confirm('Möchten Sie diese Vorbestellung als erfüllt markieren?')) {\n      return\n    }\n\n    try {\n      const response = await fetch('/api/admin/backorders/fulfill', {\n        method: 'PUT',\n        headers: {\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify({\n          backorderId,\n          fulfillmentDate: new Date().toISOString()\n        })\n      })\n\n      if (response.ok) {\n        await fetchBackorders() // Refresh the list\n        alert('Vorbestellung erfolgreich erfüllt')\n      } else {\n        const data = await response.json()\n        alert(data.error || 'Fehler beim Erfüllen der Vorbestellung')\n      }\n    } catch (error) {\n      console.error('Error fulfilling backorder:', error)\n      alert('Fehler beim Erfüllen der Vorbestellung')\n    }\n  }\n\n  const handleBulkAction = async () => {\n    if (selectedBackorders.size === 0) {\n      alert('Bitte wählen Sie mindestens eine Vorbestellung aus')\n      return\n    }\n\n    if (!bulkAction) {\n      alert('Bitte wählen Sie eine Aktion aus')\n      return\n    }\n\n    const confirmMessage = bulkAction === 'fulfill' \n      ? `Möchten Sie ${selectedBackorders.size} Vorbestellung(en) als erfüllt markieren?`\n      : `Möchten Sie ${selectedBackorders.size} Vorbestellung(en) stornieren?`\n\n    if (!confirm(confirmMessage)) {\n      return\n    }\n\n    try {\n      const promises = Array.from(selectedBackorders).map(backorderId => {\n        if (bulkAction === 'fulfill') {\n          return fetch('/api/admin/backorders/fulfill', {\n            method: 'PUT',\n            headers: { 'Content-Type': 'application/json' },\n            body: JSON.stringify({ backorderId, fulfillmentDate: new Date().toISOString() })\n          })\n        } else {\n          return fetch('/api/backorders/cancel', {\n            method: 'PUT',\n            headers: { 'Content-Type': 'application/json' },\n            body: JSON.stringify({ orderId: backorderId, reason: 'Admin cancellation' })\n          })\n        }\n      })\n\n      await Promise.all(promises)\n      await fetchBackorders()\n      setSelectedBackorders(new Set())\n      setBulkAction('')\n      alert(`${selectedBackorders.size} Vorbestellung(en) erfolgreich bearbeitet`)\n    } catch (error) {\n      console.error('Error with bulk action:', error)\n      alert('Fehler bei der Bulk-Aktion')\n    }\n  }\n\n  const toggleBackorderSelection = (backorderId: string) => {\n    const newSelection = new Set(selectedBackorders)\n    if (newSelection.has(backorderId)) {\n      newSelection.delete(backorderId)\n    } else {\n      newSelection.add(backorderId)\n    }\n    setSelectedBackorders(newSelection)\n  }\n\n  const toggleSelectAll = () => {\n    if (selectedBackorders.size === filteredBackorders.length) {\n      setSelectedBackorders(new Set())\n    } else {\n      setSelectedBackorders(new Set(filteredBackorders.map(b => b.id)))\n    }\n  }\n\n  const formatPrice = (price: number, currency: string) => {\n    return new Intl.NumberFormat('de-DE', {\n      style: 'currency',\n      currency: currency\n    }).format(price)\n  }\n\n  const formatDate = (date: Date) => {\n    return new Intl.DateTimeFormat('de-DE', {\n      year: 'numeric',\n      month: 'short',\n      day: 'numeric',\n      hour: '2-digit',\n      minute: '2-digit'\n    }).format(date)\n  }\n\n  const getStatusColor = (status: string) => {\n    switch (status) {\n      case 'PENDING':\n        return 'bg-yellow-100 text-yellow-800'\n      case 'PROCESSING':\n        return 'bg-blue-100 text-blue-800'\n      case 'SHIPPED':\n        return 'bg-green-100 text-green-800'\n      case 'DELIVERED':\n        return 'bg-green-100 text-green-800'\n      case 'CANCELLED':\n        return 'bg-red-100 text-red-800'\n      default:\n        return 'bg-gray-100 text-gray-800'\n    }\n  }\n\n  const getStatusText = (status: string) => {\n    switch (status) {\n      case 'PENDING':\n        return 'Ausstehend'\n      case 'PROCESSING':\n        return 'In Bearbeitung'\n      case 'SHIPPED':\n        return 'Versendet'\n      case 'DELIVERED':\n        return 'Zugestellt'\n      case 'CANCELLED':\n        return 'Storniert'\n      default:\n        return status\n    }\n  }\n\n  const getPriorityColor = (priority: number) => {\n    if (priority <= 10) return 'text-red-600 font-semibold'\n    if (priority <= 50) return 'text-orange-600 font-medium'\n    return 'text-gray-600'\n  }\n\n  // Filter and sort backorders\n  const filteredBackorders = backorders\n    .filter(backorder => {\n      if (filterStatus === 'all') return true\n      return backorder.status === filterStatus.toUpperCase()\n    })\n    .sort((a, b) => {\n      switch (sortBy) {\n        case 'priority':\n          return a.backorderPriority - b.backorderPriority\n        case 'date':\n          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()\n        case 'amount':\n          return b.totalAmount - a.totalAmount\n        case 'customer':\n          return a.userName.localeCompare(b.userName)\n        default:\n          return 0\n      }\n    })\n\n  const stats = {\n    total: backorders.length,\n    pending: backorders.filter(b => b.status === 'PENDING').length,\n    processing: backorders.filter(b => b.status === 'PROCESSING').length,\n    totalValue: backorders.reduce((sum, b) => sum + b.totalAmount, 0)\n  }\n\n  if (!user || !user.isAdmin) {\n    return null\n  }\n\n  return (\n    <DashboardLayout>\n      <div className=\"space-y-6\">\n        {/* Header */}\n        <div className=\"flex items-center justify-between\">\n          <div>\n            <h1 className=\"text-2xl font-bold text-gray-900\">Vorbestellungen verwalten</h1>\n            <p className=\"text-gray-600 mt-1\">\n              Übersicht und Verwaltung aller Kundenvorbestellungen\n            </p>\n          </div>\n          <div className=\"flex items-center space-x-3\">\n            <button\n              onClick={fetchBackorders}\n              className=\"bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors\"\n            >\n              <svg className=\"w-4 h-4 mr-2 inline\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={2} d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\" />\n              </svg>\n              Aktualisieren\n            </button>\n          </div>\n        </div>\n\n        {/* Stats Cards */}\n        <div className=\"grid grid-cols-1 md:grid-cols-4 gap-6\">\n          <div className=\"bg-white rounded-lg shadow-sm p-6\">\n            <div className=\"flex items-center\">\n              <div className=\"w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center\">\n                <svg className=\"w-6 h-6 text-blue-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                  <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={2} d=\"M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z\" />\n                </svg>\n              </div>\n              <div className=\"ml-4\">\n                <p className=\"text-sm font-medium text-gray-600\">Gesamt</p>\n                <p className=\"text-2xl font-semibold text-gray-900\">{stats.total}</p>\n              </div>\n            </div>\n          </div>\n\n          <div className=\"bg-white rounded-lg shadow-sm p-6\">\n            <div className=\"flex items-center\">\n              <div className=\"w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center\">\n                <svg className=\"w-6 h-6 text-yellow-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                  <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={2} d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\" />\n                </svg>\n              </div>\n              <div className=\"ml-4\">\n                <p className=\"text-sm font-medium text-gray-600\">Ausstehend</p>\n                <p className=\"text-2xl font-semibold text-gray-900\">{stats.pending}</p>\n              </div>\n            </div>\n          </div>\n\n          <div className=\"bg-white rounded-lg shadow-sm p-6\">\n            <div className=\"flex items-center\">\n              <div className=\"w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center\">\n                <svg className=\"w-6 h-6 text-blue-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                  <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={2} d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\" />\n                </svg>\n              </div>\n              <div className=\"ml-4\">\n                <p className=\"text-sm font-medium text-gray-600\">In Bearbeitung</p>\n                <p className=\"text-2xl font-semibold text-gray-900\">{stats.processing}</p>\n              </div>\n            </div>\n          </div>\n\n          <div className=\"bg-white rounded-lg shadow-sm p-6\">\n            <div className=\"flex items-center\">\n              <div className=\"w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center\">\n                <svg className=\"w-6 h-6 text-green-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                  <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={2} d=\"M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1\" />\n                </svg>\n              </div>\n              <div className=\"ml-4\">\n                <p className=\"text-sm font-medium text-gray-600\">Gesamtwert</p>\n                <p className=\"text-2xl font-semibold text-gray-900\">{formatPrice(stats.totalValue, 'EUR')}</p>\n              </div>\n            </div>\n          </div>\n        </div>\n\n        {/* Filters and Actions */}\n        <div className=\"bg-white rounded-lg shadow-sm p-6\">\n          <div className=\"flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0\">\n            <div className=\"flex items-center space-x-4\">\n              <div>\n                <label className=\"block text-sm font-medium text-gray-700 mb-1\">Status</label>\n                <select\n                  value={filterStatus}\n                  onChange={(e) => setFilterStatus(e.target.value)}\n                  className=\"border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500\"\n                >\n                  <option value=\"all\">Alle Status</option>\n                  <option value=\"pending\">Ausstehend</option>\n                  <option value=\"processing\">In Bearbeitung</option>\n                  <option value=\"shipped\">Versendet</option>\n                  <option value=\"cancelled\">Storniert</option>\n                </select>\n              </div>\n              \n              <div>\n                <label className=\"block text-sm font-medium text-gray-700 mb-1\">Sortieren</label>\n                <select\n                  value={sortBy}\n                  onChange={(e) => setSortBy(e.target.value)}\n                  className=\"border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500\"\n                >\n                  <option value=\"priority\">Priorität</option>\n                  <option value=\"date\">Datum</option>\n                  <option value=\"amount\">Betrag</option>\n                  <option value=\"customer\">Kunde</option>\n                </select>\n              </div>\n            </div>\n\n            {/* Bulk Actions */}\n            {selectedBackorders.size > 0 && (\n              <div className=\"flex items-center space-x-3\">\n                <select\n                  value={bulkAction}\n                  onChange={(e) => setBulkAction(e.target.value)}\n                  className=\"border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500\"\n                >\n                  <option value=\"\">Aktion wählen</option>\n                  <option value=\"fulfill\">Als erfüllt markieren</option>\n                  <option value=\"cancel\">Stornieren</option>\n                </select>\n                <button\n                  onClick={handleBulkAction}\n                  disabled={!bulkAction}\n                  className=\"bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors\"\n                >\n                  Ausführen ({selectedBackorders.size})\n                </button>\n              </div>\n            )}\n          </div>\n        </div>\n\n        {/* Backorders Table */}\n        <div className=\"bg-white rounded-lg shadow-sm overflow-hidden\">\n          {loading ? (\n            <div className=\"flex items-center justify-center py-12\">\n              <div className=\"animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600\"></div>\n              <span className=\"ml-2 text-gray-600\">Wird geladen...</span>\n            </div>\n          ) : error ? (\n            <div className=\"text-center py-12\">\n              <div className=\"text-red-600 mb-4\">\n                <svg className=\"w-12 h-12 mx-auto\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                  <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={2} d=\"M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z\" />\n                </svg>\n              </div>\n              <p className=\"text-gray-600 mb-4\">{error}</p>\n              <button\n                onClick={fetchBackorders}\n                className=\"bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors\"\n              >\n                Erneut versuchen\n              </button>\n            </div>\n          ) : filteredBackorders.length === 0 ? (\n            <div className=\"text-center py-12\">\n              <div className=\"text-gray-400 mb-4\">\n                <svg className=\"w-16 h-16 mx-auto\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n                  <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={1} d=\"M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z\" />\n                </svg>\n              </div>\n              <h3 className=\"text-lg font-medium text-gray-900 mb-2\">Keine Vorbestellungen gefunden</h3>\n              <p className=\"text-gray-600\">\n                {filterStatus === 'all' \n                  ? 'Es sind noch keine Vorbestellungen vorhanden.'\n                  : `Keine Vorbestellungen mit Status \"${getStatusText(filterStatus.toUpperCase())}\" gefunden.`\n                }\n              </p>\n            </div>\n          ) : (\n            <div className=\"overflow-x-auto\">\n              <table className=\"min-w-full divide-y divide-gray-200\">\n                <thead className=\"bg-gray-50\">\n                  <tr>\n                    <th className=\"px-6 py-3 text-left\">\n                      <input\n                        type=\"checkbox\"\n                        checked={selectedBackorders.size === filteredBackorders.length && filteredBackorders.length > 0}\n                        onChange={toggleSelectAll}\n                        className=\"rounded border-gray-300 text-primary-600 focus:ring-primary-500\"\n                      />\n                    </th>\n                    <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">\n                      Priorität\n                    </th>\n                    <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">\n                      Kunde\n                    </th>\n                    <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">\n                      Bestellung\n                    </th>\n                    <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">\n                      Status\n                    </th>\n                    <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">\n                      Betrag\n                    </th>\n                    <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">\n                      Datum\n                    </th>\n                    <th className=\"px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">\n                      Aktionen\n                    </th>\n                  </tr>\n                </thead>\n                <tbody className=\"bg-white divide-y divide-gray-200\">\n                  {filteredBackorders.map((backorder) => (\n                    <tr key={backorder.id} className=\"hover:bg-gray-50\">\n                      <td className=\"px-6 py-4\">\n                        <input\n                          type=\"checkbox\"\n                          checked={selectedBackorders.has(backorder.id)}\n                          onChange={() => toggleBackorderSelection(backorder.id)}\n                          className=\"rounded border-gray-300 text-primary-600 focus:ring-primary-500\"\n                        />\n                      </td>\n                      <td className=\"px-6 py-4 whitespace-nowrap\">\n                        <span className={`text-sm font-medium ${getPriorityColor(backorder.backorderPriority)}`}>\n                          #{backorder.backorderPriority}\n                        </span>\n                      </td>\n                      <td className=\"px-6 py-4\">\n                        <div>\n                          <div className=\"text-sm font-medium text-gray-900\">{backorder.userName}</div>\n                          <div className=\"text-sm text-gray-500\">{backorder.userEmail}</div>\n                        </div>\n                      </td>\n                      <td className=\"px-6 py-4\">\n                        <div>\n                          <div className=\"text-sm font-medium text-gray-900\">\n                            #{backorder.id.slice(-8)}\n                          </div>\n                          <div className=\"text-sm text-gray-500\">\n                            {backorder.items.length} Artikel\n                          </div>\n                          {backorder.expectedFulfillmentDate && (\n                            <div className=\"text-xs text-blue-600 mt-1\">\n                              Erwartet: {formatDate(new Date(backorder.expectedFulfillmentDate))}\n                            </div>\n                          )}\n                        </div>\n                      </td>\n                      <td className=\"px-6 py-4 whitespace-nowrap\">\n                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(backorder.status)}`}>\n                          {getStatusText(backorder.status)}\n                        </span>\n                      </td>\n                      <td className=\"px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900\">\n                        {formatPrice(backorder.totalAmount, backorder.currency)}\n                      </td>\n                      <td className=\"px-6 py-4 whitespace-nowrap text-sm text-gray-500\">\n                        {formatDate(new Date(backorder.createdAt))}\n                      </td>\n                      <td className=\"px-6 py-4 whitespace-nowrap text-sm font-medium\">\n                        <div className=\"flex items-center space-x-2\">\n                          {backorder.status === 'PENDING' && (\n                            <button\n                              onClick={() => handleFulfillBackorder(backorder.id)}\n                              className=\"text-green-600 hover:text-green-700 font-medium\"\n                            >\n                              Erfüllen\n                            </button>\n                          )}\n                          <Link\n                            href={`/admin/backorders/${backorder.id}`}\n                            className=\"text-primary-600 hover:text-primary-700 font-medium\"\n                          >\n                            Details\n                          </Link>\n                        </div>\n                      </td>\n                    </tr>\n                  ))}\n                </tbody>\n              </table>\n            </div>\n          )}\n        </div>\n      </div>\n    </DashboardLayout>\n  )\n}\n"
+'use client'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import DashboardLayout from '@/components/DashboardLayout'
+
+interface BackorderItem {
+  id: string
+  productId: string
+  productName: string
+  variantId?: string
+  variantSku?: string
+  quantity: number
+  size: string
+  color?: string
+  price: number
+}
+
+interface Backorder {
+  id: string
+  userId: string
+  userEmail: string
+  userName: string
+  orderType: string
+  status: string
+  totalAmount: number
+  currency: string
+  expectedFulfillmentDate?: Date
+  backorderPriority: number
+  createdAt: Date
+  items: BackorderItem[]
+}
+
+export default function AdminBackorderDashboard() {
+  const { user } = useAuth()
+  const router = useRouter()
+  const [backorders, setBackorders] = useState<Backorder[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedBackorders, setSelectedBackorders] = useState<Set<string>>(new Set())
+  const [bulkAction, setBulkAction] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [sortBy, setSortBy] = useState('priority')
+
+  useEffect(() => {
+    if (!user) {
+      router.push('/login')
+      return
+    }
+    
+    if (!user.isAdmin) {
+      router.push('/account')
+      return
+    }
+
+    fetchBackorders()
+  }, [user, router])
+
+  const fetchBackorders = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/admin/backorders')
+      
+      if (response.ok) {
+        const data = await response.json()
+        setBackorders(data.backorders || [])
+      } else {
+        setError('Fehler beim Laden der Vorbestellungen')
+      }
+    } catch (error) {
+      console.error('Error fetching backorders:', error)
+      setError('Fehler beim Laden der Vorbestellungen')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleFulfillBackorder = async (backorderId: string) => {
+    if (!confirm('Möchten Sie diese Vorbestellung als erfüllt markieren?')) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/admin/backorders/fulfill', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          backorderId,
+          fulfillmentDate: new Date().toISOString()
+        })
+      })
+
+      if (response.ok) {
+        await fetchBackorders()
+        alert('Vorbestellung erfolgreich erfüllt')
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Fehler beim Erfüllen der Vorbestellung')
+      }
+    } catch (error) {
+      console.error('Error fulfilling backorder:', error)
+      alert('Fehler beim Erfüllen der Vorbestellung')
+    }
+  }
+
+  const formatPrice = (price: number, currency: string) => {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: currency
+    }).format(price)
+  }
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('de-DE', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date)
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'PROCESSING':
+        return 'bg-blue-100 text-blue-800'
+      case 'SHIPPED':
+        return 'bg-green-100 text-green-800'
+      case 'DELIVERED':
+        return 'bg-green-100 text-green-800'
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return 'Ausstehend'
+      case 'PROCESSING':
+        return 'In Bearbeitung'
+      case 'SHIPPED':
+        return 'Versendet'
+      case 'DELIVERED':
+        return 'Zugestellt'
+      case 'CANCELLED':
+        return 'Storniert'
+      default:
+        return status
+    }
+  }
+
+  // Filter and sort backorders
+  const filteredBackorders = backorders
+    .filter(backorder => {
+      if (filterStatus === 'all') return true
+      return backorder.status === filterStatus.toUpperCase()
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'priority':
+          return a.backorderPriority - b.backorderPriority
+        case 'date':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        case 'amount':
+          return b.totalAmount - a.totalAmount
+        case 'customer':
+          return a.userName.localeCompare(b.userName)
+        default:
+          return 0
+      }
+    })
+
+  const stats = {
+    total: backorders.length,
+    pending: backorders.filter(b => b.status === 'PENDING').length,
+    processing: backorders.filter(b => b.status === 'PROCESSING').length,
+    totalValue: backorders.reduce((sum, b) => sum + b.totalAmount, 0)
+  }
+
+  if (!user || !user.isAdmin) {
+    return null
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Vorbestellungen verwalten</h1>
+            <p className="text-gray-600 mt-1">
+              Übersicht und Verwaltung aller Kundenvorbestellungen
+            </p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={fetchBackorders}
+              className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Aktualisieren
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Gesamt</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Ausstehend</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.pending}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">In Bearbeitung</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.processing}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Gesamtwert</p>
+                <p className="text-2xl font-semibold text-gray-900">{formatPrice(stats.totalValue, 'EUR')}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div className="flex items-center space-x-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="all">Alle Status</option>
+                  <option value="pending">Ausstehend</option>
+                  <option value="processing">In Bearbeitung</option>
+                  <option value="shipped">Versendet</option>
+                  <option value="cancelled">Storniert</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sortieren</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="priority">Priorität</option>
+                  <option value="date">Datum</option>
+                  <option value="amount">Betrag</option>
+                  <option value="customer">Kunde</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Backorders Table */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              <span className="ml-2 text-gray-600">Wird geladen...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <div className="text-red-600 mb-4">
+                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <button
+                onClick={fetchBackorders}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Erneut versuchen
+              </button>
+            </div>
+          ) : filteredBackorders.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Keine Vorbestellungen gefunden</h3>
+              <p className="text-gray-600">
+                {filterStatus === 'all' 
+                  ? 'Es sind noch keine Vorbestellungen vorhanden.'
+                  : `Keine Vorbestellungen mit Status "${getStatusText(filterStatus.toUpperCase())}" gefunden.`
+                }
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Priorität
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Kunde
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Bestellung
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Betrag
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Datum
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Aktionen
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredBackorders.map((backorder) => (
+                    <tr key={backorder.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-medium text-gray-900">
+                          #{backorder.backorderPriority}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{backorder.userName}</div>
+                          <div className="text-sm text-gray-500">{backorder.userEmail}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            #{backorder.id.slice(-8)}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {backorder.items.length} Artikel
+                          </div>
+                          {backorder.expectedFulfillmentDate && (
+                            <div className="text-xs text-blue-600 mt-1">
+                              Erwartet: {formatDate(new Date(backorder.expectedFulfillmentDate))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(backorder.status)}`}>
+                          {getStatusText(backorder.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {formatPrice(backorder.totalAmount, backorder.currency)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(new Date(backorder.createdAt))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center space-x-2">
+                          {backorder.status === 'PENDING' && (
+                            <button
+                              onClick={() => handleFulfillBackorder(backorder.id)}
+                              className="text-green-600 hover:text-green-700 font-medium"
+                            >
+                              Erfüllen
+                            </button>
+                          )}
+                          <Link
+                            href={`/admin/backorders/${backorder.id}`}
+                            className="text-primary-600 hover:text-primary-700 font-medium"
+                          >
+                            Details
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </DashboardLayout>
+  )
+}

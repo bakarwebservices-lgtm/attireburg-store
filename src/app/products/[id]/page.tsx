@@ -10,6 +10,7 @@ import { formatPriceWithVAT } from '@/lib/vat'
 import OutOfStockActions from '@/components/backorder/OutOfStockActions'
 import BackorderModal from '@/components/backorder/BackorderModal'
 import { useRestockDate } from '@/hooks/useRestockDate'
+import { getSession } from '@/lib/session'
 
 interface ProductVariant {
   id: string
@@ -72,6 +73,8 @@ export default function ProductDetail() {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
   const [showBackorderModal, setShowBackorderModal] = useState(false)
+  const [isInWishlist, setIsInWishlist] = useState(false)
+  const [wishlistLoading, setWishlistLoading] = useState(false)
   
   // Get restock date for current product/variant
   const { restockDate } = useRestockDate(
@@ -84,6 +87,35 @@ export default function ProductDetail() {
       fetchProduct(params.id as string)
     }
   }, [params.id])
+
+  // Check if product is in wishlist
+  useEffect(() => {
+    if (user && product) {
+      checkWishlistStatus()
+    }
+  }, [user, product])
+
+  const checkWishlistStatus = async () => {
+    if (!user || !product) return
+    
+    try {
+      const session = getSession()
+      if (!session?.token) return
+
+      const response = await fetch('/api/wishlist', {
+        headers: {
+          'Authorization': `Bearer ${session.token}`
+        }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const isInList = data.wishlist.some((item: any) => item.productId === product.id)
+        setIsInWishlist(isInList)
+      }
+    } catch (error) {
+      console.error('Error checking wishlist status:', error)
+    }
+  }
 
   const fetchProduct = async (id: string) => {
     try {
@@ -246,6 +278,67 @@ export default function ProductDetail() {
 
   const handleBackorderClick = () => {
     setShowBackorderModal(true)
+  }
+
+  const handleWishlistToggle = async () => {
+    if (!user) {
+      alert('Bitte melden Sie sich an, um Produkte zur Wunschliste hinzuzufügen')
+      return
+    }
+
+    if (!product) return
+
+    const session = getSession()
+    if (!session?.token) {
+      alert('Bitte melden Sie sich erneut an')
+      return
+    }
+
+    setWishlistLoading(true)
+    
+    try {
+      if (isInWishlist) {
+        // Remove from wishlist
+        const response = await fetch(`/api/wishlist?productId=${product.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${session.token}`
+          }
+        })
+        
+        if (response.ok) {
+          setIsInWishlist(false)
+          alert('Produkt von der Wunschliste entfernt')
+        } else {
+          throw new Error('Failed to remove from wishlist')
+        }
+      } else {
+        // Add to wishlist
+        const response = await fetch('/api/wishlist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.token}`
+          },
+          body: JSON.stringify({
+            productId: product.id
+          })
+        })
+        
+        if (response.ok) {
+          setIsInWishlist(true)
+          alert('Produkt zur Wunschliste hinzugefügt')
+        } else {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to add to wishlist')
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling wishlist:', error)
+      alert(error instanceof Error ? error.message : 'Fehler beim Bearbeiten der Wunschliste')
+    } finally {
+      setWishlistLoading(false)
+    }
   }
 
   if (loading) {
@@ -618,8 +711,26 @@ export default function ProductDetail() {
                   </button>
                   
                   {user && (
-                    <button className="w-full border border-primary-600 text-primary-600 hover:bg-primary-50 font-semibold py-3 px-6 rounded-lg transition-colors">
-                      {t.productDetail.addToWishlist}
+                    <button 
+                      onClick={handleWishlistToggle}
+                      disabled={wishlistLoading}
+                      className={`w-full border font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2 ${
+                        isInWishlist
+                          ? 'border-red-600 text-red-600 hover:bg-red-50'
+                          : 'border-primary-600 text-primary-600 hover:bg-primary-50'
+                      } ${wishlistLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <svg className="w-5 h-5" fill={isInWishlist ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                      <span>
+                        {wishlistLoading 
+                          ? 'Wird bearbeitet...' 
+                          : isInWishlist 
+                            ? 'Von Wunschliste entfernen' 
+                            : t.productDetail.addToWishlist
+                        }
+                      </span>
                     </button>
                   )}
                 </>
@@ -630,7 +741,7 @@ export default function ProductDetail() {
                   productName={product.name}
                   productNameEn={product.nameEn}
                   currentPrice={getCurrentSalePrice() || getCurrentPrice()}
-                  currency={product.currency || 'EUR'}
+                  currency={'EUR'}
                   expectedRestockDate={restockDate || undefined}
                   onBackorderClick={handleBackorderClick}
                 />
@@ -716,7 +827,7 @@ export default function ProductDetail() {
               nameEn: product.nameEn,
               price: getCurrentPrice(),
               salePrice: getCurrentSalePrice(),
-              currency: product.currency || 'EUR',
+              currency: 'EUR',
               image: getCurrentImages().length > 0 ? getCurrentImages()[selectedImage] : undefined
             }}
             variant={selectedVariant ? {

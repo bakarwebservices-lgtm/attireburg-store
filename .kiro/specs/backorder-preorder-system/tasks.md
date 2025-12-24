@@ -29,7 +29,8 @@ This implementation plan extends the existing product variant management system 
 
 
 - [ ] 2. Implement core backorder and waitlist services
-  - [ ] 2.1 Create WaitlistService for subscription management
+  - [x] 2.1 Create WaitlistService for subscription management
+
     - Implement waitlist subscription creation, removal, and querying
 
 
@@ -43,13 +44,19 @@ This implementation plan extends the existing product variant management system 
 
 
 
+
+
+
   - [ ] 2.2 Create BackorderService for order management
     - Implement backorder creation with payment processing integration
     - Add FIFO fulfillment logic for chronological order processing
     - Create backorder cancellation and refund handling
 
 
+
+
     - _Requirements: 2.2, 2.4, 2.5, 8.1, 8.2, 8.4_
+
 
   - [ ] 2.3 Create RestockService for inventory and date management
     - Implement expected restock date management
@@ -63,6 +70,9 @@ This implementation plan extends the existing product variant management system 
 
 
     - _Requirements: 3.1, 3.4, 5.1, 5.3, 8.1_
+
+
+
 
 
 
@@ -94,6 +104,8 @@ This implementation plan extends the existing product variant management system 
 - [ ] 2.7 Write property test for notification delivery consistency
   - **Property 3: Notification delivery consistency**
   - **Validates: Requirements 1.4, 3.3, 5.2, 6.1, 6.4**
+
+
 
 
 
@@ -170,11 +182,15 @@ This implementation plan extends the existing product variant management system 
 
 
 
+
+
     - Add "Notify When Available" button for waitlist subscription
     - Add "Backorder" button for out-of-stock purchase option
     - Display expected restock dates when available
 
     - Show waitlist status for subscribed customers
+
+
 
 
     - _Requirements: 1.1, 1.3, 2.1, 3.1, 3.2_

@@ -9,16 +9,24 @@ export default function About() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="bg-primary-50 py-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-primary-800 mb-6">
-              Über Attireburg
-            </h1>
-            <p className="text-xl text-primary-600 max-w-3xl mx-auto">
-              Premium deutsche Kleidung für höchste Ansprüche. Seit Jahren verbinden wir zeitloses Design mit erstklassiger Qualität.
-            </p>
-          </div>
+      <div className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+            alt="Attireburg Atelier"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-primary-900 bg-opacity-60"></div>
+        </div>
+        
+        <div className="relative z-10 max-w-4xl mx-auto text-center px-6">
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
+            Über Attireburg
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-200 max-w-3xl mx-auto leading-relaxed">
+            Seit über einem Jahrzehnt stehen wir für kompromisslose Qualität und zeitloses Design. 
+            Jedes Kleidungsstück erzählt eine Geschichte von Handwerkskunst und Leidenschaft.
+          </p>
         </div>
       </div>
 
@@ -48,8 +56,16 @@ export default function About() {
                 </p>
               </div>
             </div>
-            <div className="bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg aspect-square flex items-center justify-center">
-              <span className="text-primary-400 text-lg">Unser Atelier</span>
+            <div className="relative">
+              <img
+                src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+                alt="Unser Atelier"
+                className="rounded-lg shadow-2xl w-full"
+              />
+              <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-lg shadow-xl border-l-4 border-primary-600">
+                <div className="text-2xl font-bold text-primary-800">2010</div>
+                <div className="text-sm text-gray-600">Gegründet</div>
+              </div>
             </div>
           </div>
         </div>
@@ -121,16 +137,37 @@ export default function About() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { name: 'Anna Schmidt', role: 'Gründerin & Designerin', image: null },
-              { name: 'Michael Weber', role: 'Produktionsleiter', image: null },
-              { name: 'Sarah Klein', role: 'Qualitätskontrolle', image: null }
+              { 
+                name: 'Anna Schmidt', 
+                role: 'Gründerin & Designerin', 
+                image: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80',
+                description: 'Mit über 15 Jahren Erfahrung in der Modebranche leitet Anna unser Designteam.'
+              },
+              { 
+                name: 'Michael Weber', 
+                role: 'Produktionsleiter', 
+                image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80',
+                description: 'Michael sorgt dafür, dass jedes Produkt unseren hohen Qualitätsstandards entspricht.'
+              },
+              { 
+                name: 'Sarah Klein', 
+                role: 'Qualitätskontrolle', 
+                image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80',
+                description: 'Sarah prüft jedes Detail und stellt sicher, dass nur Perfektion unser Haus verlässt.'
+              }
             ].map((member, index) => (
-              <div key={index} className="text-center">
-                <div className="w-32 h-32 bg-gradient-to-br from-primary-100 to-primary-200 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <span className="text-primary-400">Foto</span>
+              <div key={index} className="text-center group">
+                <div className="relative mb-6">
+                  <img
+                    src={member.image}
+                    alt={member.name}
+                    className="w-32 h-32 rounded-full mx-auto object-cover shadow-lg group-hover:shadow-xl transition-shadow"
+                  />
+                  <div className="absolute inset-0 rounded-full bg-primary-600 bg-opacity-0 group-hover:bg-opacity-10 transition-all"></div>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-1">{member.name}</h3>
-                <p className="text-gray-600">{member.role}</p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">{member.name}</h3>
+                <p className="text-primary-600 font-medium mb-3">{member.role}</p>
+                <p className="text-gray-600 text-sm">{member.description}</p>
               </div>
             ))}
           </div>

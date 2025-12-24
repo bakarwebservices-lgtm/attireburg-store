@@ -94,20 +94,36 @@ export default function Products() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-primary-800 mb-4">
-            {t.products.title}
-          </h1>
-          <p className="text-primary-600">
-            {t.products.subtitle}
-          </p>
+    <div className="min-h-screen bg-white">
+      {/* Hero Section */}
+      <div className="relative h-96 overflow-hidden">
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+            alt="Premium clothing collection"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-primary-900 bg-opacity-70"></div>
         </div>
+        
+        <div className="relative z-10 h-full flex items-center justify-center">
+          <div className="max-w-4xl mx-auto px-6 text-center">
+            <h1 className="text-5xl font-bold text-white mb-4">
+              Unsere Kollektion
+            </h1>
+            <p className="text-xl text-gray-200 max-w-2xl mx-auto">
+              Entdecken Sie zeitlose Eleganz und deutsche Handwerkskunst in jedem Stück. 
+              Von klassischen Pullovern bis zu modernen Jacken.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-12">
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <div className="bg-gray-50 rounded-xl p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter & Sortierung</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Search */}
             <div>
@@ -203,7 +219,7 @@ export default function Products() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {products.map((product) => (
                 <Link key={product.id} href={`/products/${product.id}`}>
-                  <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all cursor-pointer group">
+                  <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group">
                     <div className="aspect-square bg-gray-100 relative overflow-hidden">
                       {product.images.length > 0 ? (
                         <img
@@ -217,26 +233,22 @@ export default function Products() {
                         </div>
                       )}
                       {product.onSale && (
-                        <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                          {t.productDetail.sale}
+                        <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-lg">
+                          Sale
                         </div>
                       )}
                       {product.stock === 0 && (
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                          <span className="text-white font-semibold">{t.products.outOfStock}</span>
+                        <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+                          <span className="text-white font-semibold">Ausverkauft</span>
                         </div>
                       )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </div>
                     <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">
-                        {lang === 'de' ? product.name : product.nameEn}
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-2 capitalize">
-                        {product.category}
-                      </p>
-                      
-                      {/* Rating */}
-                      <div className="flex items-center mb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-primary-600 uppercase tracking-wide">
+                          {product.category}
+                        </span>
                         <div className="flex items-center">
                           {[...Array(5)].map((_, i) => (
                             <svg
@@ -257,27 +269,41 @@ export default function Products() {
                           </span>
                         </div>
                       </div>
+                      
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3 line-clamp-2 group-hover:text-primary-700 transition-colors">
+                        {lang === 'de' ? product.name : product.nameEn}
+                      </h3>
 
-                      <div className="flex flex-col">
-                        <div className="flex items-center space-x-2 mb-1">
-                          {product.onSale && product.salePrice ? (
-                            <>
-                              <span className="font-bold text-red-600">
-                                {formatPriceWithVAT(product.salePrice, lang).price}
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <div className="flex items-center space-x-2">
+                            {product.onSale && product.salePrice ? (
+                              <>
+                                <span className="text-lg font-bold text-red-600">
+                                  {formatPriceWithVAT(product.salePrice, lang).price}
+                                </span>
+                                <span className="text-sm text-gray-500 line-through">
+                                  {formatPrice(product.price)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-lg font-bold text-primary-700">
+                                {formatPriceWithVAT(product.price, lang).price}
                               </span>
-                              <span className="text-sm text-gray-500 line-through">
-                                {formatPrice(product.price)}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="font-bold text-primary-700">
-                              {formatPriceWithVAT(product.price, lang).price}
-                            </span>
-                          )}
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500 mt-1">
+                            {formatPriceWithVAT(product.onSale && product.salePrice ? product.salePrice : product.price, lang).vatInfo}
+                          </span>
                         </div>
-                        <span className="text-xs text-gray-500">
-                          {formatPriceWithVAT(product.onSale && product.salePrice ? product.salePrice : product.price, lang).vatInfo}
-                        </span>
+                        
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <div className="bg-primary-600 text-white p-1.5 rounded-full">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                            </svg>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

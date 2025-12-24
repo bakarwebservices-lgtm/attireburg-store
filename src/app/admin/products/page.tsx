@@ -20,6 +20,12 @@ interface Product {
   isActive: boolean
   images: string[]
   createdAt: string
+  hasVariants?: boolean
+  variantCount?: number
+  totalVariantStock?: number
+  totalAvailableStock?: number
+  activeVariants?: number
+  inactiveVariants?: number
 }
 
 export default function AdminProducts() {
@@ -31,6 +37,7 @@ export default function AdminProducts() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [variantCounts, setVariantCounts] = useState<Record<string, any>>({})
 
   useEffect(() => {
     if (!user) {
@@ -51,14 +58,58 @@ export default function AdminProducts() {
     try {
       setLoading(true)
       console.log('Fetching products from API...')
-      const response = await fetch('/api/products?limit=100&includeInactive=true')
-      console.log('API response status:', response.status)
-      const data = await response.json()
-      console.log('API response data:', data)
       
-      if (data.products) {
-        setProducts(data.products)
-        console.log('Products set:', data.products.length)
+      // Fetch products, variant counts, and inventory report in parallel
+      const [productsResponse, variantsResponse, inventoryResponse] = await Promise.all([
+        fetch('/api/products?limit=100&includeInactive=true'),
+        fetch('/api/variants/aggregation?type=variant-counts'),
+        fetch('/api/variants/aggregation?type=inventory-report')
+      ])
+      
+      console.log('API response status:', productsResponse.status)
+      const productsData = await productsResponse.json()
+      const variantsData = await variantsResponse.json()
+      const inventoryData = await inventoryResponse.json()
+      
+      console.log('API response data:', productsData)
+      
+      if (productsData.products) {
+        // Create maps for variant counts and inventory by product ID
+        const variantCountsMap: Record<string, any> = {}
+        const inventoryMap: Record<string, any> = {}
+        
+        if (variantsData.counts) {
+          variantsData.counts.forEach((count: any) => {
+            variantCountsMap[count.productId] = count
+          })
+        }
+        
+        if (inventoryData.report) {
+          inventoryData.report.forEach((report: any) => {
+            inventoryMap[report.productId] = report
+          })
+        }
+        
+        setVariantCounts(variantCountsMap)
+        
+        // Enhance products with variant and inventory information
+        const enhancedProducts = productsData.products.map((product: Product) => {
+          const variantInfo = variantCountsMap[product.id]
+          const inventoryInfo = inventoryMap[product.id]
+          
+          return {
+            ...product,
+            variantCount: variantInfo?.totalVariants || 0,
+            activeVariants: variantInfo?.activeVariants || 0,
+            inactiveVariants: variantInfo?.inactiveVariants || 0,
+            hasVariants: (variantInfo?.totalVariants || 0) > 0,
+            totalVariantStock: inventoryInfo?.totalStock || product.stock,
+            totalAvailableStock: inventoryInfo?.totalAvailable || product.stock
+          }
+        })
+        
+        setProducts(enhancedProducts)
+        console.log('Products set:', enhancedProducts.length)
       } else {
         console.log('No products in response')
       }
@@ -146,12 +197,16 @@ export default function AdminProducts() {
   }
 
   const filteredProducts = products.filter(product => {
+    const effectiveStock = product.hasVariants ? (product.totalVariantStock || 0) : product.stock
+    
     const matchesFilter = filter === 'all' || 
       (filter === 'active' && product.isActive) ||
       (filter === 'inactive' && !product.isActive) ||
       (filter === 'featured' && product.featured) ||
       (filter === 'sale' && product.onSale) ||
-      (filter === 'low-stock' && product.stock < 10)
+      (filter === 'low-stock' && effectiveStock < 10) ||
+      (filter === 'has-variants' && product.hasVariants) ||
+      (filter === 'no-variants' && !product.hasVariants)
     
     const matchesSearch = search === '' || 
       product.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -233,6 +288,8 @@ export default function AdminProducts() {
                 <option value="featured">Ausgewählte Produkte</option>
                 <option value="sale">Im Angebot</option>
                 <option value="low-stock">Niedriger Lagerbestand</option>
+                <option value="has-variants">Mit Varianten</option>
+                <option value="no-variants">Ohne Varianten</option>
               </select>
             </div>
             
@@ -272,6 +329,9 @@ export default function AdminProducts() {
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Kategorie
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Varianten
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Preis
@@ -334,6 +394,29 @@ export default function AdminProducts() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
+                          {product.hasVariants ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  {product.variantCount} Varianten
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {product.activeVariants} aktiv, {product.inactiveVariants} inaktiv
+                              </div>
+                              {product.totalVariantStock !== undefined && (
+                                <div className="text-xs text-gray-600">
+                                  Gesamt: {product.totalVariantStock} Stück
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-500">Keine Varianten</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
                           {product.onSale && product.salePrice ? (
                             <div>
                               <span className="font-semibold text-red-600">
@@ -351,11 +434,26 @@ export default function AdminProducts() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`text-sm font-medium ${
-                          product.stock < 10 ? 'text-red-600' : 'text-gray-900'
-                        }`}>
-                          {product.stock}
-                        </span>
+                        <div className="text-sm">
+                          {product.hasVariants ? (
+                            <div className="space-y-1">
+                              <span className={`font-medium ${
+                                (product.totalVariantStock || 0) < 10 ? 'text-red-600' : 'text-gray-900'
+                              }`}>
+                                {product.totalVariantStock || 0}
+                              </span>
+                              <div className="text-xs text-gray-500">
+                                Verfügbar: {product.totalAvailableStock || 0}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className={`font-medium ${
+                              product.stock < 10 ? 'text-red-600' : 'text-gray-900'
+                            }`}>
+                              {product.stock}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button

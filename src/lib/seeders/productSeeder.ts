@@ -66,8 +66,8 @@ const seedData: SeedData = {
     {
       name: 'Klassischer Wollpullover',
       nameEn: 'Classic Wool Sweater',
-      description: 'Ein zeitloser Wollpullover aus 100% Merinowolle. Perfekt für kalte Tage und elegante Anlässe. Hergestellt in Deutschland mit höchster Handwerkskunst.',
-      descriptionEn: 'A timeless wool sweater made from 100% merino wool. Perfect for cold days and elegant occasions. Made in Germany with the highest craftsmanship.',
+      description: 'Ein zeitloser Wollpullover aus 100% Merinowolle. Perfekt für kalte Tage und elegante Anlässe. Hergestellt in Deutschland mit höchster Handwerkskunst. Die weiche Merinowolle bietet optimalen Tragekomfort und natürliche Temperaturregulierung.',
+      descriptionEn: 'A timeless wool sweater made from 100% merino wool. Perfect for cold days and elegant occasions. Made in Germany with the highest craftsmanship. The soft merino wool offers optimal wearing comfort and natural temperature regulation.',
       shortDescription: 'Zeitloser Wollpullover aus 100% Merinowolle',
       shortDescriptionEn: 'Timeless wool sweater made from 100% merino wool',
       price: 129.99,
@@ -76,7 +76,10 @@ const seedData: SeedData = {
       stock: 25,
       categorySlug: 'pullover',
       tags: ['wolle', 'merino', 'klassisch', 'winter'],
-      images: ['/images/products/wool-sweater-1.jpg', '/images/products/wool-sweater-2.jpg'],
+      images: [
+        'https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+        'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80'
+      ],
       slug: 'klassischer-wollpullover',
       status: 'PUBLISHED',
       featured: true,
@@ -87,8 +90,8 @@ const seedData: SeedData = {
     {
       name: 'Winterjacke Premium',
       nameEn: 'Premium Winter Jacket',
-      description: 'Eine hochwertige Winterjacke mit Daunenfüllung. Wasserdicht und atmungsaktiv. Ideal für extreme Wetterbedingungen.',
-      descriptionEn: 'A high-quality winter jacket with down filling. Waterproof and breathable. Ideal for extreme weather conditions.',
+      description: 'Eine hochwertige Winterjacke mit Daunenfüllung. Wasserdicht und atmungsaktiv. Ideal für extreme Wetterbedingungen. Die 700-Fill-Power-Daunen sorgen für optimale Wärmeisolierung bei minimalem Gewicht.',
+      descriptionEn: 'A high-quality winter jacket with down filling. Waterproof and breathable. Ideal for extreme weather conditions. The 700-fill-power down provides optimal thermal insulation with minimal weight.',
       shortDescription: 'Hochwertige Winterjacke mit Daunenfüllung',
       shortDescriptionEn: 'High-quality winter jacket with down filling',
       price: 299.99,
@@ -96,7 +99,10 @@ const seedData: SeedData = {
       stock: 15,
       categorySlug: 'jacken',
       tags: ['winter', 'daunen', 'wasserdicht', 'premium'],
-      images: ['/images/products/winter-jacket-1.jpg', '/images/products/winter-jacket-2.jpg'],
+      images: [
+        'https://images.unsplash.com/photo-1551028719-00167b16eac5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+        'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80'
+      ],
       slug: 'winterjacke-premium',
       status: 'PUBLISHED',
       featured: true,
@@ -107,8 +113,8 @@ const seedData: SeedData = {
     {
       name: 'Handgestrickter Cardigan',
       nameEn: 'Hand-knitted Cardigan',
-      description: 'Ein wunderschöner handgestrickter Cardigan aus Bio-Baumwolle. Jedes Stück ist ein Unikat und wird mit Liebe zum Detail gefertigt.',
-      descriptionEn: 'A beautiful hand-knitted cardigan made from organic cotton. Each piece is unique and crafted with attention to detail.',
+      description: 'Ein wunderschöner handgestrickter Cardigan aus Bio-Baumwolle. Jedes Stück ist ein Unikat und wird mit Liebe zum Detail gefertigt. Die nachhaltige Bio-Baumwolle ist besonders hautfreundlich und langlebig.',
+      descriptionEn: 'A beautiful hand-knitted cardigan made from organic cotton. Each piece is unique and crafted with attention to detail. The sustainable organic cotton is particularly skin-friendly and durable.',
       shortDescription: 'Handgestrickter Cardigan aus Bio-Baumwolle',
       shortDescriptionEn: 'Hand-knitted cardigan made from organic cotton',
       price: 189.99,
@@ -116,7 +122,10 @@ const seedData: SeedData = {
       stock: 8,
       categorySlug: 'strickwaren',
       tags: ['handgestrickt', 'bio-baumwolle', 'cardigan', 'unikat'],
-      images: ['/images/products/cardigan-1.jpg', '/images/products/cardigan-2.jpg'],
+      images: [
+        'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+        'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80'
+      ],
       slug: 'handgestrickter-cardigan',
       status: 'PUBLISHED',
       featured: false,
@@ -127,8 +136,8 @@ const seedData: SeedData = {
     {
       name: 'Leichter Sommerpullover',
       nameEn: 'Light Summer Sweater',
-      description: 'Ein leichter Pullover für die Übergangszeit. Aus atmungsaktiver Baumwoll-Leinen-Mischung. Perfekt für warme Sommerabende.',
-      descriptionEn: 'A light sweater for the transitional season. Made from breathable cotton-linen blend. Perfect for warm summer evenings.',
+      description: 'Ein leichter Pullover für die Übergangszeit. Aus atmungsaktiver Baumwoll-Leinen-Mischung. Perfekt für warme Sommerabende. Die natürlichen Fasern sorgen für ein angenehmes Tragegefühl auch bei höheren Temperaturen.',
+      descriptionEn: 'A light sweater for the transitional season. Made from breathable cotton-linen blend. Perfect for warm summer evenings. The natural fibers ensure a comfortable wearing experience even at higher temperatures.',
       shortDescription: 'Leichter Pullover aus Baumwoll-Leinen-Mischung',
       shortDescriptionEn: 'Light sweater made from cotton-linen blend',
       price: 79.99,
@@ -136,7 +145,9 @@ const seedData: SeedData = {
       stock: 30,
       categorySlug: 'pullover',
       tags: ['sommer', 'leicht', 'baumwolle', 'leinen'],
-      images: ['/images/products/summer-sweater-1.jpg'],
+      images: [
+        'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80'
+      ],
       slug: 'leichter-sommerpullover',
       status: 'PUBLISHED',
       featured: false,
@@ -147,8 +158,8 @@ const seedData: SeedData = {
     {
       name: 'Regenjacke Urban',
       nameEn: 'Urban Rain Jacket',
-      description: 'Eine stylische Regenjacke für die Stadt. Wasserdicht, leicht und mit modernem Design. Perfekt für den urbanen Lifestyle.',
-      descriptionEn: 'A stylish rain jacket for the city. Waterproof, lightweight and with modern design. Perfect for urban lifestyle.',
+      description: 'Eine stylische Regenjacke für die Stadt. Wasserdicht, leicht und mit modernem Design. Perfekt für den urbanen Lifestyle. Die innovative Membran hält Sie trocken, ohne die Atmungsaktivität zu beeinträchtigen.',
+      descriptionEn: 'A stylish rain jacket for the city. Waterproof, lightweight and with modern design. Perfect for urban lifestyle. The innovative membrane keeps you dry without compromising breathability.',
       shortDescription: 'Stylische Regenjacke für die Stadt',
       shortDescriptionEn: 'Stylish rain jacket for the city',
       price: 149.99,
@@ -156,13 +167,62 @@ const seedData: SeedData = {
       stock: 20,
       categorySlug: 'jacken',
       tags: ['regen', 'urban', 'wasserdicht', 'leicht'],
-      images: ['/images/products/rain-jacket-1.jpg', '/images/products/rain-jacket-2.jpg'],
+      images: [
+        'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+        'https://images.unsplash.com/photo-1556821840-3a9fbc86339e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80'
+      ],
       slug: 'regenjacke-urban',
       status: 'PUBLISHED',
       featured: false,
       weight: 0.4,
       metaTitle: 'Urban Regenjacke - Stylisch & Wasserdicht',
       metaDescription: 'Moderne Regenjacke für den urbanen Lifestyle. Wasserdicht, leicht und stylisch. Jetzt online kaufen.'
+    },
+    {
+      name: 'Cashmere Pullover Deluxe',
+      nameEn: 'Deluxe Cashmere Sweater',
+      description: 'Ein luxuriöser Cashmere-Pullover aus feinster mongolischer Cashmere-Wolle. Unvergleichlich weich und warm. Ein Investitionsstück für die Ewigkeit. Handgefertigt von Meistern ihres Fachs.',
+      descriptionEn: 'A luxurious cashmere sweater made from the finest Mongolian cashmere wool. Incomparably soft and warm. An investment piece for eternity. Handcrafted by masters of their trade.',
+      shortDescription: 'Luxuriöser Cashmere-Pullover aus feinster Wolle',
+      shortDescriptionEn: 'Luxurious cashmere sweater made from finest wool',
+      price: 399.99,
+      sku: 'CP-001',
+      stock: 5,
+      categorySlug: 'pullover',
+      tags: ['cashmere', 'luxus', 'premium', 'handgefertigt'],
+      images: [
+        'https://images.unsplash.com/photo-1571945153237-4929e783af4a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80'
+      ],
+      slug: 'cashmere-pullover-deluxe',
+      status: 'PUBLISHED',
+      featured: true,
+      weight: 0.4,
+      metaTitle: 'Cashmere Pullover Deluxe - Mongolische Cashmere-Wolle',
+      metaDescription: 'Luxuriöser Cashmere-Pullover aus feinster mongolischer Wolle. Handgefertigt, unvergleichlich weich und warm.'
+    },
+    {
+      name: 'Trenchcoat Klassik',
+      nameEn: 'Classic Trench Coat',
+      description: 'Ein zeitloser Trenchcoat im klassischen Stil. Aus hochwertigem Gabardine-Stoff gefertigt. Wasserdicht und elegant zugleich. Ein Must-have für jede Garderobe. Mit abnehmbarem Futter für ganzjährigen Tragekomfort.',
+      descriptionEn: 'A timeless trench coat in classic style. Made from high-quality gabardine fabric. Waterproof and elegant at the same time. A must-have for every wardrobe. With removable lining for year-round wearing comfort.',
+      shortDescription: 'Zeitloser Trenchcoat aus hochwertigem Gabardine',
+      shortDescriptionEn: 'Timeless trench coat made from high-quality gabardine',
+      price: 249.99,
+      sku: 'TC-001',
+      stock: 12,
+      categorySlug: 'jacken',
+      tags: ['trenchcoat', 'klassisch', 'gabardine', 'elegant'],
+      images: [
+        'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+        'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80'
+      ],
+      slug: 'trenchcoat-klassik',
+      status: 'PUBLISHED',
+      featured: true,
+      weight: 0.8,
+      metaTitle: 'Trenchcoat Klassik - Hochwertiger Gabardine',
+      metaDescription: 'Zeitloser Trenchcoat aus hochwertigem Gabardine-Stoff. Wasserdicht, elegant und vielseitig einsetzbar.'
     }
   ]
 }
