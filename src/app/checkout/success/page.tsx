@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useLanguage } from '@/components/ClientLayout'
@@ -14,7 +14,7 @@ interface OrderDetails {
   paymentMethod: string
 }
 
-export default function CheckoutSuccess() {
+function CheckoutSuccessContent() {
   const { lang } = useLanguage()
   const { clearCart } = useCart()
   const t = translations[lang]
@@ -289,5 +289,20 @@ export default function CheckoutSuccess() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CheckoutSuccess() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 py-16 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Lade Bestellbestätigung...</p>
+        </div>
+      </div>
+    }>
+      <CheckoutSuccessContent />
+    </Suspense>
   )
 }
