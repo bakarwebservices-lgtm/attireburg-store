@@ -1,17 +1,5 @@
-// Backorder System Services
-export { WaitlistService } from './WaitlistService'
+// Simplified exports to avoid TypeScript issues during deployment
 export { BackorderService } from './BackorderService'
+export { WaitlistService } from './WaitlistService'
 export { RestockService } from './RestockService'
 export { NotificationService } from './NotificationService'
-export { InventoryMonitor } from './InventoryMonitor'
-
-// Type exports
-export type { WaitlistSubscriptionData, WaitlistAnalytics } from './WaitlistService'
-export type { BackorderData, BackorderInfo } from './BackorderService'
-export type { RestockScheduleData, RestockEvent } from './RestockService'
-export type { 
-  NotificationTemplate, 
-  RestockNotificationData, 
-  DelayNotificationData, 
-  FulfillmentNotificationData 
-} from './NotificationService'
