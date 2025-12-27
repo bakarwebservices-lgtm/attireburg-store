@@ -1,1 +1,55 @@
-'use client'\nimport { useAuth } from '@/contexts/AuthContext'\nimport { useRouter } from 'next/navigation'\nimport { useEffect } from 'react'\nimport WaitlistSubscriptions from '@/components/account/WaitlistSubscriptions'\n\nexport default function WaitlistPage() {\n  const { user, loading } = useAuth()\n  const router = useRouter()\n\n  useEffect(() => {\n    if (!loading && !user) {\n      router.push('/login?redirect=/account/waitlist')\n    }\n  }, [user, loading, router])\n\n  if (loading) {\n    return (\n      <div className=\"min-h-screen bg-gray-50 flex items-center justify-center\">\n        <div className=\"animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600\"></div>\n      </div>\n    )\n  }\n\n  if (!user) {\n    return null\n  }\n\n  return (\n    <div className=\"min-h-screen bg-gray-50 py-8\">\n      <div className=\"max-w-4xl mx-auto px-4 sm:px-6 lg:px-8\">\n        <div className=\"mb-8\">\n          <nav className=\"flex items-center space-x-2 text-sm text-gray-500 mb-4\">\n            <a href=\"/account\" className=\"hover:text-gray-700\">Mein Konto</a>\n            <svg className=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n              <path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={2} d=\"M9 5l7 7-7 7\" />\n            </svg>\n            <span className=\"text-gray-900\">Wartelisten</span>\n          </nav>\n          \n          <div className=\"flex items-center justify-between\">\n            <div>\n              <h1 className=\"text-3xl font-bold text-gray-900\">Wartelisten-Abonnements</h1>\n              <p className=\"text-gray-600 mt-2\">\n                Verwalten Sie Ihre Benachrichtigungen für nicht verfügbare Produkte\n              </p>\n            </div>\n          </div>\n        </div>\n\n        <WaitlistSubscriptions />\n      </div>\n    </div>\n  )\n}\n"
+'use client'
+import { useAuth } from '@/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import WaitlistSubscriptions from '@/components/account/WaitlistSubscriptions'
+
+export default function WaitlistPage() {
+  const { user, isLoading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/login?redirect=/account/waitlist')
+    }
+  }, [user, isLoading, router])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
+            <a href="/account" className="hover:text-gray-700">Mein Konto</a>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span className="text-gray-900">Wartelisten</span>
+          </nav>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Wartelisten-Abonnements</h1>
+              <p className="text-gray-600 mt-2">
+                Verwalten Sie Ihre Benachrichtigungen für nicht verfügbare Produkte
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <WaitlistSubscriptions />
+      </div>
+    </div>
+  )
+}
