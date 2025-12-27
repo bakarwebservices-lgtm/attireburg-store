@@ -76,9 +76,6 @@ export async function GET(request: NextRequest) {
               include: {
                 product: {
                   select: { name: true }
-                },
-                variant: {
-                  select: { sku: true }
                 }
               }
             }
@@ -108,7 +105,7 @@ export async function GET(request: NextRequest) {
           productId: item.productId,
           productName: item.product.name,
           variantId: item.variantId,
-          variantSku: item.variant?.sku,
+          variantSku: item.variantId ? `Variant-${item.variantId}` : undefined,
           quantity: item.quantity,
           size: item.size,
           color: item.color,

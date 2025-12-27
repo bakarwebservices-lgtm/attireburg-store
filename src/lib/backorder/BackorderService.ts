@@ -179,9 +179,6 @@ export class BackorderService {
             include: {
               product: {
                 select: { name: true }
-              },
-              variant: {
-                select: { sku: true }
               }
             }
           }
@@ -206,7 +203,7 @@ export class BackorderService {
           productId: item.productId,
           productName: item.product.name,
           variantId: item.variantId || undefined,
-          variantSku: item.variant?.sku,
+          variantSku: item.variantId ? `Variant-${item.variantId}` : undefined,
           quantity: item.quantity,
           size: item.size,
           color: item.color || undefined,
@@ -223,7 +220,7 @@ export class BackorderService {
   /**
    * Cancel a backorder and process refund
    */
-  async cancelBackorder(orderId: string, reason?: string): Promise<{ success: boolean; message: string }> {
+  async cancelBackorder(orderId: string): Promise<{ success: boolean; message: string }> {
     try {
       const order = await this.prisma.order.findUnique({
         where: { id: orderId },
@@ -281,7 +278,7 @@ export class BackorderService {
    * Fulfill backorders when inventory becomes available
    * Implements FIFO fulfillment logic
    */
-  async fulfillBackorders(productId: string, variantId?: string, availableQuantity: number): Promise<{
+  async fulfillBackorders(productId: string, availableQuantity: number, variantId?: string): Promise<{
     success: boolean
     fulfilledOrders: string[]
     remainingQuantity: number
@@ -357,9 +354,6 @@ export class BackorderService {
             include: {
               product: {
                 select: { name: true }
-              },
-              variant: {
-                select: { sku: true }
               }
             }
           }
@@ -385,7 +379,7 @@ export class BackorderService {
           productId: item.productId,
           productName: item.product.name,
           variantId: item.variantId || undefined,
-          variantSku: item.variant?.sku,
+          variantSku: item.variantId ? `Variant-${item.variantId}` : undefined,
           quantity: item.quantity,
           size: item.size,
           color: item.color || undefined,
@@ -414,9 +408,6 @@ export class BackorderService {
             include: {
               product: {
                 select: { name: true }
-              },
-              variant: {
-                select: { sku: true }
               }
             }
           }
@@ -441,7 +432,7 @@ export class BackorderService {
           productId: item.productId,
           productName: item.product.name,
           variantId: item.variantId || undefined,
-          variantSku: item.variant?.sku,
+          variantSku: item.variantId ? `Variant-${item.variantId}` : undefined,
           quantity: item.quantity,
           size: item.size,
           color: item.color || undefined,

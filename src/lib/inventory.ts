@@ -577,9 +577,6 @@ class InventoryService {
             include: {
               product: {
                 select: { name: true, stock: true }
-              },
-              variant: {
-                select: { sku: true, stock: true }
               }
             }
           }
@@ -608,9 +605,9 @@ class InventoryService {
               productId: item.productId,
               productName: item.product.name,
               variantId: item.variantId || undefined,
-              variantSku: item.variant?.sku,
+              variantSku: item.variantId ? `Variant-${item.variantId}` : undefined,
               pendingQuantity: 0,
-              availableStock: item.variant?.stock || item.product.stock
+              availableStock: item.product.stock
             })
           }
 
