@@ -34,8 +34,8 @@ export async function PUT(request: NextRequest) {
     // Fulfill backorders
     const result = await backorderService.fulfillBackorders(
       body.productId,
-      body.variantId || undefined,
-      availableQuantity
+      availableQuantity,
+      body.variantId || undefined
     )
 
     if (result.success) {

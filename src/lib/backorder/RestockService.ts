@@ -67,7 +67,7 @@ export class RestockService {
         where: {
           productId_variantId: {
             productId: data.productId,
-            variantId: data.variantId || null
+            variantId: (data.variantId || null) as any
           }
         },
         update: {
@@ -77,7 +77,7 @@ export class RestockService {
         },
         create: {
           productId: data.productId,
-          variantId: data.variantId || null,
+          variantId: (data.variantId || null) as any,
           expectedDate: data.expectedDate,
           notes: data.notes
         }
@@ -106,7 +106,7 @@ export class RestockService {
         where: {
           productId_variantId: {
             productId,
-            variantId: variantId || null
+            variantId: (variantId || null) as any
           }
         }
       })
@@ -128,7 +128,7 @@ export class RestockService {
         where: {
           productId_variantId: {
             productId,
-            variantId: variantId || null
+            variantId: (variantId || null) as any
           }
         }
       })
@@ -200,8 +200,8 @@ export class RestockService {
       // This would be handled by the BackorderService
       // const fulfillmentResult = await backorderService.fulfillBackorders(
       //   event.productId, 
-      //   event.variantId, 
-      //   event.restockedQuantity
+      //   event.restockedQuantity,
+      //   event.variantId
       // )
       // backordersFulfilled = fulfillmentResult.fulfilledOrders.length
 

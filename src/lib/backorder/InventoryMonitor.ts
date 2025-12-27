@@ -50,8 +50,8 @@ export class InventoryMonitor {
         // 2. Fulfill pending backorders (FIFO order)
         const fulfillmentResult = await this.backorderService.fulfillBackorders(
           event.productId,
-          event.variantId,
-          restockedQuantity
+          restockedQuantity,
+          event.variantId
         )
 
         if (fulfillmentResult.success) {
