@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { productService } from '@/lib/services/productService'
-import { connectDB } from '@/lib/db'
+import { prisma } from '@/lib/prisma'
 
 // GET /api/analytics - Get analytics data
 export async function GET(request: NextRequest) {
   try {
-    await connectDB()
-    
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') || 'overview'
     
@@ -14,31 +11,56 @@ export async function GET(request: NextRequest) {
     
     switch (type) {
       case 'overview':
-        const [productStats, lowStockProducts, topSellingProducts] = await Promise.all([
-          productService.getProductStats(),
-          productService.getLowStockProducts(5),
-          productService.getTopSellingProducts(5)
+        const [totalProducts, activeProducts, lowStockProducts] = await Promise.all([
+          prisma.product.count(),
+          prisma.product.count({ where: { isActive: true } }),
+          prisma.product.findMany({
+            where: { stock: { lte: 5 }, isActive: true },
+            select: { id: true, name: true, stock: true, price: true },
+            take: 5
+          })
         ])
         
         data = {
-          productStats,
+          productStats: {
+            totalProducts,
+            activeProducts,
+            inactiveProducts: totalProducts - activeProducts
+          },
           lowStockProducts,
-          topSellingProducts
+          topSellingProducts: [] // Placeholder since we don't have sales data
         }
         break
         
       case 'products':
-        data = await productService.getProductStats()
+        const productCount = await prisma.product.count()
+        const activeCount = await prisma.product.count({ where: { isActive: true } })
+        
+        data = {
+          totalProducts: productCount,
+          activeProducts: activeCount,
+          inactiveProducts: productCount - activeCount
+        }
         break
         
       case 'lowStock':
         const threshold = parseInt(searchParams.get('threshold') || '5')
-        data = await productService.getLowStockProducts(threshold)
+        data = await prisma.product.findMany({
+          where: { stock: { lte: threshold }, isActive: true },
+          select: { id: true, name: true, stock: true, price: true },
+          orderBy: { stock: 'asc' }
+        })
         break
         
       case 'topSelling':
         const limit = parseInt(searchParams.get('limit') || '10')
-        data = await productService.getTopSellingProducts(limit)
+        // Since we don't have sales data, return products by stock as proxy
+        data = await prisma.product.findMany({
+          where: { isActive: true },
+          select: { id: true, name: true, stock: true, price: true },
+          orderBy: { stock: 'desc' },
+          take: limit
+        })
         break
         
       default:

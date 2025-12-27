@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { productService } from '@/lib/services/productService'
-import { connectDB } from '@/lib/db'
+import { prisma } from '@/lib/prisma'
 
 // POST /api/products/bulk - Bulk operations on products
 export async function POST(request: NextRequest) {
   try {
-    await connectDB()
-    
     const body = await request.json()
     const { action, productIds, data } = body
     
@@ -25,13 +22,17 @@ export async function POST(request: NextRequest) {
     
     switch (action) {
       case 'updateStatus':
-        if (!data?.status) {
+        if (data?.status === undefined) {
           return NextResponse.json(
             { success: false, error: 'Status is required for updateStatus action' },
             { status: 400 }
           )
         }
-        result = await productService.bulkUpdateStatus(productIds, data.status)
+        const statusResult = await prisma.product.updateMany({
+          where: { id: { in: productIds } },
+          data: { isActive: data.status }
+        })
+        result = statusResult.count
         message = `Updated status for ${result} products`
         break
         
@@ -42,7 +43,11 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           )
         }
-        result = await productService.bulkUpdateCategory(productIds, data.categoryId)
+        const categoryResult = await prisma.product.updateMany({
+          where: { id: { in: productIds } },
+          data: { category: data.categoryId }
+        })
+        result = categoryResult.count
         message = `Updated category for ${result} products`
         break
         
@@ -53,12 +58,24 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           )
         }
-        result = await productService.bulkUpdateFeatured(productIds, data.featured)
+        const featuredResult = await prisma.product.updateMany({
+          where: { id: { in: productIds } },
+          data: { featured: data.featured }
+        })
+        result = featuredResult.count
         message = `Updated featured status for ${result} products`
         break
         
       case 'delete':
-        result = await productService.bulkDelete(productIds)
+        // First delete related variants
+        await prisma.productVariant.deleteMany({
+          where: { productId: { in: productIds } }
+        })
+        
+        const deleteResult = await prisma.product.deleteMany({
+          where: { id: { in: productIds } }
+        })
+        result = deleteResult.count
         message = `Deleted ${result} products`
         break
         
