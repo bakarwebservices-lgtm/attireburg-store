@@ -232,7 +232,17 @@ export default function Checkout() {
 
       // Handle different payment methods
       if (paymentMethod === 'paypal') {
-        // Create PayPal order
+        // Check if we're in demo mode
+        const isDemo = process.env.PAYPAL_CLIENT_ID === 'demo' || !process.env.PAYPAL_CLIENT_ID
+        
+        if (isDemo) {
+          // Demo mode - simulate successful payment
+          clearCart()
+          router.push(`/checkout/success?orderId=${orderResult.orderId}&demo=true`)
+          return
+        }
+
+        // Create PayPal order (real mode)
         const paypalResponse = await fetch('/api/payments/paypal/create-order', {
           method: 'POST',
           headers: {
@@ -267,7 +277,17 @@ export default function Checkout() {
           return
         }
       } else if (paymentMethod === 'googlepay') {
-        // Handle Google Pay
+        // Check if we're in demo mode
+        const isDemo = process.env.GOOGLE_PAY_MERCHANT_ID === 'demo' || !process.env.GOOGLE_PAY_MERCHANT_ID
+        
+        if (isDemo) {
+          // Demo mode - simulate successful payment
+          clearCart()
+          router.push(`/checkout/success?orderId=${orderResult.orderId}&demo=true`)
+          return
+        }
+
+        // Handle Google Pay (real mode)
         try {
           // Check if Google Pay is available
           const { googlePayService } = await import('@/lib/googlepay')

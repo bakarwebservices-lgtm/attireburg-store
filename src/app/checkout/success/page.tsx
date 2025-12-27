@@ -28,6 +28,24 @@ export default function CheckoutSuccess() {
     const handlePayPalReturn = async () => {
       const paypalOrderId = searchParams.get('token')
       const payerId = searchParams.get('PayerID')
+      const isDemo = searchParams.get('demo') === 'true'
+      
+      if (isDemo) {
+        // Demo mode - show success without real payment processing
+        const orderId = searchParams.get('orderId')
+        if (orderId) {
+          setOrderDetails({
+            orderId,
+            orderNumber: `ATB-${orderId.slice(-6).toUpperCase()}`,
+            status: 'DEMO',
+            totalAmount: 0,
+            paymentMethod: 'Demo-Zahlung'
+          })
+          clearCart()
+        }
+        setLoading(false)
+        return
+      }
       
       if (paypalOrderId && payerId) {
         // Handle PayPal return
