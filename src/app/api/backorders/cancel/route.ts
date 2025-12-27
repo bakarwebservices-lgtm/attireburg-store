@@ -19,8 +19,7 @@ export async function PUT(request: NextRequest) {
 
     // Cancel backorder
     const result = await backorderService.cancelBackorder(
-      body.orderId,
-      body.reason || 'Customer cancellation'
+      body.orderId
     )
 
     if (result.success) {

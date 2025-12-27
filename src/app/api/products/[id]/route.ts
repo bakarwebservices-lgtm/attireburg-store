@@ -4,10 +4,10 @@ import { sampleProducts, sampleReviews } from '@/lib/sampleData'
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params
+    const { id } = params
     let product: any = null
 
     try {
@@ -90,10 +90,10 @@ export async function GET(
 // PUT /api/products/[id] - Update product
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params
+    const { id } = params
     const body = await request.json()
     console.log('Updating product with data:', body)
 
@@ -210,10 +210,10 @@ export async function PUT(
 // DELETE /api/products/[id] - Delete product
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params
+    const { id } = params
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
       where: { id: id }

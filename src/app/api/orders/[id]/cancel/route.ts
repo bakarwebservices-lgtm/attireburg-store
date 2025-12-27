@@ -5,10 +5,10 @@ import { inventoryService } from '@/lib/inventory'
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params
+    const { id } = params
     
     // Get auth token from header
     const authHeader = request.headers.get('authorization')
