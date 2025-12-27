@@ -5,9 +5,11 @@ import { inventoryService } from '@/lib/inventory'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
+    
     // Get auth token from header
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
@@ -31,7 +33,7 @@ export async function POST(
       // Get the order with items
       const order = await prisma.order.findFirst({
         where: {
-          id: params.id,
+          id: id,
           userId: user.id, // Ensure user can only cancel their own orders
           status: { in: ['PENDING', 'PROCESSING'] } // Only allow cancellation of pending/processing orders
         },
@@ -65,7 +67,7 @@ export async function POST(
 
       // Update order status to cancelled
       const cancelledOrder = await prisma.order.update({
-        where: { id: params.id },
+        where: { id: id },
         data: {
           status: 'CANCELLED',
           updatedAt: new Date()

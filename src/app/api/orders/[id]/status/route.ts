@@ -4,10 +4,11 @@ import { verifyToken } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orderId = params.id
+    const { id } = await context.params
+    const orderId = id
     const status = await orderStatusService.getOrderStatus(orderId)
     
     if (!status) {
@@ -29,9 +30,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     // Verify admin authentication
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
@@ -51,7 +53,7 @@ export async function PUT(
       )
     }
 
-    const orderId = params.id
+    const orderId = id
     const { status, trackingNumber, notes, notifyCustomer } = await request.json()
 
     if (!status) {

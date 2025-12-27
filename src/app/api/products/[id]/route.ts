@@ -4,16 +4,17 @@ import { sampleProducts, sampleReviews } from '@/lib/sampleData'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     let product: any = null
 
     try {
       // Try database first
       product = await prisma.product.findUnique({
         where: {
-          id: params.id,
+          id: id,
         },
         include: {
           reviews: {
@@ -56,9 +57,9 @@ export async function GET(
       console.log('Database not available, using sample data')
       
       // Use sample data
-      const sampleProduct = sampleProducts.find(p => p.id === params.id)
+      const sampleProduct = sampleProducts.find(p => p.id === id)
       if (sampleProduct) {
-        const productReviews = sampleReviews.filter(r => r.productId === params.id)
+        const productReviews = sampleReviews.filter(r => r.productId === id)
         
         product = {
           ...sampleProduct,
@@ -89,15 +90,16 @@ export async function GET(
 // PUT /api/products/[id] - Update product
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     const body = await request.json()
     console.log('Updating product with data:', body)
 
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
-      where: { id: params.id }
+      where: { id: id }
     })
 
     if (!existingProduct) {
@@ -123,7 +125,7 @@ export async function PUT(
 
     // Update product
     const updatedProduct = await prisma.product.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         name: body.name || existingProduct.name,
         nameEn: body.nameEn || body.name || existingProduct.nameEn,
@@ -156,13 +158,13 @@ export async function PUT(
       
       // Delete existing variants
       await prisma.productVariant.deleteMany({
-        where: { productId: params.id }
+        where: { productId: id }
       })
 
       // Create new variants
       if (body.variants.length > 0) {
         const variantData = body.variants.map((variant: any) => ({
-          productId: params.id,
+          productId: id,
           sku: variant.sku,
           price: variant.price ? parseFloat(variant.price) : null,
           salePrice: variant.salePrice ? parseFloat(variant.salePrice) : null,
@@ -182,7 +184,7 @@ export async function PUT(
       // If variants are disabled, remove all existing variants
       console.log('Removing all variants as hasVariants is false')
       await prisma.productVariant.deleteMany({
-        where: { productId: params.id }
+        where: { productId: id }
       })
     }
 
@@ -208,12 +210,13 @@ export async function PUT(
 // DELETE /api/products/[id] - Delete product
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
-      where: { id: params.id }
+      where: { id: id }
     })
 
     if (!existingProduct) {
@@ -225,7 +228,7 @@ export async function DELETE(
 
     // Delete product
     await prisma.product.delete({
-      where: { id: params.id }
+      where: { id: id }
     })
 
     return NextResponse.json({

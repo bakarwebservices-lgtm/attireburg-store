@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma'
 // GET /api/categories/[id] - Get single category
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
+    const { id } = await context.params
     const categoryName = id
     
     // Get products in this category
