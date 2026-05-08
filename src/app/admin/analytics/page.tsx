@@ -121,10 +121,10 @@ export default function AdminAnalytics() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">
-                Analytics & Berichte
+                {t.adminExtended.analytics.title}
               </h2>
               <p className="text-gray-600 mt-1">
-                Detaillierte Einblicke in Ihre Geschäftsleistung
+                {t.adminExtended.analytics.subtitle}
               </p>
             </div>
             <div>
@@ -133,10 +133,10 @@ export default function AdminAnalytics() {
                 onChange={(e) => setTimeRange(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
               >
-                <option value="today">Heute</option>
-                <option value="thisWeek">Diese Woche</option>
-                <option value="thisMonth">Dieser Monat</option>
-                <option value="lastMonth">Letzter Monat</option>
+                <option value="today">{t.adminExtended.analytics.thisMonth}</option>
+                <option value="thisWeek">{t.adminExtended.analytics.thisMonth}</option>
+                <option value="thisMonth">{t.adminExtended.analytics.thisMonth}</option>
+                <option value="lastMonth">{t.adminExtended.analytics.lastMonth}</option>
               </select>
             </div>
           </div>
@@ -164,12 +164,12 @@ export default function AdminAnalytics() {
                     </svg>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Umsatz (Monat)</p>
+                    <p className="text-sm font-medium text-gray-600">{t.adminExtended.analytics.revenue} ({t.adminExtended.analytics.thisMonth})</p>
                     <p className="text-2xl font-semibold text-gray-900">
                       {formatPrice(analytics.revenue.thisMonth)}
                     </p>
                     <p className={`text-sm ${revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {revenueGrowth >= 0 ? '+' : ''}{revenueGrowth.toFixed(1)}% vs. letzter Monat
+                      {revenueGrowth >= 0 ? '+' : ''}{revenueGrowth.toFixed(1)}% vs. {t.adminExtended.analytics.lastMonth}
                     </p>
                   </div>
                 </div>

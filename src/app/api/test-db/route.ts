@@ -5,10 +5,14 @@ import { PrismaClient } from '@prisma/client'
 export async function GET(request: NextRequest) {
   const prisma = new PrismaClient()
   
+  // Debug: show what URL is being used (mask password)
+  const dbUrl = process.env.DATABASE_URL || 'NOT SET'
+  const maskedUrl = dbUrl.replace(/:([^@]+)@/, ':***@')
+  
   try {
     console.log('🔍 Testing database connection...')
+    console.log('🔗 Using URL:', maskedUrl)
     
-    // Simple connection test with timeout
     const result = await Promise.race([
       prisma.$queryRaw`SELECT 1 as test`,
       new Promise((_, reject) => 
@@ -21,6 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Database connection successful',
+      url: maskedUrl,
       result
     })
   } catch (error) {
@@ -29,6 +34,7 @@ export async function GET(request: NextRequest) {
       { 
         success: false, 
         error: 'Database connection failed',
+        url: maskedUrl,
         message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

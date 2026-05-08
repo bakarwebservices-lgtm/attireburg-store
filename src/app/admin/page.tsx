@@ -142,10 +142,10 @@ export default function AdminDashboard() {
         {/* Welcome Section */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-            Willkommen im Admin-Bereich, {user.name}!
+            {t.dashboard.welcome}, {user.name}!
           </h2>
           <p className="text-gray-600">
-            Hier ist eine Übersicht über Ihren Online-Shop und die aktuellen Aktivitäten.
+            {t.admin.noData}
           </p>
         </div>
 
@@ -241,7 +241,7 @@ export default function AdminDashboard() {
                   href="/admin/orders"
                   className="text-primary-600 hover:text-primary-700 text-sm font-medium"
                 >
-                  Alle anzeigen
+                  {t.common.view}
                 </Link>
               </div>
             </div>
@@ -303,7 +303,7 @@ export default function AdminDashboard() {
                   href="/admin/products"
                   className="text-primary-600 hover:text-primary-700 text-sm font-medium"
                 >
-                  Alle anzeigen
+                  {t.common.view}
                 </Link>
               </div>
             </div>
@@ -339,7 +339,7 @@ export default function AdminDashboard() {
                           {product.name}
                         </p>
                         <p className="text-sm text-gray-600">
-                          {product.sales} Verkäufe • {formatPrice(product.revenue)}
+                          {product.sales} {t.adminExtended.analytics.orders} • {formatPrice(product.revenue)}
                         </p>
                       </div>
                       <div className="text-right">
@@ -355,10 +355,9 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Schnellzugriff
+            {t.admin.overview}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Link
@@ -371,8 +370,8 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Produkt hinzufügen</p>
-                <p className="text-sm text-gray-600">Neues Produkt erstellen</p>
+                <p className="font-semibold text-gray-900">{t.admin.addProduct}</p>
+                <p className="text-sm text-gray-600">{t.admin.editProduct}</p>
               </div>
             </Link>
 
@@ -386,8 +385,8 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Bestellungen verwalten</p>
-                <p className="text-sm text-gray-600">Status aktualisieren</p>
+                <p className="font-semibold text-gray-900">{t.admin.orders}</p>
+                <p className="text-sm text-gray-600">{t.admin.updateOrderStatus}</p>
               </div>
             </Link>
 
@@ -401,8 +400,8 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Vorbestellungen</p>
-                <p className="text-sm text-gray-600">Backorders verwalten</p>
+                <p className="font-semibold text-gray-900">{t.adminExtended.backorders.title}</p>
+                <p className="text-sm text-gray-600">{t.adminExtended.backorders.subtitle}</p>
               </div>
             </Link>
 
@@ -416,8 +415,8 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Benutzer verwalten</p>
-                <p className="text-sm text-gray-600">Kunden anzeigen</p>
+                <p className="font-semibold text-gray-900">{t.admin.users}</p>
+                <p className="text-sm text-gray-600">{t.adminExtended.users.subtitle}</p>
               </div>
             </Link>
 
@@ -431,8 +430,8 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Statistiken</p>
-                <p className="text-sm text-gray-600">Berichte anzeigen</p>
+                <p className="font-semibold text-gray-900">{t.admin.analytics}</p>
+                <p className="text-sm text-gray-600">{t.adminExtended.analytics.subtitle}</p>
               </div>
             </Link>
           </div>

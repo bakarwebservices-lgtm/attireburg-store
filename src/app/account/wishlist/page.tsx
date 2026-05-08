@@ -136,7 +136,7 @@ export default function UserWishlist() {
               </p>
             </div>
             <div className="text-sm text-gray-600">
-              {wishlistItems.length} {wishlistItems.length === 1 ? 'Artikel' : 'Artikel'}
+              {!loading && `${wishlistItems.length} ${wishlistItems.length === 1 ? (lang === 'de' ? 'Artikel' : 'Item') : (lang === 'de' ? 'Artikel' : 'Items')}`}
             </div>
           </div>
         </div>

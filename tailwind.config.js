@@ -7,16 +7,25 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          50: '#F5F1E8',
-          100: '#D4C4B0',
-          200: '#C4B5A0',
-          300: '#B4A590',
-          400: '#A0826D',
-          500: '#8B6F47',
-          600: '#6F5A3A',
-          700: '#5C4A35',
-          800: '#4A3B2B',
-          900: '#3A2E22',
+          50: '#F9FAFB',
+          100: '#F3F4F6',
+          200: '#E5E7EB',
+          300: '#D1D5DB',
+          400: '#9CA3AF',
+          500: '#6B7280',
+          600: '#4B5563',
+          700: '#374151',
+          800: '#1F2937',
+          900: '#111827',
+        },
+      },
+      animation: {
+        marquee: 'marquee 28s linear infinite',
+      },
+      keyframes: {
+        marquee: {
+          '0%': { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(-50%)' },
         },
       },
     },

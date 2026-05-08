@@ -20,25 +20,65 @@ export default function ImageUpload({
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileSelect = (files: FileList | null) => {
+  const handleFileSelect = async (files: FileList | null) => {
     if (!files) return
 
-    const newImages: string[] = []
     const remainingSlots = maxImages - images.length
+    const filesToProcess = Array.from(files).slice(0, remainingSlots).filter(f => f.type.startsWith('image/'))
 
-    Array.from(files).slice(0, remainingSlots).forEach((file) => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            newImages.push(e.target.result as string)
-            if (newImages.length === Math.min(files.length, remainingSlots)) {
-              onImagesChange([...images, ...newImages])
-            }
-          }
+    if (filesToProcess.length === 0) return
+
+    setUploading(true)
+    const newUrls: string[] = []
+
+    for (const file of filesToProcess) {
+      try {
+        // Try Supabase Storage upload first
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await fetch('/api/upload', { method: 'POST', body: formData })
+        const result = await response.json()
+
+        if (response.ok && result.url) {
+          newUrls.push(result.url)
+        } else {
+          // Fallback: resize and store as compressed base64
+          console.warn('Upload API failed, using compressed base64:', result.error)
+          const url = await resizeImage(file, 600)
+          newUrls.push(url)
         }
-        reader.readAsDataURL(file)
+      } catch (err) {
+        console.warn('Upload failed, using compressed base64:', err)
+        const url = await resizeImage(file, 600)
+        newUrls.push(url)
       }
+    }
+
+    onImagesChange([...images, ...newUrls])
+    setUploading(false)
+  }
+
+  const resizeImage = (file: File, maxSize: number): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')!
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      
+      img.onload = () => {
+        let { width, height } = img
+        if (width > height) {
+          if (width > maxSize) { height = height * maxSize / width; width = maxSize }
+        } else {
+          if (height > maxSize) { width = width * maxSize / height; height = maxSize }
+        }
+        canvas.width = width
+        canvas.height = height
+        ctx.drawImage(img, 0, 0, width, height)
+        URL.revokeObjectURL(url)
+        resolve(canvas.toDataURL('image/jpeg', 0.7))
+      }
+      img.src = url
     })
   }
 
@@ -113,9 +153,10 @@ export default function ImageUpload({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="text-primary-600 hover:text-primary-700 font-medium"
+              disabled={uploading}
+              className="text-primary-600 hover:text-primary-700 font-medium disabled:opacity-50"
             >
-              Bilder hochladen
+              {uploading ? 'Wird hochgeladen...' : 'Bilder hochladen'}
             </button>
             <span className="text-gray-500"> oder hierher ziehen</span>
           </div>

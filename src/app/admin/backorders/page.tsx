@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { useLanguage } from '@/components/ClientLayout'
+import { translations } from '@/lib/translations'
 import DashboardLayout from '@/components/DashboardLayout'
 
 interface BackorderItem {
@@ -35,6 +37,8 @@ interface Backorder {
 export default function AdminBackorderDashboard() {
   const { user } = useAuth()
   const router = useRouter()
+  const { lang } = useLanguage()
+  const t = translations[lang]
   const [backorders, setBackorders] = useState<Backorder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -66,18 +70,18 @@ export default function AdminBackorderDashboard() {
         const data = await response.json()
         setBackorders(data.backorders || [])
       } else {
-        setError('Fehler beim Laden der Vorbestellungen')
+        setError(t.common.error)
       }
     } catch (error) {
       console.error('Error fetching backorders:', error)
-      setError('Fehler beim Laden der Vorbestellungen')
+      setError(t.common.error)
     } finally {
       setLoading(false)
     }
   }
 
   const handleFulfillBackorder = async (backorderId: string) => {
-    if (!confirm('Möchten Sie diese Vorbestellung als erfüllt markieren?')) {
+    if (!confirm(t.adminExtended.backorders.fulfillOrder + '?')) {
       return
     }
 
@@ -95,14 +99,14 @@ export default function AdminBackorderDashboard() {
 
       if (response.ok) {
         await fetchBackorders()
-        alert('Vorbestellung erfolgreich erfüllt')
+        alert(t.admin.orderUpdated)
       } else {
         const data = await response.json()
-        alert(data.error || 'Fehler beim Erfüllen der Vorbestellung')
+        alert(data.error || t.common.error)
       }
     } catch (error) {
       console.error('Error fulfilling backorder:', error)
-      alert('Fehler beim Erfüllen der Vorbestellung')
+      alert(t.common.error)
     }
   }
 
@@ -142,18 +146,12 @@ export default function AdminBackorderDashboard() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'PENDING':
-        return 'Ausstehend'
-      case 'PROCESSING':
-        return 'In Bearbeitung'
-      case 'SHIPPED':
-        return 'Versendet'
-      case 'DELIVERED':
-        return 'Zugestellt'
-      case 'CANCELLED':
-        return 'Storniert'
-      default:
-        return status
+      case 'PENDING': return t.adminExtended.backorders.pending
+      case 'PROCESSING': return t.dashboard.orderStatuses.PROCESSING
+      case 'SHIPPED': return t.dashboard.orderStatuses.SHIPPED
+      case 'DELIVERED': return t.dashboard.orderStatuses.DELIVERED
+      case 'CANCELLED': return t.adminExtended.backorders.cancelled
+      default: return status
     }
   }
 
@@ -195,9 +193,9 @@ export default function AdminBackorderDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Vorbestellungen verwalten</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t.adminExtended.backorders.title}</h1>
             <p className="text-gray-600 mt-1">
-              Übersicht und Verwaltung aller Kundenvorbestellungen
+              {t.adminExtended.backorders.subtitle}
             </p>
           </div>
           <div className="flex items-center space-x-3">
@@ -208,7 +206,7 @@ export default function AdminBackorderDashboard() {
               <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Aktualisieren
+              {t.common.tryAgain}
             </button>
           </div>
         </div>
@@ -223,7 +221,7 @@ export default function AdminBackorderDashboard() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Gesamt</p>
+                <p className="text-sm font-medium text-gray-600">{t.common.total}</p>
                 <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
               </div>
             </div>
@@ -237,7 +235,7 @@ export default function AdminBackorderDashboard() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Ausstehend</p>
+                <p className="text-sm font-medium text-gray-600">{t.adminExtended.backorders.pending}</p>
                 <p className="text-2xl font-semibold text-gray-900">{stats.pending}</p>
               </div>
             </div>
@@ -251,7 +249,7 @@ export default function AdminBackorderDashboard() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">In Bearbeitung</p>
+                <p className="text-sm font-medium text-gray-600">{t.dashboard.orderStatuses.PROCESSING}</p>
                 <p className="text-2xl font-semibold text-gray-900">{stats.processing}</p>
               </div>
             </div>
@@ -265,7 +263,7 @@ export default function AdminBackorderDashboard() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Gesamtwert</p>
+                <p className="text-sm font-medium text-gray-600">{t.adminExtended.analytics.revenue}</p>
                 <p className="text-2xl font-semibold text-gray-900">{formatPrice(stats.totalValue, 'EUR')}</p>
               </div>
             </div>
@@ -277,31 +275,31 @@ export default function AdminBackorderDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.common.status}</label>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
-                  <option value="all">Alle Status</option>
-                  <option value="pending">Ausstehend</option>
-                  <option value="processing">In Bearbeitung</option>
-                  <option value="shipped">Versendet</option>
-                  <option value="cancelled">Storniert</option>
+                  <option value="all">{t.common.status}</option>
+                  <option value="pending">{t.adminExtended.backorders.pending}</option>
+                  <option value="processing">{t.dashboard.orderStatuses.PROCESSING}</option>
+                  <option value="shipped">{t.dashboard.orderStatuses.SHIPPED}</option>
+                  <option value="cancelled">{t.adminExtended.backorders.cancelled}</option>
                 </select>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sortieren</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.common.sort}</label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
-                  <option value="priority">Priorität</option>
-                  <option value="date">Datum</option>
-                  <option value="amount">Betrag</option>
-                  <option value="customer">Kunde</option>
+                  <option value="priority">{t.adminExtended.backorders.priority}</option>
+                  <option value="date">{t.common.date}</option>
+                  <option value="amount">{t.adminExtended.analytics.revenue}</option>
+                  <option value="customer">{t.adminExtended.users.name}</option>
                 </select>
               </div>
             </div>
@@ -313,7 +311,7 @@ export default function AdminBackorderDashboard() {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-              <span className="ml-2 text-gray-600">Wird geladen...</span>
+              <span className="ml-2 text-gray-600">{t.common.loading}</span>
             </div>
           ) : error ? (
             <div className="text-center py-12">
@@ -327,7 +325,7 @@ export default function AdminBackorderDashboard() {
                 onClick={fetchBackorders}
                 className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
               >
-                Erneut versuchen
+                {t.common.tryAgain}
               </button>
             </div>
           ) : filteredBackorders.length === 0 ? (
@@ -337,7 +335,7 @@ export default function AdminBackorderDashboard() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Keine Vorbestellungen gefunden</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t.adminExtended.backorders.noBackorders}</h3>
               <p className="text-gray-600">
                 {filterStatus === 'all' 
                   ? 'Es sind noch keine Vorbestellungen vorhanden.'
@@ -351,25 +349,25 @@ export default function AdminBackorderDashboard() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Priorität
+                      {t.adminExtended.backorders.priority}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Kunde
+                      {t.adminExtended.users.name}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Bestellung
+                      {t.dashboard.orders}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      {t.common.status}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Betrag
+                      {t.adminExtended.analytics.revenue}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Datum
+                      {t.common.date}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aktionen
+                      {t.common.actions}
                     </th>
                   </tr>
                 </thead>
@@ -420,14 +418,14 @@ export default function AdminBackorderDashboard() {
                               onClick={() => handleFulfillBackorder(backorder.id)}
                               className="text-green-600 hover:text-green-700 font-medium"
                             >
-                              Erfüllen
+                              {t.adminExtended.backorders.fulfillOrder}
                             </button>
                           )}
                           <Link
                             href={`/admin/backorders/${backorder.id}`}
                             className="text-primary-600 hover:text-primary-700 font-medium"
                           >
-                            Details
+                            {t.common.view}
                           </Link>
                         </div>
                       </td>

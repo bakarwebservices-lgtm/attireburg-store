@@ -75,6 +75,7 @@ export default function ProductDetail() {
   const [showBackorderModal, setShowBackorderModal] = useState(false)
   const [isInWishlist, setIsInWishlist] = useState(false)
   const [wishlistLoading, setWishlistLoading] = useState(false)
+  const [showSizeChart, setShowSizeChart] = useState(false)
   
   // Get restock date for current product/variant
   const { restockDate } = useRestockDate(
@@ -402,7 +403,8 @@ export default function ProductDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Product Images */}
           <div className="space-y-4">
-            <div className="aspect-square bg-white rounded-lg overflow-hidden shadow-sm">
+            {/* Main image with arrow navigation */}
+            <div className="relative aspect-square bg-white rounded-lg overflow-hidden shadow-sm group">
               {getCurrentImages().length > 0 ? (
                 <img
                   src={getCurrentImages()[selectedImage]}
@@ -414,28 +416,100 @@ export default function ProductDetail() {
                   {t.common.noImage}
                 </div>
               )}
+              {/* Arrow navigation - only show if multiple images */}
+              {getCurrentImages().length > 1 && (
+                <>
+                  <button
+                    onClick={() => setSelectedImage(i => (i - 1 + getCurrentImages().length) % getCurrentImages().length)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 hover:bg-white rounded-full shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <svg className="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setSelectedImage(i => (i + 1) % getCurrentImages().length)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 hover:bg-white rounded-full shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <svg className="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                  {/* Dot indicators */}
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {getCurrentImages().map((_, i) => (
+                      <button key={i} onClick={() => setSelectedImage(i)}
+                        className={`w-1.5 h-1.5 rounded-full transition-colors ${i === selectedImage ? 'bg-gray-900' : 'bg-gray-400'}`} />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
             
-            {/* Image Thumbnails */}
+            {/* Thumbnails - current color images */}
             {getCurrentImages().length > 1 && (
               <div className="grid grid-cols-4 gap-2">
                 {getCurrentImages().map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`aspect-square rounded overflow-hidden border-2 ${
-                      selectedImage === index ? 'border-primary-600' : 'border-gray-200'
+                    className={`aspect-square rounded overflow-hidden border-2 transition-colors ${
+                      selectedImage === index ? 'border-gray-900' : 'border-gray-200 hover:border-gray-400'
                     }`}
                   >
-                    <img
-                      src={image}
-                      alt={`${lang === 'de' ? product.name : product.nameEn} ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={image} alt={`${index + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
             )}
+
+            {/* Color swatches with images - show all color variants */}
+            {product.hasVariants && product.variants && (() => {
+              // Get unique colors with their first image
+              const colorMap = new Map<string, { image: string; attributeKey: string }>()
+              product.variants.forEach(v => {
+                const colorKey = Object.keys(v.attributes).find(k =>
+                  k.toLowerCase() === 'farbe' || k.toLowerCase() === 'color' || k.toLowerCase() === 'colour'
+                )
+                if (colorKey && v.attributes[colorKey] && v.images?.length > 0) {
+                  const colorVal = v.attributes[colorKey]
+                  if (!colorMap.has(colorVal)) {
+                    colorMap.set(colorVal, { image: v.images[0], attributeKey: colorKey })
+                  }
+                }
+              })
+
+              if (colorMap.size === 0) return null
+
+              const currentColorKey = Object.keys(selectedAttributes).find(k =>
+                k.toLowerCase() === 'farbe' || k.toLowerCase() === 'color' || k.toLowerCase() === 'colour'
+              )
+              const currentColor = currentColorKey ? selectedAttributes[currentColorKey] : ''
+
+              return (
+                <div>
+                  <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">
+                    {lang === 'de' ? 'Farbe wählen' : 'Select color'}
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    {Array.from(colorMap.entries()).map(([colorVal, { image, attributeKey }]) => (
+                      <button
+                        key={colorVal}
+                        onClick={() => handleAttributeChange(attributeKey, colorVal)}
+                        title={colorVal}
+                        className={`w-14 h-14 rounded overflow-hidden border-2 transition-all ${
+                          currentColor === colorVal
+                            ? 'border-gray-900 scale-105'
+                            : 'border-gray-200 hover:border-gray-500'
+                        }`}
+                      >
+                        <img src={image} alt={colorVal} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
 
           {/* Product Info */}
@@ -531,12 +605,23 @@ export default function ProductDetail() {
                 {/* Dynamic Attribute Selection */}
                 {Object.keys(product.variants.reduce((acc, variant) => ({ ...acc, ...variant.attributes }), {})).map(attributeName => (
                   <div key={attributeName}>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                      {attributeName === 'Farbe' ? 'Farbe' : 
-                       attributeName === 'Color' ? 'Color' :
-                       attributeName === 'Größe' ? 'Größe' :
-                       attributeName === 'Size' ? 'Size' : attributeName}
-                    </h3>
+                    <div className="flex items-center gap-3 mb-3">
+                      <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                        {attributeName === 'Farbe' || attributeName === 'color' ? (lang === 'de' ? 'Farbe' : 'Color') :
+                         attributeName === 'Größe' || attributeName === 'size' ? (lang === 'de' ? 'Größe' : 'Size') :
+                         attributeName === 'fit' || attributeName === 'Passform' ? (lang === 'de' ? 'Passform' : 'Fit') :
+                         attributeName}
+                      </h3>
+                      {/* Size chart button for fit/size attributes */}
+                      {(attributeName === 'fit' || attributeName === 'Passform' || attributeName === 'Größe' || attributeName === 'size') && (
+                        <button
+                          onClick={() => setShowSizeChart(true)}
+                          className="text-xs text-gray-500 underline hover:text-gray-900 transition-colors"
+                        >
+                          {lang === 'de' ? 'Größentabelle' : 'Size Chart'}
+                        </button>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {getAvailableAttributeValues(attributeName).map((value) => {
                         const isSelected = selectedAttributes[attributeName] === value
@@ -549,21 +634,17 @@ export default function ProductDetail() {
                             key={value}
                             onClick={() => handleAttributeChange(attributeName, value)}
                             disabled={!isAvailable}
-                            className={`px-4 py-2 border rounded-lg capitalize transition-colors relative ${
+                            className={`px-4 py-2 border text-sm font-medium transition-colors relative ${
                               isSelected
-                                ? 'border-primary-600 bg-primary-50 text-primary-600'
+                                ? 'border-gray-900 bg-gray-900 text-white'
                                 : isAvailable
-                                ? 'border-gray-300 hover:border-gray-400'
-                                : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                ? 'border-gray-300 text-gray-700 hover:border-gray-900'
+                                : 'border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed line-through'
                             }`}
-                            title={!isAvailable ? 'Nicht verfügbar' : `${testVariant?.stock || 0} verfügbar`}
                           >
                             {value}
-                            {!isAvailable && (
-                              <span className="ml-1 text-xs">✕</span>
-                            )}
                             {isAvailable && testVariant && testVariant.stock <= 3 && testVariant.stock > 0 && (
-                              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
                                 {testVariant.stock}
                               </span>
                             )}
@@ -813,6 +894,88 @@ export default function ProductDetail() {
             ) : (
               <p className="text-gray-600">{t.productDetail.noReviews}</p>
             )}
+          </div>
+        )}
+
+        {/* Size Chart Modal */}
+        {showSizeChart && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowSizeChart(false)}>
+            <div className="absolute inset-0 bg-black/50" />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setShowSizeChart(false)} className="absolute top-4 left-4 text-gray-400 hover:text-gray-900 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <h3 className="text-lg font-bold text-gray-900 text-center mb-6">
+                {lang === 'de' ? 'Größentabelle' : 'Size Chart'}
+              </h3>
+              <div className="space-y-6">
+                {/* Slim Fit */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Slim Fit</h4>
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium">{lang === 'de' ? 'Größe' : 'Size'}</th>
+                        <th className="border border-gray-200 px-3 py-2 text-center font-medium">{lang === 'de' ? 'Brust (cm)' : 'Chest (cm)'}</th>
+                        <th className="border border-gray-200 px-3 py-2 text-center font-medium">{lang === 'de' ? 'Taille (cm)' : 'Waist (cm)'}</th>
+                        <th className="border border-gray-200 px-3 py-2 text-center font-medium">{lang === 'de' ? 'Länge (cm)' : 'Length (cm)'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { size: 'XS', chest: '84–88', waist: '70–74', length: '66' },
+                        { size: 'S',  chest: '88–92', waist: '74–78', length: '68' },
+                        { size: 'M',  chest: '92–96', waist: '78–82', length: '70' },
+                        { size: 'L',  chest: '96–100', waist: '82–86', length: '72' },
+                        { size: 'XL', chest: '100–104', waist: '86–90', length: '74' },
+                      ].map(row => (
+                        <tr key={row.size} className="hover:bg-gray-50">
+                          <td className="border border-gray-200 px-3 py-2 font-medium">{row.size}</td>
+                          <td className="border border-gray-200 px-3 py-2 text-center">{row.chest}</td>
+                          <td className="border border-gray-200 px-3 py-2 text-center">{row.waist}</td>
+                          <td className="border border-gray-200 px-3 py-2 text-center">{row.length}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Loose Fit */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Loose Fit</h4>
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium">{lang === 'de' ? 'Größe' : 'Size'}</th>
+                        <th className="border border-gray-200 px-3 py-2 text-center font-medium">{lang === 'de' ? 'Brust (cm)' : 'Chest (cm)'}</th>
+                        <th className="border border-gray-200 px-3 py-2 text-center font-medium">{lang === 'de' ? 'Taille (cm)' : 'Waist (cm)'}</th>
+                        <th className="border border-gray-200 px-3 py-2 text-center font-medium">{lang === 'de' ? 'Länge (cm)' : 'Length (cm)'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { size: 'XS', chest: '96–100', waist: '88–92', length: '68' },
+                        { size: 'S',  chest: '100–104', waist: '92–96', length: '70' },
+                        { size: 'M',  chest: '104–108', waist: '96–100', length: '72' },
+                        { size: 'L',  chest: '108–112', waist: '100–104', length: '74' },
+                        { size: 'XL', chest: '112–116', waist: '104–108', length: '76' },
+                      ].map(row => (
+                        <tr key={row.size} className="hover:bg-gray-50">
+                          <td className="border border-gray-200 px-3 py-2 font-medium">{row.size}</td>
+                          <td className="border border-gray-200 px-3 py-2 text-center">{row.chest}</td>
+                          <td className="border border-gray-200 px-3 py-2 text-center">{row.waist}</td>
+                          <td className="border border-gray-200 px-3 py-2 text-center">{row.length}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-gray-400 text-center">
+                  {lang === 'de' ? 'Alle Maße in Zentimetern. Bei Unsicherheit empfehlen wir die größere Größe.' : 'All measurements in centimeters. When in doubt, we recommend the larger size.'}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 

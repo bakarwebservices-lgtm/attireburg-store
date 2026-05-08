@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
-import { formatPriceWithVAT } from '@/lib/vat'
 
 interface Product {
   id: string
@@ -13,17 +12,8 @@ interface Product {
   salePrice?: number
   images: string[]
   category: string
-  avgRating: number
-  reviewCount: number
   onSale: boolean
   stock: number
-}
-
-interface Filters {
-  category: string
-  sortBy: string
-  sortOrder: string
-  search: string
 }
 
 export default function Products() {
@@ -31,353 +21,171 @@ export default function Products() {
   const t = translations[lang]
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState<Filters>({
-    category: '',
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-    search: ''
-  })
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 12,
-    total: 0,
-    pages: 0
-  })
+  const [category, setCategory] = useState('')
+  const [sort, setSort] = useState('createdAt|desc')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(0)
+  const [total, setTotal] = useState(0)
 
-  useEffect(() => {
-    fetchProducts()
-  }, [filters, pagination.page])
+  useEffect(() => { fetchProducts() }, [category, sort, search, page])
 
   const fetchProducts = async () => {
     setLoading(true)
+    const [sortBy, sortOrder] = sort.split('|')
+    const params = new URLSearchParams({
+      page: page.toString(), limit: '12', sortBy, sortOrder,
+      ...(category && { category }),
+      ...(search && { search }),
+    })
     try {
-      const params = new URLSearchParams({
-        page: pagination.page.toString(),
-        limit: pagination.limit.toString(),
-        sortBy: filters.sortBy,
-        sortOrder: filters.sortOrder,
-        ...(filters.category && { category: filters.category }),
-        ...(filters.search && { search: filters.search })
-      })
-
-      const response = await fetch(`/api/products?${params}`)
-      const data = await response.json()
-      
+      const res = await fetch(`/api/products?${params}`)
+      const data = await res.json()
       setProducts(data.products || [])
-      setPagination(prev => ({
-        ...prev,
-        total: data.pagination?.total || 0,
-        pages: data.pagination?.pages || 0
-      }))
-    } catch (error) {
-      console.error('Error fetching products:', error)
+      setTotalPages(data.pagination?.pages || 0)
+      setTotal(data.pagination?.total || 0)
+    } catch (e) {
+      console.error(e)
     } finally {
       setLoading(false)
     }
   }
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(price)
-  }
+  const fmt = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n)
 
-  const handleFilterChange = (key: keyof Filters, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }))
-    setPagination(prev => ({ ...prev, page: 1 }))
-  }
+  const CATEGORIES = [
+    { value: '', label: t.products.allCategories },
+    { value: 'pullover', label: t.products.categories.pullover },
+    { value: 'jacken', label: t.products.categories.jacken },
+    { value: 'hoodies', label: t.products.categories.hoodies },
+    { value: 'shirts', label: t.products.categories.shirts },
+  ]
 
-  const handlePageChange = (page: number) => {
-    setPagination(prev => ({ ...prev, page }))
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  const SORT_OPTIONS = [
+    { value: 'createdAt|desc', label: t.products.newest },
+    { value: 'price|asc', label: `${t.products.price}: ${t.products.ascending}` },
+    { value: 'price|desc', label: `${t.products.price}: ${t.products.descending}` },
+    { value: 'name|asc', label: `${t.products.name} A–Z` },
+  ]
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Hero Section */}
-      <div className="relative h-96 overflow-hidden">
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
-            alt="Premium clothing collection"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-primary-900 bg-opacity-70"></div>
-        </div>
-        
-        <div className="relative z-10 h-full flex items-center justify-center">
-          <div className="max-w-4xl mx-auto px-6 text-center">
-            <h1 className="text-5xl font-bold text-white mb-4">
-              Unsere Kollektion
-            </h1>
-            <p className="text-xl text-gray-200 max-w-2xl mx-auto">
-              Entdecken Sie zeitlose Eleganz und deutsche Handwerkskunst in jedem Stück. 
-              Von klassischen Pullovern bis zu modernen Jacken.
-            </p>
-          </div>
+    <div className="bg-white min-h-screen">
+
+      <div className="border-b border-gray-200 py-8 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-2xl font-bold text-gray-900">{t.products.title}</h1>
+          {!loading && <p className="text-sm text-gray-500 mt-1">{total} {t.products.productsFound}</p>}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
 
-        {/* Filters */}
-        <div className="bg-gray-50 rounded-xl p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter & Sortierung</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Search */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t.products.search}
-              </label>
-              <input
-                type="text"
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-                placeholder={t.products.searchPlaceholder}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-              />
-            </div>
-
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t.products.category}
-              </label>
-              <select
-                value={filters.category}
-                onChange={(e) => handleFilterChange('category', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+        {/* Filter bar */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-8">
+          <div className="flex gap-1 overflow-x-auto pb-1 flex-1">
+            {CATEGORIES.map(c => (
+              <button
+                key={c.value}
+                onClick={() => { setCategory(c.value); setPage(1) }}
+                className={`whitespace-nowrap px-4 py-2 text-sm font-medium border transition-colors ${
+                  category === c.value
+                    ? 'bg-gray-900 text-white border-gray-900'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-900 hover:text-gray-900'
+                }`}
               >
-                <option value="">{t.products.allCategories}</option>
-                <option value="pullover">{t.products.categories.pullover}</option>
-                <option value="jacken">{t.products.categories.jacken}</option>
-                <option value="hoodies">{t.products.categories.hoodies}</option>
-                <option value="shirts">{t.products.categories.shirts}</option>
-              </select>
-            </div>
-
-            {/* Sort By */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t.products.sortBy}
-              </label>
-              <select
-                value={filters.sortBy}
-                onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-              >
-                <option value="createdAt">{t.products.newest}</option>
-                <option value="price">{t.products.price}</option>
-                <option value="name">{t.products.name}</option>
-              </select>
-            </div>
-
-            {/* Sort Order */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t.products.sortOrder}
-              </label>
-              <select
-                value={filters.sortOrder}
-                onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-              >
-                <option value="desc">{t.products.descending}</option>
-                <option value="asc">{t.products.ascending}</option>
-              </select>
-            </div>
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <input
+              type="text"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1) }}
+              placeholder={t.products.searchPlaceholder}
+              className="px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-gray-900 w-40"
+            />
+            <select
+              value={sort}
+              onChange={e => { setSort(e.target.value); setPage(1) }}
+              className="px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:border-gray-900 bg-white"
+            >
+              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
           </div>
         </div>
 
-        {/* Results Info */}
-        <div className="flex justify-between items-center mb-6">
-          <p className="text-gray-600">
-            {pagination.total} {t.products.productsFound}
-          </p>
-        </div>
-
-        {/* Products Grid */}
+        {/* Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg overflow-hidden shadow-sm animate-pulse">
-                <div className="aspect-square bg-gray-200"></div>
-                <div className="p-4">
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded mb-4"></div>
-                  <div className="flex justify-between items-center">
-                    <div className="h-6 w-16 bg-gray-200 rounded"></div>
-                    <div className="h-8 w-24 bg-gray-200 rounded"></div>
-                  </div>
-                </div>
+              <div key={i} className="animate-pulse">
+                <div className="aspect-[3/4] bg-gray-100 mb-3" />
+                <div className="h-3.5 bg-gray-100 rounded mb-2 w-3/4" />
+                <div className="h-3.5 bg-gray-100 rounded w-1/3" />
               </div>
             ))}
           </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-gray-500 mb-4">{t.products.noProducts.title}</p>
+            <button onClick={() => { setCategory(''); setSearch(''); setPage(1) }} className="text-sm underline text-gray-700">
+              {t.products.noProducts.resetFilters}
+            </button>
+          </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map((product) => (
-                <Link key={product.id} href={`/products/${product.id}`}>
-                  <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group">
-                    <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                      {product.images.length > 0 ? (
-                        <img
-                          src={product.images[0]}
-                          alt={lang === 'de' ? product.name : product.nameEn}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400">
-                          {t.common.noImage}
-                        </div>
-                      )}
-                      {product.onSale && (
-                        <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-lg">
-                          Sale
-                        </div>
-                      )}
-                      {product.stock === 0 && (
-                        <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-                          <span className="text-white font-semibold">Ausverkauft</span>
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    </div>
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-primary-600 uppercase tracking-wide">
-                          {product.category}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
+            {products.map(product => {
+              const name = lang === 'de' ? product.name : (product.nameEn || product.name)
+              const pct = product.salePrice ? Math.round((1 - product.salePrice / product.price) * 100) : 0
+              return (
+                <Link key={product.id} href={`/products/${product.id}`} className="group">
+                  <div className="relative aspect-[3/4] overflow-hidden bg-gray-100 mb-3">
+                    {product.images[0] && (
+                      <img src={product.images[0]} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    )}
+                    {product.onSale && pct > 0 && (
+                      <span className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 tracking-wide">
+                        SAVE {pct}%
+                      </span>
+                    )}
+                    {product.stock === 0 && (
+                      <div className="absolute inset-0 bg-white/60 flex items-end justify-center pb-4">
+                        <span className="text-xs font-semibold text-gray-700 bg-white px-3 py-1 border border-gray-300">
+                          {t.products.outOfStock.toUpperCase()}
                         </span>
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <svg
-                              key={i}
-                              className={`w-3 h-3 ${
-                                i < Math.floor(product.avgRating)
-                                  ? 'text-yellow-400'
-                                  : 'text-gray-300'
-                              }`}
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
-                          <span className="ml-1 text-xs text-gray-500">
-                            ({product.reviewCount})
-                          </span>
-                        </div>
                       </div>
-                      
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3 line-clamp-2 group-hover:text-primary-700 transition-colors">
-                        {lang === 'de' ? product.name : product.nameEn}
-                      </h3>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex flex-col">
-                          <div className="flex items-center space-x-2">
-                            {product.onSale && product.salePrice ? (
-                              <>
-                                <span className="text-lg font-bold text-red-600">
-                                  {formatPriceWithVAT(product.salePrice, lang).price}
-                                </span>
-                                <span className="text-sm text-gray-500 line-through">
-                                  {formatPrice(product.price)}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-lg font-bold text-primary-700">
-                                {formatPriceWithVAT(product.price, lang).price}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-xs text-gray-500 mt-1">
-                            {formatPriceWithVAT(product.onSale && product.salePrice ? product.salePrice : product.price, lang).vatInfo}
-                          </span>
-                        </div>
-                        
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <div className="bg-primary-600 text-white p-1.5 rounded-full">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{product.category}</p>
+                  <p className="text-sm font-medium text-gray-900 truncate mb-1">{name}</p>
+                  <div className="flex items-center gap-2">
+                    {product.salePrice ? (
+                      <>
+                        <span className="text-sm font-semibold text-red-600">{fmt(product.salePrice)}</span>
+                        <span className="text-xs text-gray-400 line-through">{fmt(product.price)}</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-800">{fmt(product.price)}</span>
+                    )}
                   </div>
                 </Link>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {pagination.pages > 1 && (
-              <div className="flex justify-center items-center space-x-2 mt-12">
-                <button
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={pagination.page === 1}
-                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t.products.pagination.previous}
-                </button>
-                
-                {[...Array(pagination.pages)].map((_, i) => {
-                  const page = i + 1
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page)}
-                      className={`px-3 py-2 rounded-lg ${
-                        page === pagination.page
-                          ? 'bg-primary-600 text-white'
-                          : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  )
-                })}
-                
-                <button
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={pagination.page === pagination.pages}
-                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t.products.pagination.next}
-                </button>
-              </div>
-            )}
-          </>
+              )
+            })}
+          </div>
         )}
 
-        {/* No Results */}
-        {!loading && products.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {t.products.noProducts.title}
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {t.products.noProducts.subtitle}
-            </p>
-            <button
-              onClick={() => {
-                setFilters({
-                  category: '',
-                  sortBy: 'createdAt',
-                  sortOrder: 'desc',
-                  search: ''
-                })
-                setPagination(prev => ({ ...prev, page: 1 }))
-              }}
-              className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg transition-colors"
-            >
-              {t.products.noProducts.resetFilters}
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-1 mt-12">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-2 border border-gray-300 text-sm disabled:opacity-40 hover:border-gray-900 transition-colors">
+              {t.products.pagination.previous}
+            </button>
+            {[...Array(totalPages)].map((_, i) => (
+              <button key={i} onClick={() => setPage(i + 1)} className={`px-3 py-2 border text-sm transition-colors ${page === i + 1 ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 hover:border-gray-900'}`}>{i + 1}</button>
+            ))}
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-2 border border-gray-300 text-sm disabled:opacity-40 hover:border-gray-900 transition-colors">
+              {t.products.pagination.next}
             </button>
           </div>
         )}

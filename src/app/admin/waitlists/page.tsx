@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { useLanguage } from '@/components/ClientLayout'
+import { translations } from '@/lib/translations'
 import DashboardLayout from '@/components/DashboardLayout'
 
 interface WaitlistSubscription {
@@ -31,6 +33,8 @@ interface WaitlistAnalytics {
 export default function AdminWaitlistDashboard() {
   const { user } = useAuth()
   const router = useRouter()
+  const { lang } = useLanguage()
+  const t = translations[lang]
   const [subscriptions, setSubscriptions] = useState<WaitlistSubscription[]>([])
   const [analytics, setAnalytics] = useState<WaitlistAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
@@ -62,18 +66,18 @@ export default function AdminWaitlistDashboard() {
         setSubscriptions(data.subscriptions || [])
         setAnalytics(data.analytics || null)
       } else {
-        setError('Fehler beim Laden der Wartelisten-Daten')
+        setError(t.common.error)
       }
     } catch (error) {
       console.error('Error fetching waitlist data:', error)
-      setError('Fehler beim Laden der Wartelisten-Daten')
+      setError(t.common.error)
     } finally {
       setLoading(false)
     }
   }
 
   const handleSendNotification = async (productId: string, variantId?: string) => {
-    if (!confirm('Möchten Sie Benachrichtigungen für dieses Produkt senden?')) {
+    if (!confirm(t.adminExtended.waitlist.sendNotification + '?')) {
       return
     }
 
@@ -92,14 +96,14 @@ export default function AdminWaitlistDashboard() {
 
       if (response.ok) {
         const data = await response.json()
-        alert(`${data.notificationsSent} Benachrichtigungen gesendet`)
+        alert(`${data.notificationsSent} ${t.adminExtended.notifications.title}`)
       } else {
         const data = await response.json()
-        alert(data.error || 'Fehler beim Senden der Benachrichtigungen')
+        alert(data.error || t.common.error)
       }
     } catch (error) {
       console.error('Error sending notifications:', error)
-      alert('Fehler beim Senden der Benachrichtigungen')
+      alert(t.common.error)
     }
   }
 
@@ -152,9 +156,9 @@ export default function AdminWaitlistDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Wartelisten verwalten</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t.adminExtended.waitlist.title}</h1>
             <p className="text-gray-600 mt-1">
-              Übersicht und Verwaltung aller Wartelisten-Abonnements
+              {t.adminExtended.waitlist.subtitle}
             </p>
           </div>
           <div className="flex items-center space-x-3">
@@ -165,7 +169,7 @@ export default function AdminWaitlistDashboard() {
               <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Aktualisieren
+              {t.common.tryAgain}
             </button>
           </div>
         </div>
@@ -181,7 +185,7 @@ export default function AdminWaitlistDashboard() {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Gesamt</p>
+                  <p className="text-sm font-medium text-gray-600">{t.common.total}</p>
                   <p className="text-2xl font-semibold text-gray-900">{analytics.totalSubscriptions}</p>
                 </div>
               </div>
@@ -195,7 +199,7 @@ export default function AdminWaitlistDashboard() {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Aktiv</p>
+                  <p className="text-sm font-medium text-gray-600">{t.adminExtended.waitlist.active}</p>
                   <p className="text-2xl font-semibold text-gray-900">{analytics.activeSubscriptions}</p>
                 </div>
               </div>
@@ -209,7 +213,7 @@ export default function AdminWaitlistDashboard() {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Produkte</p>
+                  <p className="text-sm font-medium text-gray-600">{t.admin.products}</p>
                   <p className="text-2xl font-semibold text-gray-900">{analytics.subscriptionsByProduct.length}</p>
                 </div>
               </div>
@@ -220,7 +224,7 @@ export default function AdminWaitlistDashboard() {
         {/* Popular Products */}
         {analytics && analytics.subscriptionsByProduct.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Beliebteste Produkte</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t.admin.topProducts}</h3>
             <div className="space-y-3">
               {analytics.subscriptionsByProduct.slice(0, 5).map((product, index) => (
                 <div key={product.productId} className="flex items-center justify-between py-2">
@@ -231,12 +235,12 @@ export default function AdminWaitlistDashboard() {
                     <span className="font-medium text-gray-900">{product.productName}</span>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <span className="text-sm text-gray-600">{product.count} Abonnements</span>
+                    <span className="text-sm text-gray-600">{product.count} {t.adminExtended.waitlist.subscribers}</span>
                     <button
                       onClick={() => handleSendNotification(product.productId)}
                       className="text-primary-600 hover:text-primary-700 text-sm font-medium"
                     >
-                      Benachrichtigen
+                      {t.adminExtended.waitlist.sendNotification}
                     </button>
                   </div>
                 </div>
@@ -250,13 +254,13 @@ export default function AdminWaitlistDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Produkt</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.admin.products}</label>
                 <select
                   value={filterProduct}
                   onChange={(e) => setFilterProduct(e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
-                  <option value="all">Alle Produkte</option>
+                  <option value="all">{t.products.allCategories}</option>
                   {uniqueProducts.map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.name}
@@ -266,15 +270,15 @@ export default function AdminWaitlistDashboard() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sortieren</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.common.sort}</label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
-                  <option value="date">Datum</option>
-                  <option value="product">Produkt</option>
-                  <option value="email">E-Mail</option>
+                  <option value="date">{t.common.date}</option>
+                  <option value="product">{t.admin.products}</option>
+                  <option value="email">{t.adminExtended.users.email}</option>
                 </select>
               </div>
             </div>
@@ -286,7 +290,7 @@ export default function AdminWaitlistDashboard() {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-              <span className="ml-2 text-gray-600">Wird geladen...</span>
+              <span className="ml-2 text-gray-600">{t.common.loading}</span>
             </div>
           ) : error ? (
             <div className="text-center py-12">
@@ -300,7 +304,7 @@ export default function AdminWaitlistDashboard() {
                 onClick={fetchWaitlistData}
                 className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
               >
-                Erneut versuchen
+                {t.common.tryAgain}
               </button>
             </div>
           ) : filteredSubscriptions.length === 0 ? (
@@ -310,7 +314,7 @@ export default function AdminWaitlistDashboard() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 1 0-15 0v5h5l-5 5-5-5h5V7a12 12 0 1 1 24 0v10z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Keine Wartelisten-Abonnements gefunden</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t.adminExtended.waitlist.noSubscribers}</h3>
               <p className="text-gray-600">
                 {filterProduct === 'all' 
                   ? 'Es sind noch keine Wartelisten-Abonnements vorhanden.'
@@ -324,19 +328,19 @@ export default function AdminWaitlistDashboard() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Kunde
+                      {t.adminExtended.users.name}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Produkt
+                      {t.admin.products}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      {t.common.status}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Datum
+                      {t.common.date}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aktionen
+                      {t.common.actions}
                     </th>
                   </tr>
                 </thead>
@@ -370,7 +374,7 @@ export default function AdminWaitlistDashboard() {
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-gray-100 text-gray-800'
                         }`}>
-                          {subscription.isActive ? 'Aktiv' : 'Inaktiv'}
+                          {subscription.isActive ? t.adminExtended.waitlist.active : t.adminExtended.waitlist.inactive}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -381,7 +385,7 @@ export default function AdminWaitlistDashboard() {
                           onClick={() => handleSendNotification(subscription.productId, subscription.variantId)}
                           className="text-primary-600 hover:text-primary-700 font-medium"
                         >
-                          Benachrichtigen
+                          {t.adminExtended.waitlist.sendNotification}
                         </button>
                       </td>
                     </tr>
