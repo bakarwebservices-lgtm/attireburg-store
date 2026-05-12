@@ -49,23 +49,32 @@ export default function Navbar() {
 
       {/* Main nav */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-14">
+        <div className="flex items-center h-14">
 
-          {/* Left — nav links */}
-          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-gray-700">
+          {/* Left — nav links (desktop) */}
+          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-gray-700 flex-1">
             <Link href="/products" className="hover:text-black transition-colors">{t.nav.products}</Link>
             <Link href="/customize" className="hover:text-black transition-colors">Print on Demand</Link>
             <Link href="/about" className="hover:text-black transition-colors">{t.nav.about}</Link>
           </nav>
 
+          {/* Mobile hamburger - left side */}
+          <button className="md:hidden text-gray-700 mr-3" onClick={() => setMobileOpen(!mobileOpen)}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={mobileOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
+            </svg>
+          </button>
+
           {/* Center — logo */}
-          <Link href="/" className="absolute left-1/2 -translate-x-1/2 text-xl font-bold tracking-tight text-gray-900 hover:text-gray-600 transition-colors">
+          <Link href="/" className="text-xl font-bold tracking-tight text-gray-900 hover:text-gray-600 transition-colors mx-auto md:absolute md:left-1/2 md:-translate-x-1/2">
             ATTIREBURG
           </Link>
 
           {/* Right — icons */}
-          <div className="flex items-center gap-4 ml-auto">
-            <LanguageSwitcher />
+          <div className="flex items-center gap-3 ml-auto">
+            <div className="hidden sm:block">
+              <LanguageSwitcher />
+            </div>
 
             <Link href="/search" className="text-gray-700 hover:text-black transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,7 +83,7 @@ export default function Navbar() {
             </Link>
 
             {user && (
-              <Link href="/account/wishlist" className="text-gray-700 hover:text-black transition-colors">
+              <Link href="/account/wishlist" className="hidden sm:block text-gray-700 hover:text-black transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
@@ -115,24 +124,21 @@ export default function Navbar() {
                 <Link href="/login" className="text-sm font-medium text-gray-700 hover:text-black transition-colors">{t.nav.login}</Link>
               )}
             </div>
-
-            {/* Mobile hamburger */}
-            <button className="md:hidden text-gray-700" onClick={() => setMobileOpen(!mobileOpen)}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={mobileOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
-              </svg>
-            </button>
           </div>
         </div>
       </div>
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-3 text-sm font-medium text-gray-700">
-          <Link href="/products" className="block py-1" onClick={() => setMobileOpen(false)}>{t.nav.products}</Link>
-          <Link href="/customize" className="block py-1" onClick={() => setMobileOpen(false)}>Print on Demand</Link>
-          <Link href="/about" className="block py-1" onClick={() => setMobileOpen(false)}>{t.nav.about}</Link>
-          <Link href="/contact" className="block py-1" onClick={() => setMobileOpen(false)}>{t.nav.contact}</Link>
+        <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-1 text-sm font-medium text-gray-700">
+          <Link href="/products" className="block py-2.5 border-b border-gray-50" onClick={() => setMobileOpen(false)}>{t.nav.products}</Link>
+          <Link href="/customize" className="block py-2.5 border-b border-gray-50" onClick={() => setMobileOpen(false)}>Print on Demand</Link>
+          <Link href="/about" className="block py-2.5 border-b border-gray-50" onClick={() => setMobileOpen(false)}>{t.nav.about}</Link>
+          <Link href="/contact" className="block py-2.5 border-b border-gray-50" onClick={() => setMobileOpen(false)}>{t.nav.contact}</Link>
+          {user && <Link href="/account/wishlist" className="block py-2.5 border-b border-gray-50" onClick={() => setMobileOpen(false)}>{t.nav.wishlist}</Link>}
+          <div className="pt-2">
+            <LanguageSwitcher />
+          </div>
         </div>
       )}
     </header>

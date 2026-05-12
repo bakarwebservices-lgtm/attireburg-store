@@ -1,5 +1,5 @@
 'use client'
-import { ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -41,6 +41,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navItems = user?.isAdmin ? adminNavItems : userNavItems
   const title = user?.isAdmin ? t.admin.title : t.dashboard.title
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const getIcon = (iconName: string) => {
     const icons = {
@@ -118,38 +119,53 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+        {/* Mobile nav toggle */}
+        <div className="lg:hidden mb-4">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sidebarOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
+            </svg>
+            {sidebarOpen ? 'Menü schließen' : 'Menü öffnen'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className={`lg:col-span-1 ${sidebarOpen ? 'block' : 'hidden lg:block'}`}>
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
               <div className="flex items-center space-x-3 mb-6">
-                <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                  <span className="text-primary-600 font-semibold text-lg">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
+                  <span className="text-gray-700 font-semibold text-base sm:text-lg">
                     {user?.name?.charAt(0) || 'U'}
                   </span>
                 </div>
-                <div>
-                  <h2 className="font-semibold text-gray-900">{user?.name}</h2>
-                  <p className="text-sm text-gray-600">{user?.email}</p>
+                <div className="min-w-0">
+                  <h2 className="font-semibold text-gray-900 truncate">{user?.name}</h2>
+                  <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                   {user?.isAdmin && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800 mt-1">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 mt-1">
                       Admin
                     </span>
                   )}
                 </div>
               </div>
 
-              <nav className="space-y-1">
+              <nav className="space-y-0.5">
                 {navItems.map((item) => {
                   const isActive = pathname === item.href
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      onClick={() => setSidebarOpen(false)}
+                      className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                         isActive
-                          ? 'bg-primary-100 text-primary-700'
+                          ? 'bg-gray-900 text-white'
                           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                       }`}
                     >
@@ -160,10 +176,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 })}
               </nav>
 
-              <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="mt-4 pt-4 border-t border-gray-200">
                 <button
                   onClick={logout}
-                  className="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors w-full"
+                  className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors w-full"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -176,9 +192,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
-            </div>
             {children}
           </div>
         </div>

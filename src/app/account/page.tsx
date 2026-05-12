@@ -157,7 +157,7 @@ export default function AccountOverview() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center">
               <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
@@ -269,32 +269,19 @@ export default function AccountOverview() {
                 ))}
               </div>
             ) : recentOrders.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {recentOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between py-4 border-b border-gray-200 last:border-b-0">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {order.orderNumber}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {new Date(order.date).toLocaleDateString('de-DE')} • {order.items} Artikel
-                          </p>
-                        </div>
-                      </div>
+                  <div key={order.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 border-b border-gray-200 last:border-b-0 gap-2">
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">{order.orderNumber}</p>
+                      <p className="text-xs text-gray-500">{new Date(order.date).toLocaleDateString('de-DE')} · {order.items} Artikel</p>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                         {t.dashboard.orderStatuses[order.status as keyof typeof t.dashboard.orderStatuses]}
                       </span>
-                      <p className="font-semibold text-gray-900">
-                        {formatPrice(order.total)}
-                      </p>
-                      <Link
-                        href={`/account/orders/${order.id}`}
-                        className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-                      >
+                      <p className="font-semibold text-gray-900 text-sm">{formatPrice(order.total)}</p>
+                      <Link href={`/account/orders/${order.id}`} className="text-gray-600 hover:text-gray-900 text-xs underline">
                         {t.dashboard.viewOrder}
                       </Link>
                     </div>
