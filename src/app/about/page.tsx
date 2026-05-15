@@ -19,8 +19,8 @@ export default function About() {
           <div className="absolute inset-0 bg-primary-900 bg-opacity-60"></div>
         </div>
         
-        <div className="relative z-10 max-w-4xl mx-auto text-center px-6">
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
+        <div className="relative z-10 max-w-4xl mx-auto text-center px-4 sm:px-6">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
             Über Attireburg
           </h1>
           <p className="text-xl md:text-2xl text-gray-200 max-w-3xl mx-auto leading-relaxed">
@@ -32,8 +32,8 @@ export default function About() {
 
       {/* Story Section */}
       <div className="py-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-center">
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-6">
                 Unsere Geschichte
@@ -73,7 +73,7 @@ export default function About() {
 
       {/* Values Section */}
       <div className="bg-gray-50 py-16">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
               Unsere Werte
@@ -83,7 +83,7 @@ export default function About() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,7 +125,7 @@ export default function About() {
 
       {/* Team Section */}
       <div className="py-16">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
               Unser Team
@@ -135,7 +135,7 @@ export default function About() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             {[
               { 
                 name: 'Anna Schmidt', 
@@ -176,7 +176,7 @@ export default function About() {
 
       {/* Contact CTA */}
       <div className="bg-primary-800 py-16">
-        <div className="max-w-7xl mx-auto px-6 text-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">
             Haben Sie Fragen?
           </h2>

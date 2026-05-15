@@ -125,26 +125,11 @@ export default function ProductDetail() {
         const data = await response.json()
         setProduct(data)
         
-        // Initialize selections
+        // Initialize selections - do NOT auto-select a variant or color
+        // User should choose color explicitly
         if (data.sizes?.length > 0) setSelectedSize(data.sizes[0])
-        if (data.colors?.length > 0) setSelectedColor(data.colors[0])
-        
-        // Initialize variant selection if product has variants
-        if (data.hasVariants && data.variants?.length > 0) {
-          // Set first available variant as default
-          const firstVariant = data.variants.find((v: ProductVariant) => v.isActive && v.stock > 0)
-          if (firstVariant) {
-            setSelectedVariant(firstVariant)
-            setSelectedAttributes(firstVariant.attributes)
-            // Update size/color based on variant attributes
-            if (firstVariant.attributes.Größe || firstVariant.attributes.Size) {
-              setSelectedSize(firstVariant.attributes.Größe || firstVariant.attributes.Size)
-            }
-            if (firstVariant.attributes.Farbe || firstVariant.attributes.Color) {
-              setSelectedColor(firstVariant.attributes.Farbe || firstVariant.attributes.Color)
-            }
-          }
-        }
+        // Don't auto-select color or variant - show main product images by default
+        // User must explicitly choose a color to see color-specific images
       }
     } catch (error) {
       console.error('Error fetching product:', error)
@@ -166,6 +151,19 @@ export default function ProductDetail() {
 
   // Handle attribute selection (size, color, etc.)
   const handleAttributeChange = (attributeName: string, value: string) => {
+    const isColorAttr = attributeName.toLowerCase() === 'farbe' || attributeName.toLowerCase() === 'color' || attributeName.toLowerCase() === 'colour'
+    
+    // Toggle: if same color is clicked again, deselect it and show main images
+    if (isColorAttr && selectedAttributes[attributeName] === value) {
+      const newAttributes = { ...selectedAttributes }
+      delete newAttributes[attributeName]
+      setSelectedAttributes(newAttributes)
+      setSelectedColor('')
+      setSelectedVariant(null)
+      setSelectedImage(0)
+      return
+    }
+
     const newAttributes = { ...selectedAttributes, [attributeName]: value }
     setSelectedAttributes(newAttributes)
     
@@ -173,17 +171,25 @@ export default function ProductDetail() {
     if (attributeName === 'Größe' || attributeName === 'Size') {
       setSelectedSize(value)
     }
-    if (attributeName === 'Farbe' || attributeName === 'Color') {
+    if (isColorAttr) {
       setSelectedColor(value)
     }
     
     // Find matching variant
     const variant = findVariantByAttributes(newAttributes)
-    setSelectedVariant(variant || null)
     
-    // Update selected image if variant has specific images
-    if (variant?.images && variant.images.length > 0) {
-      setSelectedImage(0) // Reset to first image of variant
+    // Only update images if a color was just selected
+    // Selecting fit or size alone should NOT change the displayed images
+    if (isColorAttr) {
+      setSelectedVariant(variant || null)
+      setSelectedImage(0)
+    } else {
+      // For non-color attributes (fit, size), update variant for stock/price info
+      // but only if a color is already selected - don't change images
+      if (selectedColor) {
+        setSelectedVariant(variant || null)
+      }
+      // If no color selected yet, don't set a variant (keep showing main images)
     }
   }
 
@@ -206,8 +212,9 @@ export default function ProductDetail() {
   }
 
   // Get current images (variant images or product images)
+  // Only show variant images if a color has been explicitly selected
   const getCurrentImages = () => {
-    if (selectedVariant?.images && selectedVariant.images.length > 0) {
+    if (selectedColor && selectedVariant?.images && selectedVariant.images.length > 0) {
       return selectedVariant.images
     }
     return product?.images || []
@@ -387,20 +394,20 @@ export default function ProductDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-6">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Breadcrumb */}
-        <nav className="mb-8">
-          <ol className="flex items-center space-x-2 text-sm text-gray-500">
-            <li><Link href="/" className="hover:text-primary-600">{t.productDetail.breadcrumb.home}</Link></li>
+        <nav className="mb-4 sm:mb-8">
+          <ol className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 flex-wrap">
+            <li><Link href="/" className="hover:text-gray-900">{t.productDetail.breadcrumb.home}</Link></li>
             <li>/</li>
-            <li><Link href="/products" className="hover:text-primary-600">{t.productDetail.breadcrumb.products}</Link></li>
+            <li><Link href="/products" className="hover:text-gray-900">{t.productDetail.breadcrumb.products}</Link></li>
             <li>/</li>
-            <li className="text-gray-900">{lang === 'de' ? product.name : product.nameEn}</li>
+            <li className="text-gray-900 truncate max-w-[150px] sm:max-w-none">{lang === 'de' ? product.name : product.nameEn}</li>
           </ol>
         </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
           {/* Product Images */}
           <div className="space-y-4">
             {/* Main image with arrow navigation */}
@@ -462,54 +469,6 @@ export default function ProductDetail() {
                 ))}
               </div>
             )}
-
-            {/* Color swatches with images - show all color variants */}
-            {product.hasVariants && product.variants && (() => {
-              // Get unique colors with their first image
-              const colorMap = new Map<string, { image: string; attributeKey: string }>()
-              product.variants.forEach(v => {
-                const colorKey = Object.keys(v.attributes).find(k =>
-                  k.toLowerCase() === 'farbe' || k.toLowerCase() === 'color' || k.toLowerCase() === 'colour'
-                )
-                if (colorKey && v.attributes[colorKey] && v.images?.length > 0) {
-                  const colorVal = v.attributes[colorKey]
-                  if (!colorMap.has(colorVal)) {
-                    colorMap.set(colorVal, { image: v.images[0], attributeKey: colorKey })
-                  }
-                }
-              })
-
-              if (colorMap.size === 0) return null
-
-              const currentColorKey = Object.keys(selectedAttributes).find(k =>
-                k.toLowerCase() === 'farbe' || k.toLowerCase() === 'color' || k.toLowerCase() === 'colour'
-              )
-              const currentColor = currentColorKey ? selectedAttributes[currentColorKey] : ''
-
-              return (
-                <div>
-                  <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">
-                    {lang === 'de' ? 'Farbe wählen' : 'Select color'}
-                  </p>
-                  <div className="flex gap-2 flex-wrap">
-                    {Array.from(colorMap.entries()).map(([colorVal, { image, attributeKey }]) => (
-                      <button
-                        key={colorVal}
-                        onClick={() => handleAttributeChange(attributeKey, colorVal)}
-                        title={colorVal}
-                        className={`w-14 h-14 rounded overflow-hidden border-2 transition-all ${
-                          currentColor === colorVal
-                            ? 'border-gray-900 scale-105'
-                            : 'border-gray-200 hover:border-gray-500'
-                        }`}
-                      >
-                        <img src={image} alt={colorVal} className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )
-            })()}
           </div>
 
           {/* Product Info */}

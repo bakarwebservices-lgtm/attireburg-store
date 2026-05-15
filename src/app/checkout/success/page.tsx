@@ -132,7 +132,7 @@ function CheckoutSuccessContent() {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 py-16">
-        <div className="max-w-3xl mx-auto px-6 text-center">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-8">
             <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -155,7 +155,7 @@ function CheckoutSuccessContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-16">
-      <div className="max-w-3xl mx-auto px-6 text-center">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
         {/* Success Icon */}
         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8">
           <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,10 +164,10 @@ function CheckoutSuccessContent() {
         </div>
 
         {/* Success Message */}
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
           Vielen Dank für Ihre Bestellung!
         </h1>
-        <p className="text-xl text-gray-600 mb-8">
+        <p className="text-lg sm:text-xl text-gray-600 mb-8">
           Ihre Bestellung wurde erfolgreich aufgegeben und wird bearbeitet.
         </p>
 
@@ -218,7 +218,7 @@ function CheckoutSuccessContent() {
           <h2 className="text-2xl font-semibold text-primary-800 mb-4">
             Was passiert als Nächstes?
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
             <div className="flex items-start space-x-3">
               <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                 1

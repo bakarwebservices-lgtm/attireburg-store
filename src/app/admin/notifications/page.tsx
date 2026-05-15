@@ -162,14 +162,14 @@ export default function AdminNotificationDashboard() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{t.adminExtended.notifications.title}</h1>
             <p className="text-gray-600 mt-1">
               {t.adminExtended.notifications.subtitle}
             </p>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={handleTestNotification}
               className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -190,7 +190,7 @@ export default function AdminNotificationDashboard() {
 
         {/* Analytics Cards */}
         {analytics && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">

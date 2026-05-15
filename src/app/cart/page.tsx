@@ -27,7 +27,7 @@ export default function Cart() {
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 py-12">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center">
             <div className="mb-8">
               <svg className="w-24 h-24 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,8 +54,8 @@ export default function Cart() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">
           {t.cart.title} ({totalItems} {t.cart.items})
         </h1>
 
@@ -71,8 +71,8 @@ export default function Cart() {
                       Sofort lieferbar
                     </h3>
                     {items.filter(item => !item.isBackorder).map((item) => (
-                    <div key={item.id} className="flex items-center space-x-4 py-4 border-b border-gray-200 last:border-b-0">
-                      <div className="flex-shrink-0 w-20 h-20">
+                    <div key={item.id} className="flex items-start space-x-3 py-4 border-b border-gray-200 last:border-b-0">
+                      <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20">
                         {item.image ? (
                           <img
                             src={item.image}
@@ -174,8 +174,8 @@ export default function Cart() {
                       </span>
                     </div>
                     {items.filter(item => item.isBackorder).map((item) => (
-                      <div key={item.id} className="flex items-center space-x-4 py-4 border-b border-gray-200 last:border-b-0 bg-orange-50 rounded-lg px-4">
-                        <div className="flex-shrink-0 w-20 h-20">
+                      <div key={item.id} className="flex items-start space-x-3 py-4 border-b border-gray-200 last:border-b-0 bg-orange-50 rounded-lg px-3 sm:px-4">
+                        <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20">
                           {item.image ? (
                             <img
                               src={item.image}
@@ -284,7 +284,7 @@ export default function Cart() {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
+            <div className="bg-white rounded-lg shadow-sm p-6 lg:sticky lg:top-8">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">
                 {t.cart.summary}
               </h2>

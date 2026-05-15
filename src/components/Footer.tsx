@@ -30,9 +30,9 @@ export default function Footer() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder={t.footer.newsletter.placeholder}
-                className="flex-1 md:w-64 px-4 py-2.5 bg-gray-800 border border-gray-700 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400"
+                className="flex-1 min-w-0 md:w-64 px-4 py-2.5 bg-gray-800 border border-gray-700 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400"
               />
-              <button type="submit" className="bg-white text-gray-900 px-5 py-2.5 text-sm font-semibold hover:bg-gray-100 transition-colors whitespace-nowrap">
+              <button type="submit" className="shrink-0 bg-white text-gray-900 px-4 py-2.5 text-sm font-semibold hover:bg-gray-100 transition-colors whitespace-nowrap">
                 {t.footer.newsletter.button}
               </button>
             </form>

@@ -202,7 +202,7 @@ export default function AdminOrders() {
             filteredOrders.map((order) => (
               <div key={order.id} className="bg-white rounded-lg shadow-sm">
                 <div className="p-6 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center space-x-4">
                         <div>
@@ -218,7 +218,7 @@ export default function AdminOrders() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-2 sm:mt-0">
                       <select
                         value={order.status}
                         onChange={(e) => handleStatusChange(order.id, e.target.value)}

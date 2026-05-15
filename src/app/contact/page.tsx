@@ -46,9 +46,9 @@ export default function Contact() {
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <div className="bg-primary-800 py-16">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">
               Kontakt
             </h1>
             <p className="text-xl text-primary-200 max-w-3xl mx-auto">
@@ -59,8 +59,8 @@ export default function Contact() {
       </div>
 
       <div className="py-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
             {/* Contact Form */}
             <div className="bg-white rounded-lg shadow-sm p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">

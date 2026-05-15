@@ -255,7 +255,7 @@ export default function MediaLibrary() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">
               Mediathek
@@ -264,16 +264,16 @@ export default function MediaLibrary() {
               Verwalten Sie Ihre Bilder, Videos und Dokumente
             </p>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setShowFolderModal(true)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
             >
               Neuer Ordner
             </button>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
             >
               Dateien hochladen
             </button>
@@ -282,8 +282,8 @@ export default function MediaLibrary() {
 
         {/* Toolbar */}
         <div className="bg-white rounded-lg shadow-sm p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
               {/* Search */}
               <div className="relative">
                 <input
@@ -291,7 +291,7 @@ export default function MediaLibrary() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Dateien suchen..."
-                  className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
+                  className="w-full sm:w-56 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
                 />
                 <svg className="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -302,7 +302,7 @@ export default function MediaLibrary() {
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as any)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 text-sm"
               >
                 <option value="all">Alle Dateien</option>
                 <option value="image">Bilder</option>
@@ -311,7 +311,7 @@ export default function MediaLibrary() {
               </select>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-3">
               {/* Selected Actions */}
               {selectedFiles.length > 0 && (
                 <div className="flex items-center space-x-2">

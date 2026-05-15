@@ -118,7 +118,7 @@ export default function AdminAnalytics() {
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">
                 {t.adminExtended.analytics.title}

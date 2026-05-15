@@ -225,35 +225,35 @@ export default function NewProduct() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Neues Produkt hinzufügen</h1>
-            <p className="text-gray-600 mt-1">Erstellen Sie ein neues Produkt für Ihren Shop</p>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Neues Produkt hinzufügen</h1>
+            <p className="text-gray-600 mt-1 text-sm">Erstellen Sie ein neues Produkt für Ihren Shop</p>
           </div>
-          <div className="flex items-center space-x-3">
-            <button onClick={() => router.push('/admin/products')} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => router.push('/admin/products')} className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm">
               Abbrechen
             </button>
-            <button onClick={() => handleSave(false)} disabled={loading} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-              Als Entwurf speichern
+            <button onClick={() => handleSave(false)} disabled={loading} className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 text-sm">
+              Entwurf
             </button>
-            <button onClick={() => handleSave(true)} disabled={loading} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+            <button onClick={() => handleSave(true)} disabled={loading} className="px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 text-sm">
               {loading ? 'Speichern...' : 'Veröffentlichen'}
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
+          {/* Sidebar - horizontal tabs on mobile */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <nav className="space-y-1">
+            <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4">
+              <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0">
                 {tabs.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      activeTab === tab.id ? 'bg-primary-100 text-primary-700' : 'text-gray-600 hover:bg-gray-100'
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap lg:w-full ${
+                      activeTab === tab.id ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
                     <span>{tab.icon}</span>

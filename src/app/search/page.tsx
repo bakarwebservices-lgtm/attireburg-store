@@ -88,14 +88,14 @@ function SearchContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Search Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Produktsuche</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">Produktsuche</h1>
           
           {/* Search Form */}
           <form onSubmit={handleSearch} className="mb-6">
-            <div className="flex space-x-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:space-x-4">
               <div className="flex-1 relative">
                 <input
                   type="text"
@@ -112,7 +112,7 @@ function SearchContent() {
               </div>
               <button
                 type="submit"
-                className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors"
+                className="w-full sm:w-auto px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors"
               >
                 Suchen
               </button>
@@ -121,7 +121,7 @@ function SearchContent() {
 
           {/* Results Info */}
           {searchQuery && (
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <p className="text-gray-600">
                 {loading ? 'Suche läuft...' : `${totalResults} Ergebnisse für "${searchQuery}"`}
               </p>

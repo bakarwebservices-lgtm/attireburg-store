@@ -209,7 +209,7 @@ export default function AdminUsers() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -412,14 +412,14 @@ export default function AdminUsers() {
                         </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
                           <button
                             onClick={() => handleToggleAdmin(user.id)}
-                            className="text-purple-600 hover:text-purple-900"
+                            className="text-purple-600 hover:text-purple-900 text-left"
                           >
-                            {user.isAdmin ? 'Admin entfernen' : 'Admin machen'}
+                            {user.isAdmin ? 'Admin ✕' : 'Admin ✓'}
                           </button>
-                          <button className="text-primary-600 hover:text-primary-900">
+                          <button className="text-primary-600 hover:text-primary-900 text-left">
                             Bearbeiten
                           </button>
                         </div>

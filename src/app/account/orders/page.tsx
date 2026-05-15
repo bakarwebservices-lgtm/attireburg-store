@@ -164,7 +164,7 @@ export default function UserOrders() {
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">
                 {t.dashboard.orders}
@@ -173,22 +173,18 @@ export default function UserOrders() {
                 Verwalten Sie Ihre Bestellungen und verfolgen Sie den Status
               </p>
             </div>
-            
-            {/* Filter */}
-            <div className="flex items-center space-x-4">
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-              >
-                <option value="all">Alle Bestellungen</option>
-                <option value="PENDING">In Bearbeitung</option>
-                <option value="PROCESSING">Wird verarbeitet</option>
-                <option value="SHIPPED">Versandt</option>
-                <option value="DELIVERED">Zugestellt</option>
-                <option value="CANCELLED">Storniert</option>
-              </select>
-            </div>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent text-sm"
+            >
+              <option value="all">Alle Bestellungen</option>
+              <option value="PENDING">In Bearbeitung</option>
+              <option value="PROCESSING">Wird verarbeitet</option>
+              <option value="SHIPPED">Versandt</option>
+              <option value="DELIVERED">Zugestellt</option>
+              <option value="CANCELLED">Storniert</option>
+            </select>
           </div>
         </div>
 
@@ -214,7 +210,7 @@ export default function UserOrders() {
             filteredOrders.map((order) => (
               <div key={order.id} className="bg-white rounded-lg shadow-sm">
                 <div className="p-6 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center space-x-4">
                         <div>
@@ -227,7 +223,7 @@ export default function UserOrders() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center gap-3">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
                         {t.dashboard.orderStatuses[order.status as keyof typeof t.dashboard.orderStatuses]}
                       </span>
@@ -241,8 +237,8 @@ export default function UserOrders() {
                 <div className="p-6">
                   <div className="space-y-4">
                     {order.items.map((item) => (
-                      <div key={item.id} className="flex items-center space-x-4">
-                        <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <div key={item.id} className="flex items-start space-x-3 py-4 border-b border-gray-200 last:border-b-0">
+                        <div className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16">
                           {item.image ? (
                             <img
                               src={item.image}
@@ -250,21 +246,23 @@ export default function UserOrders() {
                               className="w-full h-full object-cover rounded-lg"
                             />
                           ) : (
-                            <span className="text-gray-400 text-xs">Kein Bild</span>
+                            <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
+                              <span className="text-gray-400 text-xs">Kein Bild</span>
+                            </div>
                           )}
                         </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-gray-900 text-sm sm:text-base truncate">
                             {lang === 'de' ? item.name : item.nameEn}
                           </h4>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-xs sm:text-sm text-gray-600 flex flex-wrap gap-x-3 mt-0.5">
                             {item.size && <span>Größe: {item.size}</span>}
-                            {item.color && <span className="ml-4">Farbe: {item.color}</span>}
-                            <span className="ml-4">Anzahl: {item.quantity}</span>
+                            {item.color && <span>Farbe: {item.color}</span>}
+                            <span>Anzahl: {item.quantity}</span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-medium text-gray-900">
+                        <div className="text-right shrink-0">
+                          <p className="font-medium text-gray-900 text-sm sm:text-base">
                             {formatPrice(item.price * item.quantity)}
                           </p>
                         </div>
@@ -272,7 +270,7 @@ export default function UserOrders() {
                     ))}
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between">
+                  <div className="mt-6 pt-4 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center space-x-4">
                       <Link
                         href={`/account/orders/${order.id}`}

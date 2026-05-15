@@ -225,7 +225,7 @@ export default function AdminProducts() {
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">
                 {t.admin.products}
@@ -234,22 +234,22 @@ export default function AdminProducts() {
                 Verwalten Sie Ihr Produktsortiment
               </p>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
               <Link
                 href="/admin/products/import"
-                className="border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors"
+                className="border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-3 py-2 rounded-lg transition-colors text-sm"
               >
                 Import/Export
               </Link>
               <Link
                 href="/admin/products/bulk"
-                className="border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors"
+                className="border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-3 py-2 rounded-lg transition-colors text-sm"
               >
-                Bulk-Operationen
+                Bulk
               </Link>
               <Link
                 href="/admin/products/new"
-                className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+                className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
               >
                 {t.admin.addProduct}
               </Link>
