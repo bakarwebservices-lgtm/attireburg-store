@@ -34,9 +34,9 @@ export default function CustomizePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-gray-900 py-16 px-6 text-center">
+      <div className="bg-brand-800 py-16 px-6 text-center">
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{t.title}</h1>
-        <p className="text-gray-300 text-lg max-w-xl mx-auto">{t.subtitle}</p>
+        <p className="text-brand-200 text-lg max-w-xl mx-auto">{t.subtitle}</p>
       </div>
 
       <div className="max-w-2xl mx-auto px-6 py-16">
@@ -48,9 +48,9 @@ export default function CustomizePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <button
                 onClick={() => { setClientType('individual'); setStep('details') }}
-                className="group bg-white border-2 border-gray-200 hover:border-gray-900 rounded-xl p-8 text-left transition-all hover:shadow-lg"
+                className="group bg-white border-2 border-gray-200 hover:border-primary-800 rounded-xl p-8 text-left transition-all hover:shadow-lg"
               >
-                <div className="w-14 h-14 bg-gray-100 group-hover:bg-gray-900 rounded-full flex items-center justify-center mb-5 transition-colors">
+                <div className="w-14 h-14 bg-gray-100 group-hover:bg-primary-800 rounded-full flex items-center justify-center mb-5 transition-colors">
                   <svg className="w-7 h-7 text-gray-700 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
@@ -61,9 +61,9 @@ export default function CustomizePage() {
 
               <button
                 onClick={() => { setClientType('business'); setStep('details') }}
-                className="group bg-white border-2 border-gray-200 hover:border-gray-900 rounded-xl p-8 text-left transition-all hover:shadow-lg"
+                className="group bg-white border-2 border-gray-200 hover:border-primary-800 rounded-xl p-8 text-left transition-all hover:shadow-lg"
               >
-                <div className="w-14 h-14 bg-gray-100 group-hover:bg-gray-900 rounded-full flex items-center justify-center mb-5 transition-colors">
+                <div className="w-14 h-14 bg-gray-100 group-hover:bg-primary-800 rounded-full flex items-center justify-center mb-5 transition-colors">
                   <svg className="w-7 h-7 text-gray-700 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
@@ -176,7 +176,7 @@ export default function CustomizePage() {
 
               <button
                 type="submit" disabled={submitting}
-                className="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-60 text-white font-semibold py-4 transition-colors text-sm"
+                className="w-full bg-primary-800 hover:bg-primary-700 disabled:opacity-60 text-white font-semibold py-4 transition-colors text-sm"
               >
                 {submitting ? t.submitting : t.submit}
               </button>
@@ -197,10 +197,10 @@ export default function CustomizePage() {
               {t.successSub} <span className="text-gray-900 font-medium">{form.email}</span>.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/" className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-3 transition-colors text-sm">
+              <Link href="/" className="bg-primary-800 hover:bg-primary-700 text-white font-semibold px-8 py-3 transition-colors text-sm">
                 {t.backToHome}
               </Link>
-              <Link href="/products" className="border border-gray-900 text-gray-900 hover:bg-gray-50 font-semibold px-8 py-3 transition-colors text-sm">
+              <Link href="/products" className="border border-primary-800 text-primary-800 hover:bg-primary-50 font-semibold px-8 py-3 transition-colors text-sm">
                 {t.viewProducts}
               </Link>
             </div>

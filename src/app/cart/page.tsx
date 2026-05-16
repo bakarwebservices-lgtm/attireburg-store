@@ -349,7 +349,7 @@ export default function Cart() {
                 {user ? (
                   <Link
                     href="/checkout"
-                    className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors text-center block"
+                    className="w-full bg-brand-800 hover:bg-brand-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors text-center block"
                   >
                     {t.cart.checkout}
                   </Link>
@@ -357,7 +357,7 @@ export default function Cart() {
                   <div className="space-y-2">
                     <Link
                       href="/login?redirect=/checkout"
-                      className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors text-center block"
+                      className="w-full bg-brand-800 hover:bg-brand-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors text-center block"
                     >
                       {t.cart.loginToCheckout}
                     </Link>

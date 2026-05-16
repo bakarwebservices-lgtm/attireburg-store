@@ -36,7 +36,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
       {/* Announcement bar */}
-      <div className="bg-gray-900 text-white text-xs py-2 overflow-hidden">
+      <div className="bg-brand-800 text-white text-xs py-2 overflow-hidden">
         <div className="animate-marquee flex">
           {marqueeItems.map((text, i) => (
             <span key={i} className="px-10 whitespace-nowrap">
@@ -66,8 +66,8 @@ export default function Navbar() {
           </button>
 
           {/* Center — logo */}
-          <Link href="/" className="text-xl font-bold tracking-tight text-gray-900 hover:text-gray-600 transition-colors mx-auto md:absolute md:left-1/2 md:-translate-x-1/2">
-            ATTIREBURG
+          <Link href="/" className="mx-auto md:absolute md:left-1/2 md:-translate-x-1/2">
+            <img src="/logo.png" alt="Attireburg" className="h-9 w-auto" />
           </Link>
 
           {/* Right — icons */}
@@ -96,7 +96,7 @@ export default function Navbar() {
               </svg>
               <ClientOnly>
                 {totalItems > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-gray-900 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-1.5 bg-brand-800 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
                     {totalItems}
                   </span>
                 )}

@@ -156,7 +156,7 @@ export default function Home() {
       </section>
 
       {/* Print on Demand banner */}
-      <section className="bg-gray-900 text-white">
+      <section style={{ backgroundColor: '#1a1214' }} className="text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 flex flex-col md:flex-row items-center justify-between gap-8">
           <div>
             <p className="text-xs tracking-[0.2em] uppercase text-gray-400 mb-2">
@@ -193,7 +193,7 @@ export default function Home() {
                 <div className="flex text-yellow-400 text-sm mb-3">★★★★★</div>
                 <p className="text-sm text-gray-700 leading-relaxed mb-5">{r.text}</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-gray-900 text-white rounded-full flex items-center justify-center text-xs font-bold">{r.initials}</div>
+                  <div className="w-9 h-9 bg-brand-800 text-white rounded-full flex items-center justify-center text-xs font-bold">{r.initials}</div>
                   <div>
                     <p className="text-sm font-semibold text-gray-900">{r.name}</p>
                     <p className="text-xs text-gray-400">{r.city}</p>

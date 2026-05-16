@@ -11,14 +11,14 @@ export default function Footer() {
   const [subscribed, setSubscribed] = useState(false)
 
   return (
-    <footer className="bg-gray-900 text-gray-300 text-sm">
+    <footer style={{ backgroundColor: '#1a1214' }} className="text-gray-400 text-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14">
 
         {/* Newsletter */}
-        <div className="border-b border-gray-700 pb-10 mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="border-b border-primary-700 pb-10 mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <p className="text-white font-semibold text-base mb-1">{t.footer.newsletter.title}</p>
-            <p className="text-gray-400 text-xs">{t.footer.newsletter.subtitle}</p>
+            <p className="text-gray-500 text-xs">{t.footer.newsletter.subtitle}</p>
           </div>
           {subscribed ? (
             <p className="text-green-400 text-sm font-medium">✓ {lang === 'de' ? 'Danke! Sie sind angemeldet.' : 'Thanks! You are subscribed.'}</p>
@@ -30,9 +30,9 @@ export default function Footer() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder={t.footer.newsletter.placeholder}
-                className="flex-1 min-w-0 md:w-64 px-4 py-2.5 bg-gray-800 border border-gray-700 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400"
+                className="flex-1 min-w-0 md:w-64 px-4 py-2.5 bg-primary-800 border border-primary-700 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-gray-500"
               />
-              <button type="submit" className="shrink-0 bg-white text-gray-900 px-4 py-2.5 text-sm font-semibold hover:bg-gray-100 transition-colors whitespace-nowrap">
+              <button type="submit" className="shrink-0 bg-brand-800 hover:bg-brand-700 text-white px-4 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap">
                 {t.footer.newsletter.button}
               </button>
             </form>
@@ -43,7 +43,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
           <div>
             <p className="text-white font-semibold mb-4 tracking-wide">ATTIREBURG</p>
-            <p className="text-gray-400 text-xs leading-relaxed">{t.footer.description}</p>
+            <p className="text-gray-500 text-xs leading-relaxed">{t.footer.description}</p>
           </div>
           <div>
             <p className="text-white font-semibold mb-4">{lang === 'de' ? 'Shop' : 'Shop'}</p>
@@ -75,8 +75,8 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-gray-700 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-gray-500 text-xs">© 2026 Attireburg. {t.footer.rights}</p>
+        <div className="border-t border-primary-700 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-gray-600 text-xs">© 2026 Attireburg. {t.footer.rights}</p>
           <div className="flex items-center gap-3">
             <svg className="h-6 w-auto opacity-60" viewBox="0 0 48 16" fill="none">
               <rect width="48" height="16" rx="2" fill="#1A1F71"/>

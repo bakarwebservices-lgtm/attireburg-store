@@ -81,7 +81,7 @@ class EmailService {
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #8B4513; color: white; padding: 20px; text-align: center; }
+          .header { background: #47131e; color: white; padding: 20px; text-align: center; }
           .content { padding: 20px; background: #f9f9f9; }
           .order-details { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
           table { width: 100%; border-collapse: collapse; }
@@ -201,11 +201,11 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #8B4513; color: white; padding: 20px; text-align: center; }
+          .header { background: #47131e; color: white; padding: 20px; text-align: center; }
           .content { padding: 20px; background: #f9f9f9; }
           .cta-button { 
             display: inline-block; 
-            background: #8B4513; 
+            background: #47131e; 
             color: white; 
             padding: 12px 24px; 
             text-decoration: none; 

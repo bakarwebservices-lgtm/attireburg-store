@@ -523,7 +523,7 @@ export default function ProductDetail() {
                     </span>
                   </>
                 ) : (
-                  <span className="text-3xl font-bold text-primary-700">
+                  <span className="text-3xl font-bold text-gray-900">
                     {formatPriceWithVAT(getCurrentPrice(), lang).price}
                   </span>
                 )}
@@ -742,7 +742,7 @@ export default function ProductDetail() {
                   <button
                     onClick={handleAddToCart}
                     disabled={product.hasVariants && !selectedVariant}
-                    className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors"
+                    className="w-full bg-brand-800 hover:bg-brand-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors"
                   >
                     {product.hasVariants && !selectedVariant
                       ? 'Bitte Variante auswählen'
