@@ -6,6 +6,7 @@ import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
 import DashboardLayout from '@/components/DashboardLayout'
 import ImageUpload from '@/components/admin/ImageUpload'
+import RichTextarea from '@/components/admin/RichTextarea'
 
 interface ColorVariant {
   id: string
@@ -36,7 +37,7 @@ interface ProductFormData {
 }
 
 const DEFAULT_FITS = ['Slim Fit', 'Loose Fit']
-const DEFAULT_SIZES = ['XS', 'S', 'M', 'L', 'XL']
+const DEFAULT_SIZES = ['S', 'M', 'L', 'XL', '2XL']
 
 export default function NewProduct() {
   const { lang } = useLanguage()
@@ -298,32 +299,42 @@ export default function NewProduct() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Beschreibung (Deutsch)</label>
-                      <textarea value={formData.description} onChange={e => handleInputChange('description', e.target.value)}
-                        rows={5} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
-                        placeholder="Detaillierte Produktbeschreibung..." />
+                      <RichTextarea
+                        value={formData.description}
+                        onChange={v => handleInputChange('description', v)}
+                        rows={5}
+                        placeholder="Detaillierte Produktbeschreibung..."
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Beschreibung (Englisch)</label>
-                      <textarea value={formData.descriptionEn} onChange={e => handleInputChange('descriptionEn', e.target.value)}
-                        rows={5} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600"
-                        placeholder="Detailed product description..." />
+                      <RichTextarea
+                        value={formData.descriptionEn}
+                        onChange={v => handleInputChange('descriptionEn', v)}
+                        rows={5}
+                        placeholder="Detailed product description..."
+                      />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Preis (€) *</label>
-                      <input type="number" step="0.01" value={formData.price} onChange={e => handleInputChange('price', parseFloat(e.target.value) || 0)}
+                      <input type="number" step="0.01" min="0"
+                        value={formData.price || ''}
+                        onChange={e => handleInputChange('price', parseFloat(e.target.value) || 0)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600" placeholder="99.99" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Angebotspreis (€)</label>
-                      <input type="number" step="0.01" value={formData.salePrice || ''} onChange={e => handleInputChange('salePrice', e.target.value ? parseFloat(e.target.value) : undefined)}
+                      <input type="number" step="0.01" min="0" value={formData.salePrice || ''} onChange={e => handleInputChange('salePrice', e.target.value ? parseFloat(e.target.value) : undefined)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600" placeholder="79.99" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Lagerbestand pro Variante</label>
-                      <input type="number" value={formData.stock} onChange={e => handleInputChange('stock', parseInt(e.target.value) || 0)}
+                      <input type="number" min="0"
+                        value={formData.stock || ''}
+                        onChange={e => handleInputChange('stock', parseInt(e.target.value) || 0)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600" placeholder="10" />
                     </div>
                   </div>

@@ -575,8 +575,11 @@ export default function ProductDetail() {
                       {(attributeName === 'fit' || attributeName === 'Passform' || attributeName === 'Größe' || attributeName === 'size') && (
                         <button
                           onClick={() => setShowSizeChart(true)}
-                          className="text-xs text-gray-500 underline hover:text-gray-900 transition-colors"
+                          className="flex items-center gap-1 text-xs font-medium text-brand-800 hover:text-brand-600 border border-brand-800 hover:border-brand-600 px-2 py-1 rounded transition-colors"
                         >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6h18M3 12h18M3 18h18" />
+                          </svg>
                           {lang === 'de' ? 'Größentabelle' : 'Size Chart'}
                         </button>
                       )}
@@ -593,7 +596,7 @@ export default function ProductDetail() {
                             key={value}
                             onClick={() => handleAttributeChange(attributeName, value)}
                             disabled={!isAvailable}
-                            className={`px-4 py-2 border text-sm font-medium transition-colors relative ${
+                            className={`px-4 py-2 border text-sm font-medium transition-colors ${
                               isSelected
                                 ? 'border-gray-900 bg-gray-900 text-white'
                                 : isAvailable
@@ -602,11 +605,6 @@ export default function ProductDetail() {
                             }`}
                           >
                             {value}
-                            {isAvailable && testVariant && testVariant.stock <= 3 && testVariant.stock > 0 && (
-                              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                                {testVariant.stock}
-                              </span>
-                            )}
                           </button>
                         )
                       })}
@@ -614,51 +612,23 @@ export default function ProductDetail() {
                   </div>
                 ))}
                 
-                {/* Selected Variant Info */}
+                {/* Selected Variant Stock Status */}
                 {selectedVariant && (
-                  <div className={`border rounded-lg p-3 ${
-                    selectedVariant.stock > 0 
-                      ? 'bg-blue-50 border-blue-200' 
-                      : 'bg-red-50 border-red-200'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium ${
-                          selectedVariant.stock > 0 ? 'text-blue-900' : 'text-red-900'
-                        }`}>
-                          Ausgewählte Variante: {Object.entries(selectedVariant.attributes).map(([k, v]) => `${k}: ${v}`).join(' • ')}
-                        </p>
-                        <div className="flex items-center space-x-4 mt-1">
-                          <p className={`text-xs ${
-                            selectedVariant.stock > 0 ? 'text-blue-700' : 'text-red-700'
-                          }`}>
-                            SKU: {selectedVariant.sku}
-                          </p>
-                          <div className="flex items-center space-x-1">
-                            <div className={`w-2 h-2 rounded-full ${
-                              selectedVariant.stock > 0 ? 'bg-green-500' : 'bg-red-500'
-                            }`}></div>
-                            <span className={`text-xs font-medium ${
-                              selectedVariant.stock > 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {selectedVariant.stock > 0 
-                                ? `${selectedVariant.stock} verfügbar`
-                                : 'Nicht verfügbar'
-                              }
-                            </span>
-                          </div>
-                        </div>
-                        {selectedVariant.stock === 0 && restockDate && (
-                          <p className="text-xs text-gray-600 mt-1">
-                            Voraussichtlich wieder verfügbar: {new Intl.DateTimeFormat('de-DE', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            }).format(restockDate)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${selectedVariant.stock > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span className={`text-sm font-medium ${selectedVariant.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {selectedVariant.stock > 0
+                        ? selectedVariant.stock <= 5
+                          ? `${lang === 'de' ? 'Nur noch' : 'Only'} ${selectedVariant.stock} ${lang === 'de' ? 'verfügbar' : 'left'}`
+                          : lang === 'de' ? 'Auf Lager' : 'In stock'
+                        : lang === 'de' ? 'Nicht verfügbar' : 'Out of stock'
+                      }
+                    </span>
+                    {selectedVariant.stock === 0 && restockDate && (
+                      <span className="text-xs text-gray-500">
+                        · {lang === 'de' ? 'Wieder verfügbar' : 'Back'}: {new Intl.DateTimeFormat(lang === 'de' ? 'de-DE' : 'en-GB', { month: 'long', day: 'numeric' }).format(restockDate)}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -884,11 +854,11 @@ export default function ProductDetail() {
                     </thead>
                     <tbody>
                       {[
-                        { size: 'XS', chest: '84–88', waist: '70–74', length: '66' },
-                        { size: 'S',  chest: '88–92', waist: '74–78', length: '68' },
-                        { size: 'M',  chest: '92–96', waist: '78–82', length: '70' },
-                        { size: 'L',  chest: '96–100', waist: '82–86', length: '72' },
-                        { size: 'XL', chest: '100–104', waist: '86–90', length: '74' },
+                        { size: 'S',   chest: '88–92',   waist: '74–78',   length: '68' },
+                        { size: 'M',   chest: '92–96',   waist: '78–82',   length: '70' },
+                        { size: 'L',   chest: '96–100',  waist: '82–86',   length: '72' },
+                        { size: 'XL',  chest: '100–104', waist: '86–90',   length: '74' },
+                        { size: '2XL', chest: '104–110', waist: '90–96',   length: '76' },
                       ].map(row => (
                         <tr key={row.size} className="hover:bg-gray-50">
                           <td className="border border-gray-200 px-3 py-2 font-medium">{row.size}</td>
@@ -914,11 +884,11 @@ export default function ProductDetail() {
                     </thead>
                     <tbody>
                       {[
-                        { size: 'XS', chest: '96–100', waist: '88–92', length: '68' },
-                        { size: 'S',  chest: '100–104', waist: '92–96', length: '70' },
-                        { size: 'M',  chest: '104–108', waist: '96–100', length: '72' },
-                        { size: 'L',  chest: '108–112', waist: '100–104', length: '74' },
-                        { size: 'XL', chest: '112–116', waist: '104–108', length: '76' },
+                        { size: 'S',   chest: '96–100',  waist: '88–92',   length: '70' },
+                        { size: 'M',   chest: '100–104', waist: '92–96',   length: '72' },
+                        { size: 'L',   chest: '104–110', waist: '96–102',  length: '74' },
+                        { size: 'XL',  chest: '110–116', waist: '102–108', length: '76' },
+                        { size: '2XL', chest: '116–122', waist: '108–114', length: '78' },
                       ].map(row => (
                         <tr key={row.size} className="hover:bg-gray-50">
                           <td className="border border-gray-200 px-3 py-2 font-medium">{row.size}</td>

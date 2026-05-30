@@ -6,6 +6,7 @@ import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
 import DashboardLayout from '@/components/DashboardLayout'
 import ImageUpload from '@/components/admin/ImageUpload'
+import RichTextarea from '@/components/admin/RichTextarea'
 
 interface ProductVariant {
   id?: string
@@ -426,22 +427,20 @@ export default function EditProduct() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Beschreibung (Deutsch)
                       </label>
-                      <textarea
+                      <RichTextarea
                         value={formData.description || ''}
-                        onChange={(e) => handleInputChange('description', e.target.value)}
+                        onChange={(v) => handleInputChange('description', v)}
                         rows={4}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Beschreibung (Englisch)
                       </label>
-                      <textarea
+                      <RichTextarea
                         value={formData.descriptionEn || ''}
-                        onChange={(e) => handleInputChange('descriptionEn', e.target.value)}
+                        onChange={(v) => handleInputChange('descriptionEn', v)}
                         rows={4}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
                       />
                     </div>
                   </div>
