@@ -2,7 +2,6 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useLanguage } from '@/components/ClientLayout'
-import { translations } from '@/lib/translations'
 
 interface Product {
   id: string
@@ -15,17 +14,42 @@ interface Product {
   category: string
 }
 
+interface SiteSettings {
+  storeName: string
+  heroTitleDe: string
+  heroTitleEn: string
+  heroSubtitleDe: string
+  heroSubtitleEn: string
+  logoUrl?: string
+  freeShippingThreshold: number
+}
+
+const DEFAULT_SETTINGS: SiteSettings = {
+  storeName: 'Attireburg',
+  heroTitleDe: 'Premium Deutsche Kleidung',
+  heroTitleEn: 'Premium German Clothing',
+  heroSubtitleDe: 'Neue Kollektion 2026',
+  heroSubtitleEn: 'New Collection 2026',
+  freeShippingThreshold: 50,
+}
+
 export default function Home() {
   const { lang } = useLanguage()
-  const t = translations[lang]
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SETTINGS)
 
   useEffect(() => {
     fetch('/api/products?limit=8')
       .then(r => r.json())
       .then(d => setProducts(d.products || []))
       .finally(() => setLoading(false))
+
+    // Load site settings
+    fetch('/api/admin/settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setSiteSettings({ ...DEFAULT_SETTINGS, ...d }) })
+      .catch(() => {}) // keep defaults on error
   }, [])
 
   const fmt = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n)
@@ -40,12 +64,12 @@ export default function Home() {
   ]
 
   const trustItems = lang === 'de' ? [
-    { icon: '🚚', title: 'Kostenloser Versand', sub: 'Ab 50 € Bestellwert' },
+    { icon: '🚚', title: 'Kostenloser Versand', sub: `Ab ${siteSettings.freeShippingThreshold} € Bestellwert` },
     { icon: '↩️', title: '30 Tage Rückgabe', sub: 'Kostenlos & einfach' },
     { icon: '🔒', title: 'Sicher bezahlen', sub: 'PayPal, Karte & mehr' },
     { icon: '⭐', title: 'Premium Qualität', sub: 'Handgefertigt in DE' },
   ] : [
-    { icon: '🚚', title: 'Free Shipping', sub: 'From €50 order value' },
+    { icon: '🚚', title: 'Free Shipping', sub: `From €${siteSettings.freeShippingThreshold} order value` },
     { icon: '↩️', title: '30-Day Returns', sub: 'Free & easy' },
     { icon: '🔒', title: 'Secure Payment', sub: 'PayPal, card & more' },
     { icon: '⭐', title: 'Premium Quality', sub: 'Handcrafted in Germany' },
@@ -70,10 +94,10 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/35" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
           <p className="text-white/70 text-xs tracking-[0.25em] uppercase mb-4">
-            {lang === 'de' ? 'Neue Kollektion 2026' : 'New Collection 2026'}
+            {lang === 'de' ? siteSettings.heroSubtitleDe : siteSettings.heroSubtitleEn}
           </p>
           <h1 className="text-white text-4xl sm:text-6xl font-bold tracking-tight mb-6 max-w-2xl leading-tight">
-            {lang === 'de' ? 'Premium Deutsche Kleidung' : 'Premium German Clothing'}
+            {lang === 'de' ? siteSettings.heroTitleDe : siteSettings.heroTitleEn}
           </h1>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link href="/products" className="bg-white text-gray-900 text-sm font-semibold px-8 py-3 hover:bg-gray-100 transition-colors">

@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLanguage } from '@/components/ClientLayout'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/contexts/CartContext'
@@ -28,7 +28,15 @@ export default function Navbar() {
   const { totalItems } = useCart()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [logoUrl, setLogoUrl] = useState('/logo.png')
   const t = translations[lang]
+
+  useEffect(() => {
+    fetch('/api/admin/settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.logoUrl) setLogoUrl(d.logoUrl) })
+      .catch(() => {})
+  }, [])
 
   const marqueeBase = lang === 'de' ? MARQUEE_DE : MARQUEE_EN
   const marqueeItems = [...marqueeBase, ...marqueeBase]
@@ -66,8 +74,8 @@ export default function Navbar() {
           </button>
 
           {/* Center — logo */}
-          <Link href="/" className="mx-auto md:absolute md:left-1/2 md:-translate-x-1/2">
-            <img src="/logo.png" alt="Attireburg" className="h-9 w-auto" />
+          <Link href="/" className="absolute left-1/2 -translate-x-1/2">
+            <img src={logoUrl} alt="Attireburg" className="h-9 w-auto" />
           </Link>
 
           {/* Right — icons */}

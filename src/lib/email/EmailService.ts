@@ -1,4 +1,6 @@
 // Email service for order confirmations and notifications
+import nodemailer from 'nodemailer'
+
 interface EmailConfig {
   provider: 'smtp' | 'sendgrid' | 'mailgun' | 'resend'
   apiKey?: string
@@ -290,17 +292,41 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
   }
 
   private async sendSMTPEmail(to: string, template: EmailTemplate): Promise<boolean> {
-    // For development, just log the email
-    console.log('=== EMAIL NOTIFICATION ===')
-    console.log(`To: ${to}`)
-    console.log(`From: ${this.config.fromName} <${this.config.fromEmail}>`)
-    console.log(`Subject: ${template.subject}`)
-    console.log('--- TEXT VERSION ---')
-    console.log(template.text)
-    console.log('=========================')
-    
-    // In production, implement actual SMTP sending using nodemailer or similar
-    return true
+    // If no SMTP credentials configured, log to console (dev mode)
+    if (!this.config.smtpUser || !this.config.smtpPass) {
+      console.log('=== EMAIL (no SMTP configured) ===')
+      console.log(`To: ${to}`)
+      console.log(`Subject: ${template.subject}`)
+      console.log(template.text)
+      console.log('==================================')
+      return true
+    }
+
+    try {
+      const transporter = nodemailer.createTransport({
+        host: this.config.smtpHost,
+        port: this.config.smtpPort,
+        secure: this.config.smtpPort === 465,
+        auth: {
+          user: this.config.smtpUser,
+          pass: this.config.smtpPass,
+        },
+      })
+
+      await transporter.sendMail({
+        from: `"${this.config.fromName}" <${this.config.fromEmail}>`,
+        to,
+        subject: template.subject,
+        text: template.text,
+        html: template.html,
+      })
+
+      console.log(`Email sent to ${to}: ${template.subject}`)
+      return true
+    } catch (error) {
+      console.error('SMTP send failed:', error)
+      return false
+    }
   }
 
   async sendOrderConfirmation(data: OrderConfirmationData): Promise<boolean> {

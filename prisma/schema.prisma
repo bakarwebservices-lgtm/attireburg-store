@@ -217,6 +217,29 @@ model Category {
   @@index([sortOrder])
 }
 
+model SiteSettings {
+  id          String   @id @default("default")
+  storeName   String   @default("Attireburg")
+  storeDescription String @default("Premium deutsche Kleidung für höchste Ansprüche.")
+  storeDescriptionEn String @default("Premium German clothing for the highest standards.")
+  storeEmail  String   @default("info@attireburg.de")
+  storePhone  String   @default("+49 30 12345678")
+  storeAddress String  @default("Musterstraße 123")
+  storeCity   String   @default("Berlin")
+  storePostalCode String @default("10115")
+  heroTitleDe String   @default("Premium Deutsche Kleidung")
+  heroTitleEn String   @default("Premium German Clothing")
+  heroSubtitleDe String @default("Neue Kollektion 2026")
+  heroSubtitleEn String @default("New Collection 2026")
+  logoUrl     String?
+  freeShippingThreshold Float @default(50)
+  standardShippingCost  Float @default(4.99)
+  taxRate     Float    @default(19)
+  orderNotifications    Boolean @default(true)
+  lowStockAlerts        Boolean @default(true)
+  updatedAt   DateTime @updatedAt
+}
+
 model Newsletter {
   id        String   @id @default(cuid())
   email     String   @unique
