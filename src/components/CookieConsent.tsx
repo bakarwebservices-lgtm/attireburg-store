@@ -67,7 +67,10 @@ export default function CookieConsent() {
         {!showPrefs ? (
           <>
             <h3 className="text-base font-semibold text-gray-900 mb-2">{t.title}</h3>
-            <p className="text-sm text-gray-600 mb-4 leading-relaxed">{t.desc}</p>
+            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                {t.desc}{' '}
+                <a href="/privacy" className="text-brand-800 underline underline-offset-2 hover:text-brand-700">{t.privacy}</a>
+              </p>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={accept}

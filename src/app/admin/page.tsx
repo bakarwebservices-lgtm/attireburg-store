@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
+import { getSession } from '@/lib/session'
 import DashboardLayout from '@/components/DashboardLayout'
 import DatabaseStats from '@/components/admin/DatabaseStats'
 
@@ -43,76 +44,28 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login')
-      return
-    }
-    
-    if (!user.isAdmin) {
-      router.push('/account')
-      return
-    }
-    
-    // Simulate loading dashboard stats
-    setTimeout(() => {
-      setStats({
-        totalProducts: 8,
-        totalOrders: 156,
-        totalUsers: 89,
-        totalRevenue: 15420.50,
-        recentOrders: [
-          {
-            id: '1',
-            orderNumber: 'ATB-001240',
-            customerName: 'Max Mustermann',
-            total: 159.99,
-            status: 'PENDING',
-            date: '2024-01-25'
-          },
-          {
-            id: '2',
-            orderNumber: 'ATB-001239',
-            customerName: 'Anna Schmidt',
-            total: 89.99,
-            status: 'PROCESSING',
-            date: '2024-01-25'
-          },
-          {
-            id: '3',
-            orderNumber: 'ATB-001238',
-            customerName: 'Thomas Weber',
-            total: 249.99,
-            status: 'SHIPPED',
-            date: '2024-01-24'
-          }
-        ],
-        topProducts: [
-          {
-            id: '1',
-            name: 'Premium Wollpullover Classic',
-            sales: 45,
-            revenue: 5849.55,
-            image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=400&h=400&fit=crop'
-          },
-          {
-            id: '2',
-            name: 'Winterjacke Alpine Pro',
-            sales: 32,
-            revenue: 7999.68,
-            image: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&h=400&fit=crop'
-          },
-          {
-            id: '3',
-            name: 'Hoodie Urban Comfort',
-            sales: 28,
-            revenue: 2519.72,
-            image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400&h=400&fit=crop'
-          }
-        ]
-      })
-      setLoading(false)
-    }, 1000)
+    if (!user) { router.push('/login'); return }
+    if (!user.isAdmin) { router.push('/account'); return }
+    loadDashboard()
   }, [user, router])
+
+  const loadDashboard = async () => {
+    const session = getSession()
+    if (!session?.token) return
+    try {
+      const res = await fetch('/api/admin/dashboard', {
+        headers: { Authorization: `Bearer ${session.token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setStats(data)
+      }
+    } catch (e) {
+      console.error('Dashboard load error:', e)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('de-DE', {

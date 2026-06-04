@@ -125,7 +125,7 @@ model OrderItem {
   orderId   String
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   variantId String? // Optional variant reference
   quantity  Int
   size      String
@@ -215,6 +215,13 @@ model Category {
 
   @@index([isActive])
   @@index([sortOrder])
+}
+
+model LegalContent {
+  id        String   @id // "imprint", "privacy", "terms"
+  contentDe String   @db.Text
+  contentEn String   @db.Text
+  updatedAt DateTime @updatedAt
 }
 
 model SiteSettings {

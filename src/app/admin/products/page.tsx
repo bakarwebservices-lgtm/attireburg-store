@@ -136,10 +136,20 @@ export default function AdminProducts() {
         })
         
         if (response.ok) {
-          setProducts(prev => prev.filter(p => p.id !== productId))
-          alert(t.admin.productDeleted)
+          const data = await response.json()
+          if (data.softDeleted) {
+            // Product was deactivated instead of deleted
+            setProducts(prev => prev.map(p => 
+              p.id === productId ? { ...p, isActive: false } : p
+            ))
+            alert('Produkt wurde deaktiviert (hat Bestellhistorie). Es wird nicht mehr auf der Website angezeigt.')
+          } else {
+            setProducts(prev => prev.filter(p => p.id !== productId))
+            alert(t.admin.productDeleted)
+          }
         } else {
-          alert('Fehler beim Löschen des Produkts')
+          const data = await response.json()
+          alert(data.error || 'Fehler beim Löschen des Produkts')
         }
       } catch (error) {
         console.error('Failed to delete product:', error)

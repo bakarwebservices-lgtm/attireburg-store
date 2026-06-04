@@ -207,11 +207,11 @@ export default function Register() {
               />
               <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
                 Ich akzeptiere die{' '}
-                <Link href="/terms" className="text-primary-600 hover:text-primary-500">
+                <Link href="/terms" className="text-brand-800 hover:text-brand-700">
                   Allgemeinen Geschäftsbedingungen
                 </Link>{' '}
                 und die{' '}
-                <Link href="/privacy" className="text-primary-600 hover:text-primary-500">
+                <Link href="/privacy" className="text-brand-800 hover:text-brand-700">
                   Datenschutzerklärung
                 </Link>
               </label>

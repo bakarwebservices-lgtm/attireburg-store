@@ -224,34 +224,48 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    // Check if product exists
+
     const existingProduct = await prisma.product.findUnique({
-      where: { id: id }
+      where: { id },
+      include: {
+        orderItems: {
+          include: {
+            order: { select: { status: true } }
+          }
+        }
+      }
     })
 
     if (!existingProduct) {
-      return NextResponse.json(
-        { error: 'Produkt nicht gefunden' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Produkt nicht gefunden' }, { status: 404 })
     }
 
-    // Delete product
-    await prisma.product.delete({
-      where: { id: id }
-    })
+    // Check if there are active (non-completed) orders referencing this product
+    const activeOrders = existingProduct.orderItems.filter(item =>
+      !['DELIVERED', 'CANCELLED'].includes(item.order.status)
+    )
 
-    return NextResponse.json({
-      success: true,
-      message: 'Produkt erfolgreich gelöscht'
-    })
+    if (activeOrders.length > 0) {
+      // Soft-delete: deactivate so it no longer shows on site
+      await prisma.product.update({ where: { id }, data: { isActive: false } })
+      return NextResponse.json({
+        success: true,
+        softDeleted: true,
+        message: `Produkt hat ${activeOrders.length} aktive Bestellung(en) und wurde deaktiviert statt gelöscht.`
+      })
+    }
+
+    // No active orders — safe to hard delete
+    // Delete order items referencing this product (historical records)
+    await prisma.orderItem.deleteMany({ where: { productId: id } })
+    await prisma.productVariant.deleteMany({ where: { productId: id } })
+    await prisma.product.delete({ where: { id } })
+
+    return NextResponse.json({ success: true, message: 'Produkt erfolgreich gelöscht' })
   } catch (error) {
     console.error('Error deleting product:', error)
     return NextResponse.json(
-      { 
-        error: 'Fehler beim Löschen des Produkts',
-        message: error instanceof Error ? error.message : 'Unbekannter Fehler'
-      },
+      { error: 'Fehler beim Löschen des Produkts', message: error instanceof Error ? error.message : 'Unbekannter Fehler' },
       { status: 500 }
     )
   }

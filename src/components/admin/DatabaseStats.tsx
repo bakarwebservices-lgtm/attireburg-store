@@ -1,47 +1,38 @@
 'use client'
-
 import { useState, useEffect } from 'react'
-
-interface DatabaseStats {
-  users: number
-  products: number
-  categories: number
-  orders?: number
-}
-
-interface DatabaseHealth {
-  status: 'healthy' | 'unhealthy'
-  timestamp: string
-  error?: string
-}
+import { getSession } from '@/lib/session'
 
 export default function DatabaseStats() {
-  const [stats, setStats] = useState<DatabaseStats | null>(null)
-  const [health, setHealth] = useState<DatabaseHealth | null>(null)
+  const [status, setStatus] = useState<'healthy' | 'unhealthy' | null>(null)
+  const [timestamp, setTimestamp] = useState('')
+  const [counts, setCounts] = useState<{ products: number; users: number; orders: number } | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    fetchDatabaseInfo()
-  }, [])
+  useEffect(() => { fetchInfo() }, [])
 
-  const fetchDatabaseInfo = async () => {
+  const fetchInfo = async () => {
+    setLoading(true)
+    setError('')
     try {
-      setLoading(true)
-      setError(null)
+      const healthRes = await fetch('/api/health')
+      const healthData = await healthRes.json()
+      setStatus(healthData.status === 'healthy' ? 'healthy' : 'unhealthy')
+      setTimestamp(healthData.timestamp || new Date().toISOString())
 
-      // Fetch database test info
-      const testResponse = await fetch('/api/test-db')
-      const testData = await testResponse.json()
-
-      if (testData.success) {
-        setStats(testData.stats)
-        setHealth(testData.health)
-      } else {
-        throw new Error(testData.message || 'Failed to fetch database info')
+      const session = getSession()
+      if (session?.token) {
+        const dashRes = await fetch('/api/admin/dashboard', {
+          headers: { Authorization: `Bearer ${session.token}` },
+        })
+        if (dashRes.ok) {
+          const dash = await dashRes.json()
+          setCounts({ products: dash.totalProducts ?? 0, users: dash.totalUsers ?? 0, orders: dash.totalOrders ?? 0 })
+        }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      setStatus('unhealthy')
+      setError(err instanceof Error ? err.message : 'Verbindungsfehler')
     } finally {
       setLoading(false)
     }
@@ -49,126 +40,54 @@ export default function DatabaseStats() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Database Status</h3>
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="h-16 bg-gray-200 rounded"></div>
-            <div className="h-16 bg-gray-200 rounded"></div>
-            <div className="h-16 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Database Status</h3>
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Database Connection Error</h3>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
-              <button
-                onClick={fetchDatabaseInfo}
-                className="mt-2 text-sm text-red-800 underline hover:text-red-900"
-              >
-                Retry Connection
-              </button>
-            </div>
-          </div>
+      <div className="bg-white rounded-lg shadow-sm p-6 animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-1/3 mb-4" />
+        <div className="grid grid-cols-3 gap-4">
+          {[0, 1, 2].map(i => <div key={i} className="h-16 bg-gray-200 rounded" />)}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Database Status</h3>
-        <button
-          onClick={fetchDatabaseInfo}
-          className="text-sm text-gray-500 hover:text-gray-700"
-        >
-          Refresh
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-lg font-semibold text-gray-900">Datenbank Status</h3>
+        <button onClick={fetchInfo} className="text-xs text-gray-500 hover:text-gray-800 border border-gray-200 px-2 py-1 rounded transition-colors">
+          Aktualisieren
         </button>
       </div>
 
-      {/* Health Status */}
-      <div className="mb-6">
-        <div className="flex items-center">
-          <div className={`w-3 h-3 rounded-full mr-2 ${
-            health?.status === 'healthy' ? 'bg-green-400' : 'bg-red-400'
-          }`}></div>
-          <span className={`text-sm font-medium ${
-            health?.status === 'healthy' ? 'text-green-800' : 'text-red-800'
-          }`}>
-            {health?.status === 'healthy' ? 'Connected' : 'Disconnected'}
+      <div className="flex items-center gap-2 mb-5">
+        <div className={`w-3 h-3 rounded-full ${status === 'healthy' ? 'bg-green-400' : 'bg-red-400'}`} />
+        <span className={`text-sm font-medium ${status === 'healthy' ? 'text-green-700' : 'text-red-700'}`}>
+          {status === 'healthy' ? 'Verbunden' : 'Getrennt'}
+        </span>
+        {timestamp && (
+          <span className="text-xs text-gray-400 ml-1">
+            {new Date(timestamp).toLocaleTimeString('de-DE')}
           </span>
-          <span className="text-xs text-gray-500 ml-2">
-            {health?.timestamp && new Date(health.timestamp).toLocaleTimeString()}
-          </span>
-        </div>
+        )}
       </div>
 
-      {/* Statistics */}
-      {stats && (
+      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+
+      {counts && (
         <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{stats.products}</div>
-            <div className="text-sm text-gray-500">Products</div>
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">{counts.products}</div>
+            <div className="text-xs text-gray-500 mt-0.5">Produkte</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{stats.categories}</div>
-            <div className="text-sm text-gray-500">Categories</div>
+          <div className="text-center p-3 bg-purple-50 rounded-lg">
+            <div className="text-2xl font-bold text-purple-600">{counts.users}</div>
+            <div className="text-xs text-gray-500 mt-0.5">Benutzer</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">{stats.users}</div>
-            <div className="text-sm text-gray-500">Users</div>
+          <div className="text-center p-3 bg-green-50 rounded-lg">
+            <div className="text-2xl font-bold text-green-600">{counts.orders}</div>
+            <div className="text-xs text-gray-500 mt-0.5">Bestellungen</div>
           </div>
         </div>
       )}
-
-      {/* Quick Actions */}
-      <div className="mt-6 pt-4 border-t border-gray-200">
-        <div className="flex space-x-3">
-          <a
-            href="/api/health"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-blue-600 hover:text-blue-800"
-          >
-            Health Check
-          </a>
-          <a
-            href="/api/test-db"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-blue-600 hover:text-blue-800"
-          >
-            Full Test
-          </a>
-          {process.env.NODE_ENV === 'development' && (
-            <a
-              href="/api/seed"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-green-600 hover:text-green-800"
-            >
-              Seed Data
-            </a>
-          )}
-        </div>
-      </div>
     </div>
   )
 }
