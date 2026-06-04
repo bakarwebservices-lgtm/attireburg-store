@@ -33,23 +33,39 @@ const DEFAULT_SETTINGS: SiteSettings = {
   freeShippingThreshold: 50,
 }
 
+const SETTINGS_CACHE_KEY = 'attireburg_site_settings'
+
 export default function Home() {
   const { lang } = useLanguage()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SETTINGS)
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null)
 
   useEffect(() => {
+    // Load cached settings immediately to avoid any flash
+    const cached = localStorage.getItem(SETTINGS_CACHE_KEY)
+    if (cached) {
+      try { setSiteSettings(JSON.parse(cached)) } catch {}
+    }
+
     fetch('/api/products?limit=8')
       .then(r => r.json())
       .then(d => setProducts(d.products || []))
       .finally(() => setLoading(false))
 
-    // Load site settings
+    // Fetch fresh settings from DB
     fetch('/api/admin/settings')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setSiteSettings({ ...DEFAULT_SETTINGS, ...d }) })
-      .catch(() => {}) // keep defaults on error
+      .then(d => {
+        if (d) {
+          const merged = { ...DEFAULT_SETTINGS, ...d }
+          setSiteSettings(merged)
+          localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(merged))
+        } else if (!cached) {
+          setSiteSettings(DEFAULT_SETTINGS)
+        }
+      })
+      .catch(() => { if (!cached) setSiteSettings(DEFAULT_SETTINGS) })
   }, [])
 
   const fmt = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n)
@@ -64,12 +80,12 @@ export default function Home() {
   ]
 
   const trustItems = lang === 'de' ? [
-    { icon: '🚚', title: 'Kostenloser Versand', sub: `Ab ${siteSettings.freeShippingThreshold} € Bestellwert` },
+    { icon: '🚚', title: 'Kostenloser Versand', sub: `Ab ${siteSettings?.freeShippingThreshold ?? 50} € Bestellwert` },
     { icon: '↩️', title: '30 Tage Rückgabe', sub: 'Kostenlos & einfach' },
     { icon: '🔒', title: 'Sicher bezahlen', sub: 'PayPal, Karte & mehr' },
     { icon: '⭐', title: 'Premium Qualität', sub: 'Handgefertigt in DE' },
   ] : [
-    { icon: '🚚', title: 'Free Shipping', sub: `From €${siteSettings.freeShippingThreshold} order value` },
+    { icon: '🚚', title: 'Free Shipping', sub: `From €${siteSettings?.freeShippingThreshold ?? 50} order value` },
     { icon: '↩️', title: '30-Day Returns', sub: 'Free & easy' },
     { icon: '🔒', title: 'Secure Payment', sub: 'PayPal, card & more' },
     { icon: '⭐', title: 'Premium Quality', sub: 'Handcrafted in Germany' },
@@ -93,12 +109,22 @@ export default function Home() {
         />
         <div className="absolute inset-0 bg-black/35" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-          <p className="text-white/70 text-xs tracking-[0.25em] uppercase mb-4">
-            {lang === 'de' ? siteSettings.heroSubtitleDe : siteSettings.heroSubtitleEn}
-          </p>
-          <h1 className="text-white text-4xl sm:text-6xl font-bold tracking-tight mb-6 max-w-2xl leading-tight">
-            {lang === 'de' ? siteSettings.heroTitleDe : siteSettings.heroTitleEn}
-          </h1>
+          {siteSettings ? (
+            <>
+              <p className="text-white/70 text-xs tracking-[0.25em] uppercase mb-4">
+                {lang === 'de' ? siteSettings.heroSubtitleDe : siteSettings.heroSubtitleEn}
+              </p>
+              <h1 className="text-white text-4xl sm:text-6xl font-bold tracking-tight mb-6 max-w-2xl leading-tight">
+                {lang === 'de' ? siteSettings.heroTitleDe : siteSettings.heroTitleEn}
+              </h1>
+            </>
+          ) : (
+            // Skeleton while settings load — no flash of wrong text
+            <div className="mb-6 space-y-3 flex flex-col items-center">
+              <div className="h-3 w-48 bg-white/20 rounded animate-pulse" />
+              <div className="h-10 w-72 sm:w-96 bg-white/20 rounded animate-pulse" />
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row gap-3">
             <Link href="/products" className="bg-white text-gray-900 text-sm font-semibold px-8 py-3 hover:bg-gray-100 transition-colors">
               {lang === 'de' ? 'Jetzt shoppen' : 'Shop Now'}
