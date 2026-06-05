@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
+import PasswordInput from '@/components/PasswordInput'
 
 export default function Register() {
   const { lang } = useLanguage()
@@ -164,15 +165,13 @@ export default function Register() {
                 Passwort
               </label>
               <div className="mt-1">
-                <input
+                <PasswordInput
                   id="password"
                   name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
                   value={formData.password}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  autoComplete="new-password"
+                  required
                   placeholder="Mindestens 6 Zeichen"
                 />
               </div>
@@ -183,15 +182,13 @@ export default function Register() {
                 Passwort bestätigen
               </label>
               <div className="mt-1">
-                <input
+                <PasswordInput
                   id="confirmPassword"
                   name="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  required
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  autoComplete="new-password"
+                  required
                   placeholder="Passwort wiederholen"
                 />
               </div>

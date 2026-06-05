@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
 import { getSession } from '@/lib/session'
+import PasswordInput from '@/components/PasswordInput'
 import DashboardLayout from '@/components/DashboardLayout'
 
 export default function UserProfile() {
@@ -147,15 +148,15 @@ export default function UserProfile() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.dashboard.currentPassword}</label>
-              <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className={inputClass} />
+              <PasswordInput value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className={inputClass} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.dashboard.newPassword}</label>
-              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className={inputClass} />
+              <PasswordInput value={newPassword} onChange={e => setNewPassword(e.target.value)} required className={inputClass} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t.dashboard.confirmPassword}</label>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={inputClass} />
+              <PasswordInput value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={inputClass} />
             </div>
 
             <button type="submit" disabled={saving}

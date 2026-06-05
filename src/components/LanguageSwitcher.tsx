@@ -4,7 +4,7 @@ import { useLanguage } from '@/components/ClientLayout'
 export default function LanguageSwitcher() {
   const { lang, setLang } = useLanguage()
   return (
-    <div className="flex items-center border border-gray-300 rounded overflow-hidden text-xs font-medium">
+    <div className="inline-flex items-center border border-gray-300 rounded overflow-hidden text-xs font-medium w-fit">
       <button
         onClick={() => setLang('de')}
         className={`px-2.5 py-1.5 transition-colors ${

@@ -19,11 +19,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const userNavItems = [
     { href: '/account', label: t.dashboard.overview, icon: 'overview' },
     { href: '/account/orders', label: t.dashboard.orders, icon: 'orders' },
-    { href: '/account/backorders', label: t.adminExtended.backorders.title, icon: 'backorders' },
-    { href: '/account/waitlist', label: t.adminExtended.waitlist.title, icon: 'waitlist' },
-    { href: '/account/profile', label: t.dashboard.profile, icon: 'profile' },
-    { href: '/account/addresses', label: t.dashboard.addresses, icon: 'addresses' },
     { href: '/account/wishlist', label: t.dashboard.wishlist, icon: 'wishlist' },
+    { href: '/account/addresses', label: t.dashboard.addresses, icon: 'addresses' },
+    { href: '/account/profile', label: t.dashboard.profile, icon: 'profile' },
   ]
 
   const adminNavItems = [
