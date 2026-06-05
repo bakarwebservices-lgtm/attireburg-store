@@ -363,32 +363,32 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+        <div className="mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
             {t.checkout.title}
           </h1>
           
           {/* Progress Steps */}
-          <div className="flex items-center space-x-4 mb-8">
+          <div className="flex items-center mb-8">
             {[1, 2, 3].map((step) => (
               <div key={step} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                  step <= currentStep 
-                    ? 'bg-primary-600 text-white' 
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${
+                  step <= currentStep
+                    ? 'bg-brand-800 text-white'
                     : 'bg-gray-200 text-gray-600'
                 }`}>
-                  {step}
+                  {step < currentStep ? '✓' : step}
                 </div>
-                <span className={`ml-2 text-sm ${
-                  step <= currentStep ? 'text-primary-600' : 'text-gray-500'
+                <span className={`ml-2 text-xs sm:text-sm hidden sm:block ${
+                  step <= currentStep ? 'text-brand-800 font-medium' : 'text-gray-400'
                 }`}>
                   {step === 1 && t.checkout.step1}
                   {step === 2 && t.checkout.step2}
                   {step === 3 && t.checkout.step3}
                 </span>
-                {step < 3 && <div className="w-8 h-px bg-gray-300 mx-4" />}
+                {step < 3 && <div className="flex-1 h-px bg-gray-300 mx-2 sm:mx-4 w-6 sm:w-12" />}
               </div>
             ))}
           </div>
@@ -399,7 +399,7 @@ export default function Checkout() {
           <div className="lg:col-span-2">
             {/* Step 1: Shipping Address */}
             {currentStep === 1 && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">
                   {t.checkout.shippingAddress}
                 </h2>
@@ -731,7 +731,7 @@ export default function Checkout() {
 
             {/* Step 2: Payment Method */}
             {currentStep === 2 && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">
                   {t.checkout.paymentMethod}
                 </h2>
@@ -830,7 +830,7 @@ export default function Checkout() {
 
             {/* Step 3: Review Order */}
             {currentStep === 3 && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">
                   {t.checkout.step3}
                 </h2>
@@ -929,19 +929,19 @@ export default function Checkout() {
             )}
 
             {/* Navigation Buttons */}
-            <div className="flex justify-between mt-6">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 mt-6">
               <div>
                 {currentStep > 1 ? (
                   <button
                     onClick={handleBack}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="w-full sm:w-auto px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     {t.checkout.back}
                   </button>
                 ) : (
                   <Link
                     href="/cart"
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors inline-block"
+                    className="w-full sm:w-auto px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors inline-block text-center"
                   >
                     {t.checkout.backToCart}
                   </Link>
@@ -952,7 +952,7 @@ export default function Checkout() {
                 {currentStep < 3 ? (
                   <button
                     onClick={handleNext}
-                    className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                    className="w-full sm:w-auto px-6 py-3 bg-brand-800 hover:bg-brand-700 text-white rounded-lg transition-colors font-semibold"
                   >
                     {t.checkout.continue}
                   </button>
@@ -960,7 +960,7 @@ export default function Checkout() {
                   <button
                     onClick={handlePlaceOrder}
                     disabled={loading}
-                    className="px-6 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white rounded-lg transition-colors"
+                    className="w-full sm:w-auto px-6 py-3 bg-brand-800 hover:bg-brand-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-semibold"
                   >
                     {loading ? t.checkout.processing : t.checkout.placeOrder}
                   </button>
@@ -971,7 +971,7 @@ export default function Checkout() {
 
           {/* Order Summary Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 lg:sticky lg:top-8">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">
                 {t.checkout.orderSummary}
               </h2>
