@@ -1,5 +1,8 @@
 // Email service for order confirmations and notifications
 import nodemailer from 'nodemailer'
+import { renderToBuffer } from '@react-pdf/renderer'
+import React from 'react'
+import { InvoicePDF, InvoiceData } from './InvoicePDF'
 
 interface EmailConfig {
   provider: 'smtp' | 'sendgrid' | 'mailgun' | 'resend'
@@ -276,14 +279,17 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
     }
   }
 
-  private async sendEmail(to: string, template: EmailTemplate): Promise<boolean> {
+  private async sendEmail(
+    to: string,
+    template: EmailTemplate,
+    options?: { attachments?: Array<{ filename: string; content: Buffer; contentType: string }>; cc?: string }
+  ): Promise<boolean> {
     try {
       if (this.config.provider === 'smtp') {
-        return await this.sendSMTPEmail(to, template)
+        return await this.sendSMTPEmail(to, template, options)
       } else {
-        // For production, implement other providers (SendGrid, Mailgun, etc.)
         console.log('Email would be sent:', { to, subject: template.subject })
-        return true // Simulate success for development
+        return true
       }
     } catch (error) {
       console.error('Email sending failed:', error)
@@ -291,7 +297,11 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
     }
   }
 
-  private async sendSMTPEmail(to: string, template: EmailTemplate): Promise<boolean> {
+  private async sendSMTPEmail(
+    to: string,
+    template: EmailTemplate,
+    options?: { attachments?: Array<{ filename: string; content: Buffer; contentType: string }>; cc?: string }
+  ): Promise<boolean> {
     // If no SMTP credentials configured, log to console (dev mode)
     if (!this.config.smtpUser || !this.config.smtpPass) {
       console.log('=== EMAIL (no SMTP configured) ===')
@@ -316,12 +326,18 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
       await transporter.sendMail({
         from: `"${this.config.fromName}" <${this.config.fromEmail}>`,
         to,
+        cc: options?.cc,
         subject: template.subject,
         text: template.text,
         html: template.html,
+        attachments: options?.attachments?.map(a => ({
+          filename: a.filename,
+          content: a.content,
+          contentType: a.contentType,
+        })),
       })
 
-      console.log(`Email sent to ${to}: ${template.subject}`)
+      console.log(`Email sent to ${to}${options?.cc ? ` (CC: ${options.cc})` : ''}: ${template.subject}`)
       return true
     } catch (error) {
       console.error('SMTP send failed:', error)
@@ -331,7 +347,62 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
 
   async sendOrderConfirmation(data: OrderConfirmationData): Promise<boolean> {
     const template = this.generateOrderConfirmationTemplate(data)
-    return await this.sendEmail(data.customerEmail, template)
+
+    // Determine language from customer email domain or default to DE
+    const lang: 'de' | 'en' = 'de'
+
+    // Build invoice data for PDF
+    const invoiceData: InvoiceData = {
+      lang,
+      invoiceNumber: `AB-${new Date().getFullYear()}-${data.orderNumber.replace('ATB-', '')}`,
+      orderNumber: data.orderNumber,
+      invoiceDate: new Date().toLocaleDateString('de-DE'),
+      firstName: data.customerName.split(' ')[0] || data.customerName,
+      lastName: data.customerName.split(' ').slice(1).join(' ') || '',
+      street: data.shippingAddress.split('\n')[0] || '',
+      city: data.shippingAddress.split('\n')[1] || '',
+      postalCode: data.shippingAddress.split('\n')[2]?.split(' ')[0] || '',
+      country: data.shippingAddress.split('\n')[3] || 'Deutschland',
+      email: data.customerEmail,
+      items: data.items.map((item, i) => {
+        const unitNet = item.price / 1.19
+        return {
+          nr: i + 1,
+          articleNo: `100${String(1000000 + i).slice(1)}`,
+          productName: `${item.name}${item.size ? ` [${item.size}]` : ''}${item.color ? ` [${item.color}]` : ''}`,
+          quantity: item.quantity,
+          netPrice: Math.round(unitNet * 100) / 100,
+          total: Math.round(unitNet * item.quantity * 100) / 100,
+        }
+      }),
+      subtotalNet: Math.round((data.totalAmount / 1.19) * 100) / 100,
+      shippingNet: 0,
+      vatRate: 19,
+      vatAmount: Math.round((data.totalAmount - data.totalAmount / 1.19) * 100) / 100,
+      grossTotal: data.totalAmount,
+      paymentMethod: data.paymentMethod,
+      paymentDate: new Date().toLocaleDateString('de-DE'),
+    }
+
+    // Generate PDF
+    let pdfAttachment: Array<{ filename: string; content: Buffer; contentType: string }> = []
+    try {
+      const pdfBuffer = await renderToBuffer(React.createElement(InvoicePDF, { data: invoiceData }))
+      pdfAttachment = [{
+        filename: `Rechnung_${data.orderNumber}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      }]
+    } catch (pdfError) {
+      console.error('PDF generation failed (email will still send):', pdfError)
+    }
+
+    const ownerEmail = process.env.OWNER_EMAIL || 'tehami.k719@gmail.com'
+
+    return await this.sendEmail(data.customerEmail, template, {
+      attachments: pdfAttachment,
+      cc: ownerEmail,
+    })
   }
 
   async sendRestockNotification(data: RestockNotificationData): Promise<boolean> {
