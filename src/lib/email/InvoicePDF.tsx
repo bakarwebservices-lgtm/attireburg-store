@@ -1,330 +1,354 @@
 import React from 'react'
 import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Font,
+  Document, Page, View, Text, Image, StyleSheet, Font
 } from '@react-pdf/renderer'
+import * as fs from 'fs'
+import * as path from 'path'
 
-// Register a clean sans-serif font
+// Register Arial-like font using built-in Helvetica
 Font.register({
   family: 'Helvetica',
-  src: 'https://fonts.gstatic.com/s/roboto/v27/KFOmCnqEu92Fr1Mu4mxP.ttf',
+  fonts: []
 })
 
-const BRAND = '#47131e'
-const LIGHT_GRAY = '#f5f5f5'
-const BORDER = '#dddddd'
+const cream = '#eae3d2'
+const dark = '#111111'
+const blue = '#1a5cb8'
 
-const s = StyleSheet.create({
-  page: { fontFamily: 'Helvetica', fontSize: 9, color: '#222', padding: '30 40 50 40', lineHeight: 1.4 },
-  // Header
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  logoBox: { width: 120 },
-  logoText: { fontSize: 18, fontWeight: 'bold', color: BRAND, letterSpacing: 2 },
-  logoSub: { fontSize: 7, color: '#666', marginTop: 2 },
-  companyRight: { textAlign: 'right', fontSize: 8, color: '#444', lineHeight: 1.5 },
-  companyName: { fontSize: 10, fontWeight: 'bold', color: '#222' },
-  // 3-column address section
-  addressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, borderTop: `1 solid ${BORDER}`, paddingTop: 12 },
-  addressCol: { flex: 1, paddingRight: 12 },
-  addressLabel: { fontSize: 8, fontWeight: 'bold', marginBottom: 4, textTransform: 'uppercase', color: '#555' },
-  addressText: { fontSize: 8, color: '#333', lineHeight: 1.5 },
-  invoiceInfo: { textAlign: 'right' },
-  invoiceNum: { fontSize: 11, fontWeight: 'bold', color: BRAND, marginBottom: 4 },
-  infoLine: { fontSize: 8, color: '#444', lineHeight: 1.6 },
+const styles = StyleSheet.create({
+  page: {
+    width: 595,     // A4 pt width
+    height: 842,    // A4 pt height
+    position: 'relative',
+    fontFamily: 'Helvetica',
+    fontSize: 10,
+    color: dark,
+  },
+  bgImage: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+  },
+  // Top right company address
+  topHeader: {
+    position: 'absolute',
+    top: 9,
+    right: 33,
+    textAlign: 'right',
+  },
+  companyName: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', marginBottom: 1 },
+  companySmall: { fontSize: 8.5, lineHeight: 1.5 },
+  // Info section
+  infoSection: {
+    position: 'absolute',
+    top: 78,
+    left: 45,
+    right: 45,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  infoCol: { flex: 1 },
+  infoColRight: { flex: 1, alignItems: 'flex-end' },
+  infoHeading: { fontSize: 8, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', marginBottom: 3 },
+  infoText: { fontSize: 8.5, lineHeight: 1.5 },
+  infoBlue: { fontSize: 8.5, color: blue },
   // Table
-  table: { marginBottom: 20 },
-  tableHeader: { flexDirection: 'row', backgroundColor: BRAND, color: 'white', padding: '5 4', fontWeight: 'bold', fontSize: 8 },
-  tableRow: { flexDirection: 'row', borderBottom: `0.5 solid ${BORDER}`, padding: '4 4' },
-  tableRowAlt: { flexDirection: 'row', borderBottom: `0.5 solid ${BORDER}`, padding: '4 4', backgroundColor: LIGHT_GRAY },
-  colNr: { width: 24, textAlign: 'center' },
-  colArticle: { width: 70 },
-  colProduct: { flex: 1 },
-  colQty: { width: 36, textAlign: 'center' },
-  colPrice: { width: 50, textAlign: 'right' },
-  colVat: { width: 44, textAlign: 'right' },
-  colTotal: { width: 52, textAlign: 'right' },
-  // Summary
-  summaryWrapper: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 24 },
-  summaryBox: { width: 220 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3, fontSize: 9 },
-  summaryLabel: { color: '#444' },
-  summaryValue: { color: '#222' },
-  summaryDivider: { borderTop: `1 solid ${BORDER}`, marginVertical: 5 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 3 },
-  totalLabel: { fontSize: 11, fontWeight: 'bold', color: BRAND },
-  totalValue: { fontSize: 11, fontWeight: 'bold', color: BRAND },
-  vatNote: { fontSize: 7.5, color: '#666', fontStyle: 'italic', marginBottom: 2 },
-  paymentRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  paymentLabel: { fontSize: 9, fontWeight: 'bold' },
-  paymentValue: { fontSize: 9, fontWeight: 'bold' },
+  tableWrap: {
+    position: 'absolute',
+    top: 200,
+    left: 45,
+    right: 45,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: cream,
+    borderWidth: 1,
+    borderColor: dark,
+    height: 26,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: dark,
+    minHeight: 22,
+    backgroundColor: '#ffffff',
+  },
+  th: {
+    fontSize: 7.5,
+    fontFamily: 'Helvetica-Bold',
+    textTransform: 'uppercase',
+    padding: '5 5',
+    borderRightWidth: 1,
+    borderColor: dark,
+  },
+  td: {
+    fontSize: 8.5,
+    padding: '4 5',
+    borderRightWidth: 1,
+    borderColor: dark,
+  },
+  colNr: { width: 35 },
+  colArtikel: { width: 67 },
+  colProdukt: { flex: 1 },
+  colMenge: { width: 66, textAlign: 'center' },
+  colEinzel: { width: 66, textAlign: 'right' },
+  colGesamt: { width: 67, textAlign: 'right', borderRightWidth: 0 },
+  // Totals
+  totalsSection: {
+    position: 'absolute',
+    top: 355,
+    right: 45,
+    width: 218,
+  },
+  totalsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  totalsLabel: { fontSize: 9 },
+  totalsValue: { fontSize: 9 },
+  totalsItalic: { fontSize: 9, fontStyle: 'italic' } as any,
+  totalsGross: { fontSize: 10, fontFamily: 'Helvetica-Bold', paddingTop: 5, paddingBottom: 2 },
+  totalsPayment: { fontSize: 9, fontFamily: 'Helvetica-Bold', marginTop: 2 },
+  blueText: { color: blue },
   // Thank you
-  thankYou: { textAlign: 'center', fontSize: 10, color: '#444', marginBottom: 16, fontStyle: 'italic' },
+  thankYou: {
+    position: 'absolute',
+    bottom: 83,
+    left: 0, right: 0,
+    textAlign: 'center',
+    fontSize: 9,
+    color: '#333333',
+  },
   // Footer
-  footer: { position: 'absolute', bottom: 20, left: 40, right: 40, borderTop: `0.5 solid ${BORDER}`, paddingTop: 6, textAlign: 'center', fontSize: 7, color: '#666' },
+  footer: {
+    position: 'absolute',
+    bottom: 41,
+    left: 0, right: 0,
+    height: 26,
+    backgroundColor: cream,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+  },
+  footerText: { fontSize: 7, color: '#333333', textAlign: 'center', lineHeight: 1.6 },
 })
-
-export interface InvoiceItem {
-  nr: number
-  articleNo: string
-  productName: string
-  quantity: number
-  netPrice: number // net unit price
-  total: number   // net total
-}
 
 export interface InvoiceData {
-  lang: 'de' | 'en'
   invoiceNumber: string
   orderNumber: string
   invoiceDate: string
-  firstName: string
-  lastName: string
-  street: string
-  city: string
-  postalCode: string
-  country: string
-  email: string
-  phone?: string
-  items: InvoiceItem[]
+  customer: {
+    firstName: string
+    lastName: string
+    street: string
+    city: string
+    postalCode: string
+    country: string
+    email: string
+  }
+  items: Array<{
+    pos: number
+    artikelNr: string
+    description: string
+    quantity: number
+    unitPriceNet: number
+    totalNet: number
+  }>
   subtotalNet: number
-  discount?: number
+  discount?: { code: string; amount: number }
   shippingNet: number
-  vatRate: number      // 19
+  taxableAmount: number
+  vatRate: number
   vatAmount: number
   grossTotal: number
   paymentMethod: string
   paymentDate?: string
+  lang?: 'de' | 'en'
 }
 
-function fmt(n: number) {
-  return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+function formatEur(n: number) {
+  return n.toFixed(2).replace('.', ',')
 }
 
-export function InvoicePDF({ data }: { data: InvoiceData }) {
-  const de = data.lang === 'de'
-
-  const labels = de ? {
-    customer: 'KUNDE',
-    shipping: 'VERSANDADRESSE',
-    invoiceLabel: 'RECHNUNG Nr.',
-    orderNo: 'Bestellnummer:',
-    invoiceDate: 'Rechnungsdatum:',
-    serviceDate: 'Leistungsdatum:',
-    serviceDateVal: 'entspricht Rechnungsdatum',
-    nr: 'Nr.',
-    article: 'ARTIKEL',
-    product: 'PRODUKT',
-    qty: 'MENGE\n(Stk.)',
-    unitPrice: 'EINZELPREIS\nNETTO',
-    totalNet: 'GESAMT\nNETTO',
-    vatCol: null,
-    subtotal: 'Zwischensumme',
-    discount: 'Rabatt',
-    shippingLabel: 'Versand (netto)',
-    taxBase: 'Steuerpflichtiger Betrag',
-    vat: `zzgl. MwSt. ${data.vatRate}%`,
-    grossTotal: 'GESAMT BRUTTO',
-    paid: 'Ganz bezahlt',
-    paymentMethod: 'ZAHLUNGSMETHODE',
-    paymentDate: 'Zahlungsdatum:',
-    thankYou: 'Vielen Dank für Ihre Bestellung!',
-  } : {
-    customer: 'Billing to:',
-    shipping: 'Shipping address:',
-    invoiceLabel: 'Invoice#',
-    orderNo: 'Order Number:',
-    invoiceDate: 'Invoice Date:',
-    serviceDate: null,
-    serviceDateVal: null,
-    nr: 'Sr.',
-    article: 'Article no.',
-    product: 'Product Name',
-    qty: 'Quantity',
-    unitPrice: 'Price',
-    totalNet: 'Total(EUR)',
-    vatCol: `VAT (${data.vatRate}%)`,
-    subtotal: 'Sub Total',
-    discount: 'Discount',
-    shippingLabel: 'Shipping Charges',
-    taxBase: null,
-    vat: `Inkl. VAT (${data.vatRate}%)`,
-    grossTotal: 'Total',
-    paid: null,
-    paymentMethod: 'Payment Method',
-    paymentDate: null,
-    thankYou: 'Thank you for your order!',
+export function createInvoicePDF(data: InvoiceData) {
+  // Load background image as base64
+  const bgPath = path.join(process.cwd(), 'Images', 'email invoice bg.png')
+  let bgSrc: string | undefined
+  try {
+    const buf = fs.readFileSync(bgPath)
+    bgSrc = `data:image/png;base64,${buf.toString('base64')}`
+  } catch {
+    bgSrc = undefined
   }
 
-  const taxableAmount = data.subtotalNet - (data.discount || 0) + data.shippingNet
+  const isDE = (data.lang || 'de') === 'de'
+
+  const labels = isDE ? {
+    kunde: 'Kunde',
+    versand: 'Versandadresse',
+    rechnung: 'RECHNUNG Nr.',
+    bestellnummer: 'Bestellnummer:',
+    datum: 'Rechnungsdatum:',
+    leistung: 'Leistungsdatum: entspricht Rechnungsdatum',
+    nr: 'Nr.',
+    artikel: 'Artikel',
+    produkt: 'Produkt',
+    menge: 'Menge (Stk.)',
+    einzel: 'Einzelpreis netto',
+    gesamt: 'Gesamt netto',
+    zwischensumme: 'Zwischensumme (netto)',
+    rabatt: 'Rabatt',
+    versandNetto: 'Versand (netto)',
+    steuerpflichtig: 'Steuerpflichtiger Betrag',
+    mwst: `zzgl. MwSt. ${data.vatRate}%`,
+    brutto: 'GESAMT BRUTTO (EUR)',
+    bezahlt: 'Ganz bezahlt',
+    zahlungsmethode: 'ZAHLUNGSMETHODE',
+    zahlungsdatum: 'Zahlungsdatum:',
+    danke: 'Vielen Dank für Ihre Bestellung!',
+  } : {
+    kunde: 'Customer',
+    versand: 'Shipping Address',
+    rechnung: 'INVOICE No.',
+    bestellnummer: 'Order number:',
+    datum: 'Invoice date:',
+    leistung: 'Service date: same as invoice date',
+    nr: 'No.',
+    artikel: 'Item',
+    produkt: 'Product',
+    menge: 'Qty (pcs.)',
+    einzel: 'Unit price net',
+    gesamt: 'Total net',
+    zwischensumme: 'Subtotal (net)',
+    rabatt: 'Discount',
+    versandNetto: 'Shipping (net)',
+    steuerpflichtig: 'Taxable amount',
+    mwst: `plus VAT ${data.vatRate}%`,
+    brutto: 'GROSS TOTAL (EUR)',
+    bezahlt: 'Paid in full',
+    zahlungsmethode: 'PAYMENT METHOD',
+    zahlungsdatum: 'Payment date:',
+    danke: 'Thank you for your order!',
+  }
 
   return (
     <Document>
-      <Page size="A4" style={s.page}>
+      <Page size="A4" style={styles.page}>
+        {/* Background */}
+        {bgSrc && <Image src={bgSrc} style={styles.bgImage} />}
 
-        {/* Header */}
-        <View style={s.headerRow}>
-          <View style={s.logoBox}>
-            <Text style={s.logoText}>ATTIREBURG</Text>
-            <Text style={s.logoSub}>www.attireburg.de</Text>
-          </View>
-          <View style={s.companyRight}>
-            <Text style={s.companyName}>ATTIREBURG</Text>
-            <Text>Im Gewerbepark C25,</Text>
-            <Text>Regensburg 93059, DE</Text>
-            <Text>USt.-ID-Nr: DE455977446</Text>
-          </View>
+        {/* Company address top-right */}
+        <View style={styles.topHeader}>
+          <Text style={styles.companyName}>ATTIREBURG</Text>
+          <Text style={styles.companySmall}>Im Gewerbepark C25,</Text>
+          <Text style={styles.companySmall}>Regensburg 93059, DE</Text>
+          <Text style={styles.companySmall}>USt.-ID-Nr: DE455977446</Text>
         </View>
 
-        {/* Address + Invoice Info */}
-        <View style={s.addressRow}>
-          {/* Billing */}
-          <View style={s.addressCol}>
-            <Text style={s.addressLabel}>{labels.customer}</Text>
-            <Text style={s.addressText}>{data.firstName} {data.lastName}</Text>
-            <Text style={s.addressText}>{data.street}</Text>
-            <Text style={s.addressText}>{data.city}</Text>
-            <Text style={s.addressText}>{data.postalCode} {data.country}</Text>
-            <Text style={s.addressText}>{data.email}</Text>
-            {data.phone && <Text style={s.addressText}>{data.phone}</Text>}
+        {/* Info section */}
+        <View style={styles.infoSection}>
+          <View style={styles.infoCol}>
+            <Text style={styles.infoHeading}>{labels.kunde}</Text>
+            <Text style={styles.infoText}>{data.customer.firstName} {data.customer.lastName}</Text>
+            <Text style={styles.infoText}>{data.customer.street}</Text>
+            <Text style={styles.infoText}>{data.customer.city}</Text>
+            <Text style={styles.infoText}>{data.customer.postalCode} {data.customer.country}</Text>
+            <Text style={styles.infoBlue}>{data.customer.email}</Text>
           </View>
-
-          {/* Shipping (same as billing for now) */}
-          <View style={s.addressCol}>
-            <Text style={s.addressLabel}>{labels.shipping}</Text>
-            <Text style={s.addressText}>{data.firstName} {data.lastName}</Text>
-            <Text style={s.addressText}>{data.street}</Text>
-            <Text style={s.addressText}>{data.city}</Text>
-            <Text style={s.addressText}>{data.postalCode} {data.country}</Text>
+          <View style={styles.infoCol}>
+            <Text style={styles.infoHeading}>{labels.versand}</Text>
+            <Text style={styles.infoText}>{data.customer.firstName} {data.customer.lastName}</Text>
+            <Text style={styles.infoText}>{data.customer.street}</Text>
+            <Text style={styles.infoText}>{data.customer.city}</Text>
+            <Text style={styles.infoText}>{data.customer.postalCode} {data.customer.country}</Text>
           </View>
-
-          {/* Invoice Details */}
-          <View style={[s.addressCol, s.invoiceInfo]}>
-            <Text style={s.invoiceNum}>{labels.invoiceLabel} {data.invoiceNumber}</Text>
-            <Text style={s.infoLine}>{labels.orderNo} {data.orderNumber}</Text>
-            <Text style={s.infoLine}>{labels.invoiceDate} {data.invoiceDate}</Text>
-            {labels.serviceDate && (
-              <Text style={s.infoLine}>{labels.serviceDate} {labels.serviceDateVal}</Text>
-            )}
+          <View style={styles.infoColRight}>
+            <Text style={styles.infoHeading}>{labels.rechnung} {data.invoiceNumber}</Text>
+            <Text style={styles.infoText}>{labels.bestellnummer} {data.orderNumber}</Text>
+            <Text style={styles.infoText}>{labels.datum} {data.invoiceDate}</Text>
+            <Text style={styles.infoText}>{labels.leistung}</Text>
           </View>
         </View>
 
         {/* Table */}
-        <View style={s.table}>
-          {/* Header */}
-          <View style={s.tableHeader}>
-            <Text style={s.colNr}>{labels.nr}</Text>
-            <Text style={s.colArticle}>{labels.article}</Text>
-            <Text style={s.colProduct}>{labels.product}</Text>
-            <Text style={s.colQty}>{labels.qty}</Text>
-            <Text style={s.colPrice}>{labels.unitPrice}</Text>
-            {labels.vatCol && <Text style={s.colVat}>{labels.vatCol}</Text>}
-            <Text style={s.colTotal}>{labels.totalNet}</Text>
+        <View style={styles.tableWrap}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.th, styles.colNr]}>{labels.nr}</Text>
+            <Text style={[styles.th, styles.colArtikel]}>{labels.artikel}</Text>
+            <Text style={[styles.th, styles.colProdukt]}>{labels.produkt}</Text>
+            <Text style={[styles.th, styles.colMenge, { textAlign: 'center' }]}>{labels.menge}</Text>
+            <Text style={[styles.th, styles.colEinzel, { textAlign: 'right' }]}>{labels.einzel}</Text>
+            <Text style={[styles.th, styles.colGesamt, { textAlign: 'right', borderRightWidth: 0 }]}>{labels.gesamt}</Text>
           </View>
-
-          {/* Rows */}
-          {data.items.map((item, i) => {
-            const vatAmt = de ? null : (item.netPrice * (data.vatRate / 100))
-            const rowTotal = de ? item.total : item.quantity * item.netPrice * (1 + data.vatRate / 100)
-            return (
-              <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                <Text style={s.colNr}>{item.nr}</Text>
-                <Text style={s.colArticle}>{item.articleNo}</Text>
-                <Text style={s.colProduct}>{item.productName}</Text>
-                <Text style={s.colQty}>{item.quantity}</Text>
-                <Text style={s.colPrice}>{fmt(item.netPrice)}</Text>
-                {labels.vatCol && vatAmt !== null && (
-                  <Text style={s.colVat}>{fmt(vatAmt)}</Text>
-                )}
-                <Text style={s.colTotal}>{fmt(rowTotal)}</Text>
-              </View>
-            )
-          })}
+          {data.items.map((item, i) => (
+            <View key={i} style={styles.tableRow}>
+              <Text style={[styles.td, styles.colNr]}>{item.pos}</Text>
+              <Text style={[styles.td, styles.colArtikel]}>{item.artikelNr}</Text>
+              <Text style={[styles.td, styles.colProdukt]}>{item.description}</Text>
+              <Text style={[styles.td, styles.colMenge]}>{item.quantity}</Text>
+              <Text style={[styles.td, styles.colEinzel]}>{formatEur(item.unitPriceNet)}</Text>
+              <Text style={[styles.td, styles.colGesamt]}>{formatEur(item.totalNet)}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Summary */}
-        <View style={s.summaryWrapper}>
-          <View style={s.summaryBox}>
-            <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>{labels.subtotal}</Text>
-              <Text style={s.summaryValue}>{fmt(data.subtotalNet)}</Text>
-            </View>
-
-            {de && labels.vat && (
-              <View style={s.summaryRow}>
-                <Text style={[s.summaryLabel, { fontStyle: 'italic' }]}>{labels.vat}</Text>
-                <Text style={[s.summaryValue, { fontStyle: 'italic' }]}>{fmt(data.vatAmount)}</Text>
-              </View>
-            )}
-
-            {!de && (
-              <View style={s.summaryRow}>
-                <Text style={[s.summaryLabel, { fontStyle: 'italic' }]}>{labels.vat}</Text>
-                <Text style={[s.summaryValue, { fontStyle: 'italic' }]}>{fmt(data.vatAmount)}</Text>
-              </View>
-            )}
-
-            <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>{labels.shippingLabel}</Text>
-              <Text style={s.summaryValue}>{fmt(data.shippingNet)}</Text>
-            </View>
-
-            {data.discount !== undefined && data.discount !== 0 && (
-              <View style={s.summaryRow}>
-                <Text style={s.summaryLabel}>{labels.discount}</Text>
-                <Text style={s.summaryValue}>-{fmt(data.discount)}</Text>
-              </View>
-            )}
-
-            {de && labels.taxBase && (
-              <View style={s.summaryRow}>
-                <Text style={[s.summaryLabel, { fontStyle: 'italic' }]}>{labels.taxBase}</Text>
-                <Text style={[s.summaryValue, { fontStyle: 'italic' }]}>{fmt(taxableAmount)}</Text>
-              </View>
-            )}
-
-            <View style={s.summaryDivider} />
-
-            <View style={s.totalRow}>
-              <Text style={s.totalLabel}>{labels.grossTotal}</Text>
-              <Text style={s.totalValue}>{fmt(data.grossTotal)}</Text>
-            </View>
-
-            {labels.paid && (
-              <View style={[s.summaryRow, { marginTop: 4 }]}>
-                <Text style={s.summaryLabel}>{labels.paid}</Text>
-                <Text style={s.summaryValue}>{fmt(data.grossTotal)}</Text>
-              </View>
-            )}
-
-            <View style={[s.paymentRow, { marginTop: 4 }]}>
-              <Text style={s.paymentLabel}>{labels.paymentMethod}</Text>
-              <Text style={s.paymentValue}>{data.paymentMethod.toUpperCase()}</Text>
-            </View>
-
-            {labels.paymentDate && data.paymentDate && (
-              <View style={s.summaryRow}>
-                <Text style={s.summaryLabel}>{labels.paymentDate}</Text>
-                <Text style={s.summaryValue}>{data.paymentDate}</Text>
-              </View>
-            )}
+        {/* Totals */}
+        <View style={styles.totalsSection}>
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsLabel}>{labels.zwischensumme}</Text>
+            <Text style={styles.totalsValue}>{formatEur(data.subtotalNet)}</Text>
           </View>
+          {data.discount && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>{labels.rabatt} [{data.discount.code}]</Text>
+              <Text style={styles.totalsValue}>-{formatEur(data.discount.amount)}</Text>
+            </View>
+          )}
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsLabel}>{labels.versandNetto}</Text>
+            <Text style={styles.totalsValue}>{formatEur(data.shippingNet)}</Text>
+          </View>
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsItalic}>{labels.steuerpflichtig}</Text>
+            <Text style={styles.totalsItalic}>{formatEur(data.taxableAmount)}</Text>
+          </View>
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsItalic}>{labels.mwst}</Text>
+            <Text style={styles.totalsItalic}>{formatEur(data.vatAmount)}</Text>
+          </View>
+          <View style={[styles.totalsRow, { borderTopWidth: 1, borderColor: dark, marginTop: 3 }]}>
+            <Text style={styles.totalsGross}>{labels.brutto}</Text>
+            <Text style={styles.totalsGross}>{formatEur(data.grossTotal)}</Text>
+          </View>
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsLabel}>{labels.bezahlt}</Text>
+            <Text style={styles.totalsValue}>{formatEur(data.grossTotal)}</Text>
+          </View>
+          <View style={[styles.totalsRow, { marginTop: 2 }]}>
+            <Text style={styles.totalsPayment}>{labels.zahlungsmethode}</Text>
+            <Text style={styles.totalsPayment}>{data.paymentMethod.toUpperCase()}</Text>
+          </View>
+          {data.paymentDate && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>{labels.zahlungsdatum}</Text>
+              <Text style={[styles.totalsValue, styles.blueText]}>{data.paymentDate}</Text>
+            </View>
+          )}
         </View>
 
         {/* Thank you */}
-        <Text style={s.thankYou}>{labels.thankYou}</Text>
-
-        {/* Footer */}
-        <View style={s.footer}>
-          <Text>
-            ATTIREBURG | Anschrift: Im Gewerbepark C25, 93059, Regensburg | Website: www.attireburg.de
-            {' '}Email: Kontakt@attireburg.de | USt.-ID-Nr: DE 455 977 446 | Inhaberin: Khadija Tehami
-          </Text>
+        <View style={styles.thankYou}>
+          <Text>{labels.danke}</Text>
         </View>
 
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            ATTIREBURG | Anschrift: Im Gewerbepark C25, 93059, Regensburg | Website: www.attireburg.de | Email: kontakt@attireburg.de | USt.-ID-Nr: DE 455 977 446 | Inhaberin: Khadija Tehami
+          </Text>
+        </View>
       </Page>
     </Document>
   )
