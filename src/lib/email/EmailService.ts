@@ -350,9 +350,17 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
     let pdfBuffer: Buffer | undefined
     try {
       const vatRate = 19
-      const subtotalNet = data.items.reduce((s, i) => s + (i.price * i.quantity) / 1.19, 0)
-      const shippingNet = (data.totalAmount - data.items.reduce((s, i) => s + i.price * i.quantity, 0)) / 1.19
-      const taxableAmount = subtotalNet + (shippingNet > 0 ? shippingNet : 0)
+      // Prices coming in are GROSS (VAT included)
+      const itemsGross = data.items.reduce((s, i) => s + i.price * i.quantity, 0)
+      const subtotalNet = itemsGross / (1 + vatRate / 100)
+      // Shipping = totalAmount minus items gross (may include COD fee at 0% VAT)
+      const extraFees = data.totalAmount - itemsGross
+      // Assume shipping is standard 0-4.99, COD 2.50 — pass shipping gross separately if available
+      // For now derive net from gross total
+      const grossTotal = data.totalAmount
+      const shippingGross = extraFees > 0 ? extraFees : 0
+      const shippingNet = shippingGross / (1 + vatRate / 100)
+      const taxableAmount = subtotalNet + shippingNet
       const vatAmount = taxableAmount * (vatRate / 100)
 
       const invoiceData: InvoiceData = {
@@ -381,7 +389,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
         taxableAmount,
         vatRate,
         vatAmount,
-        grossTotal: data.totalAmount,
+        grossTotal,
         paymentMethod: data.paymentMethod,
         paymentDate: new Intl.DateTimeFormat('de-DE').format(new Date()),
       }

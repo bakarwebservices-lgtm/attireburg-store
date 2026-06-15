@@ -94,10 +94,10 @@ const styles = StyleSheet.create({
   colMenge: { width: 66, textAlign: 'center' },
   colEinzel: { width: 66, textAlign: 'right' },
   colGesamt: { width: 67, textAlign: 'right', borderRightWidth: 0 },
-  // Totals
+  // Totals — positioned dynamically below the table
   totalsSection: {
     position: 'absolute',
-    top: 355,
+    top: 440,   // safely below table even with many rows
     right: 45,
     width: 218,
   },
@@ -272,70 +272,75 @@ export function createInvoicePDF(data: InvoiceData) {
           </View>
         </View>
 
-        {/* Table */}
-        <View style={styles.tableWrap}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.th, styles.colNr]}>{labels.nr}</Text>
-            <Text style={[styles.th, styles.colArtikel]}>{labels.artikel}</Text>
-            <Text style={[styles.th, styles.colProdukt]}>{labels.produkt}</Text>
-            <Text style={[styles.th, styles.colMenge, { textAlign: 'center' }]}>{labels.menge}</Text>
-            <Text style={[styles.th, styles.colEinzel, { textAlign: 'right' }]}>{labels.einzel}</Text>
-            <Text style={[styles.th, styles.colGesamt, { textAlign: 'right', borderRightWidth: 0 }]}>{labels.gesamt}</Text>
-          </View>
-          {data.items.map((item, i) => (
-            <View key={i} style={styles.tableRow}>
-              <Text style={[styles.td, styles.colNr]}>{item.pos}</Text>
-              <Text style={[styles.td, styles.colArtikel]}>{item.artikelNr}</Text>
-              <Text style={[styles.td, styles.colProdukt]}>{item.description}</Text>
-              <Text style={[styles.td, styles.colMenge]}>{item.quantity}</Text>
-              <Text style={[styles.td, styles.colEinzel]}>{formatEur(item.unitPriceNet)}</Text>
-              <Text style={[styles.td, styles.colGesamt]}>{formatEur(item.totalNet)}</Text>
+        {/* Table + Totals as a flow block */}
+        <View style={{ position: 'absolute', top: 200, left: 45, right: 45 }}>
+          {/* Table */}
+          <View>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.th, styles.colNr]}>{labels.nr}</Text>
+              <Text style={[styles.th, styles.colArtikel]}>{labels.artikel}</Text>
+              <Text style={[styles.th, styles.colProdukt]}>{labels.produkt}</Text>
+              <Text style={[styles.th, styles.colMenge, { textAlign: 'center' }]}>{labels.menge}</Text>
+              <Text style={[styles.th, styles.colEinzel, { textAlign: 'right' }]}>{labels.einzel}</Text>
+              <Text style={[styles.th, styles.colGesamt, { textAlign: 'right', borderRightWidth: 0 }]}>{labels.gesamt}</Text>
             </View>
-          ))}
-        </View>
+            {data.items.map((item, i) => (
+              <View key={i} style={styles.tableRow}>
+                <Text style={[styles.td, styles.colNr]}>{item.pos}</Text>
+                <Text style={[styles.td, styles.colArtikel]}>{item.artikelNr}</Text>
+                <Text style={[styles.td, styles.colProdukt]}>{item.description}</Text>
+                <Text style={[styles.td, styles.colMenge]}>{item.quantity}</Text>
+                <Text style={[styles.td, styles.colEinzel]}>{formatEur(item.unitPriceNet)}</Text>
+                <Text style={[styles.td, styles.colGesamt]}>{formatEur(item.totalNet)}</Text>
+              </View>
+            ))}
+          </View>
 
-        {/* Totals */}
-        <View style={styles.totalsSection}>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>{labels.zwischensumme}</Text>
-            <Text style={styles.totalsValue}>{formatEur(data.subtotalNet)}</Text>
-          </View>
-          {data.discount && (
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>{labels.rabatt} [{data.discount.code}]</Text>
-              <Text style={styles.totalsValue}>-{formatEur(data.discount.amount)}</Text>
+          {/* Totals — right-aligned, with gap below table */}
+          <View style={{ marginTop: 18, alignItems: 'flex-end' }}>
+            <View style={{ width: 218 }}>
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>{labels.zwischensumme}</Text>
+                <Text style={styles.totalsValue}>{formatEur(data.subtotalNet)}</Text>
+              </View>
+              {data.discount && (
+                <View style={styles.totalsRow}>
+                  <Text style={styles.totalsLabel}>{labels.rabatt} [{data.discount.code}]</Text>
+                  <Text style={styles.totalsValue}>-{formatEur(data.discount.amount)}</Text>
+                </View>
+              )}
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>{labels.versandNetto}</Text>
+                <Text style={styles.totalsValue}>{formatEur(data.shippingNet)}</Text>
+              </View>
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsItalic}>{labels.steuerpflichtig}</Text>
+                <Text style={styles.totalsItalic}>{formatEur(data.taxableAmount)}</Text>
+              </View>
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsItalic}>{labels.mwst}</Text>
+                <Text style={styles.totalsItalic}>{formatEur(data.vatAmount)}</Text>
+              </View>
+              <View style={[styles.totalsRow, { borderTopWidth: 1, borderColor: dark, marginTop: 3 }]}>
+                <Text style={styles.totalsGross}>{labels.brutto}</Text>
+                <Text style={styles.totalsGross}>{formatEur(data.grossTotal)}</Text>
+              </View>
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>{labels.bezahlt}</Text>
+                <Text style={styles.totalsValue}>{formatEur(data.grossTotal)}</Text>
+              </View>
+              <View style={[styles.totalsRow, { marginTop: 2 }]}>
+                <Text style={styles.totalsPayment}>{labels.zahlungsmethode}</Text>
+                <Text style={styles.totalsPayment}>{data.paymentMethod.toUpperCase()}</Text>
+              </View>
+              {data.paymentDate && (
+                <View style={styles.totalsRow}>
+                  <Text style={styles.totalsLabel}>{labels.zahlungsdatum}</Text>
+                  <Text style={[styles.totalsValue, styles.blueText]}>{data.paymentDate}</Text>
+                </View>
+              )}
             </View>
-          )}
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>{labels.versandNetto}</Text>
-            <Text style={styles.totalsValue}>{formatEur(data.shippingNet)}</Text>
           </View>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsItalic}>{labels.steuerpflichtig}</Text>
-            <Text style={styles.totalsItalic}>{formatEur(data.taxableAmount)}</Text>
-          </View>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsItalic}>{labels.mwst}</Text>
-            <Text style={styles.totalsItalic}>{formatEur(data.vatAmount)}</Text>
-          </View>
-          <View style={[styles.totalsRow, { borderTopWidth: 1, borderColor: dark, marginTop: 3 }]}>
-            <Text style={styles.totalsGross}>{labels.brutto}</Text>
-            <Text style={styles.totalsGross}>{formatEur(data.grossTotal)}</Text>
-          </View>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>{labels.bezahlt}</Text>
-            <Text style={styles.totalsValue}>{formatEur(data.grossTotal)}</Text>
-          </View>
-          <View style={[styles.totalsRow, { marginTop: 2 }]}>
-            <Text style={styles.totalsPayment}>{labels.zahlungsmethode}</Text>
-            <Text style={styles.totalsPayment}>{data.paymentMethod.toUpperCase()}</Text>
-          </View>
-          {data.paymentDate && (
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>{labels.zahlungsdatum}</Text>
-              <Text style={[styles.totalsValue, styles.blueText]}>{data.paymentDate}</Text>
-            </View>
-          )}
         </View>
 
         {/* Thank you */}
