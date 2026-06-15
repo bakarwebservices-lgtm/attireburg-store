@@ -1,69 +1,62 @@
 import React from 'react'
 import {
-  Document, Page, View, Text, Image, StyleSheet, Font
+  Document, Page, View, Text, Image, StyleSheet
 } from '@react-pdf/renderer'
 import * as fs from 'fs'
 import * as path from 'path'
 
-// Register Arial-like font using built-in Helvetica
-Font.register({
-  family: 'Helvetica',
-  fonts: []
-})
-
 const cream = '#eae3d2'
-const dark = '#111111'
+const dark = '#333333'
 const blue = '#1a5cb8'
+const white = '#ffffff'
 
 const styles = StyleSheet.create({
   page: {
-    width: 595,     // A4 pt width
-    height: 842,    // A4 pt height
-    position: 'relative',
     fontFamily: 'Helvetica',
-    fontSize: 10,
+    fontSize: 9,
     color: dark,
+    backgroundColor: white,
+    flexDirection: 'column',
   },
-  bgImage: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-  },
-  // Top right company address
-  topHeader: {
-    position: 'absolute',
-    top: 9,
-    right: 33,
-    textAlign: 'right',
-  },
-  companyName: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', marginBottom: 1 },
-  companySmall: { fontSize: 8.5, lineHeight: 1.5 },
-  // Info section
-  infoSection: {
-    position: 'absolute',
-    top: 78,
-    left: 45,
-    right: 45,
+  // ── TOP CREAM BAND ──
+  topBand: {
+    backgroundColor: cream,
+    paddingHorizontal: 33,
+    paddingVertical: 10,
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 66,
   },
+  logo: { height: 45, width: 'auto' } as any,
+  companyBlock: { textAlign: 'right' },
+  companyName: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', marginBottom: 1 },
+  companySmall: { fontSize: 8.5, lineHeight: 1.6 },
+  // ── INFO SECTION ──
+  infoSection: {
+    paddingHorizontal: 33,
+    paddingTop: 16,
+    paddingBottom: 20,
+    flexDirection: 'row',
+    gap: 12,
+  } as any,
   infoCol: { flex: 1 },
-  infoColRight: { flex: 1, alignItems: 'flex-end' },
-  infoHeading: { fontSize: 8, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', marginBottom: 3 },
-  infoText: { fontSize: 8.5, lineHeight: 1.5 },
+  infoColRight: { flex: 1, alignItems: 'flex-end' } as any,
+  infoHeading: { fontSize: 8, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', marginBottom: 4 },
+  infoText: { fontSize: 8.5, lineHeight: 1.6 },
   infoBlue: { fontSize: 8.5, color: blue },
-  // Table
+  // ── TABLE WRAP ──
   tableWrap: {
-    position: 'absolute',
-    top: 200,
-    left: 45,
-    right: 45,
+    paddingHorizontal: 33,
+    marginBottom: 16,
   },
+  // ── TABLE ──
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: cream,
     borderWidth: 1,
     borderColor: dark,
-    height: 26,
+    height: 24,
   },
   tableRow: {
     flexDirection: 'row',
@@ -71,68 +64,71 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderBottomWidth: 1,
     borderColor: dark,
-    minHeight: 22,
-    backgroundColor: '#ffffff',
+    minHeight: 20,
+    backgroundColor: white,
   },
   th: {
     fontSize: 7.5,
     fontFamily: 'Helvetica-Bold',
     textTransform: 'uppercase',
-    padding: '5 5',
+    paddingHorizontal: 5,
+    paddingVertical: 4,
     borderRightWidth: 1,
     borderColor: dark,
-  },
+    justifyContent: 'center',
+  } as any,
   td: {
     fontSize: 8.5,
-    padding: '4 5',
+    paddingHorizontal: 5,
+    paddingVertical: 3,
     borderRightWidth: 1,
     borderColor: dark,
   },
-  colNr: { width: 35 },
-  colArtikel: { width: 67 },
+  // column widths
+  colNr: { width: 32 },
+  colArtikel: { width: 71 },
   colProdukt: { flex: 1 },
-  colMenge: { width: 66, textAlign: 'center' },
-  colEinzel: { width: 66, textAlign: 'right' },
-  colGesamt: { width: 67, textAlign: 'right', borderRightWidth: 0 },
-  // Totals — positioned dynamically below the table
-  totalsSection: {
-    position: 'absolute',
-    top: 440,   // safely below table even with many rows
-    right: 45,
-    width: 218,
-  },
+  colMenge: { width: 62, textAlign: 'center' },
+  colEinzel: { width: 82, textAlign: 'right' },
+  colGesamt: { width: 73, textAlign: 'right', borderRightWidth: 0 },
+  // ── TOTALS ──
+  totalsWrap: {
+    paddingHorizontal: 33,
+    alignItems: 'flex-end',
+    marginBottom: 44,
+  } as any,
+  totalsInner: { width: 218 },
   totalsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 2,
+    paddingVertical: 1.8,
   },
-  totalsLabel: { fontSize: 9 },
-  totalsValue: { fontSize: 9 },
-  totalsItalic: { fontSize: 9, fontStyle: 'italic' } as any,
-  totalsGross: { fontSize: 10, fontFamily: 'Helvetica-Bold', paddingTop: 5, paddingBottom: 2 },
-  totalsPayment: { fontSize: 9, fontFamily: 'Helvetica-Bold', marginTop: 2 },
+  totalsLabel: { fontSize: 9, color: dark },
+  totalsValue: { fontSize: 9, color: dark },
+  totalsItalic: { fontSize: 9, color: dark, fontStyle: 'italic' } as any,
+  totalsGrossLabel: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: dark },
+  totalsGrossValue: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: dark },
+  totalsPayLabel: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: dark, marginTop: 2 },
+  totalsPayValue: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: dark, marginTop: 2 },
+  grossSeparator: { borderTopWidth: 1, borderColor: dark, marginTop: 2, paddingTop: 5 },
   blueText: { color: blue },
-  // Thank you
+  // ── SPACER ──
+  spacer: { flex: 1 },
+  // ── THANK YOU ──
   thankYou: {
-    position: 'absolute',
-    bottom: 83,
-    left: 0, right: 0,
     textAlign: 'center',
     fontSize: 9,
     color: '#333333',
+    paddingVertical: 18,
   },
-  // Footer
-  footer: {
-    position: 'absolute',
-    bottom: 41,
-    left: 0, right: 0,
-    height: 26,
+  // ── BOTTOM CREAM BAND ──
+  bottomBand: {
     backgroundColor: cream,
-    justifyContent: 'center',
-    alignItems: 'center',
     paddingHorizontal: 30,
-  },
-  footerText: { fontSize: 7, color: '#333333', textAlign: 'center', lineHeight: 1.6 },
+    paddingVertical: 8,
+    alignItems: 'center',
+  } as any,
+  footerText: { fontSize: 7.5, color: '#333333', textAlign: 'center', lineHeight: 1.7 },
 })
 
 export interface InvoiceData {
@@ -168,24 +164,26 @@ export interface InvoiceData {
   lang?: 'de' | 'en'
 }
 
-function formatEur(n: number) {
+function fmt(n: number) {
   return n.toFixed(2).replace('.', ',')
 }
 
-export function createInvoicePDF(data: InvoiceData) {
-  // Load background image as base64
-  const bgPath = path.join(process.cwd(), 'Images', 'email invoice bg.png')
-  let bgSrc: string | undefined
+function loadImage(relativePath: string): string | undefined {
   try {
-    const buf = fs.readFileSync(bgPath)
-    bgSrc = `data:image/png;base64,${buf.toString('base64')}`
+    const buf = fs.readFileSync(path.join(process.cwd(), relativePath))
+    const ext = relativePath.split('.').pop()?.toLowerCase() || 'png'
+    const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png'
+    return `data:${mime};base64,${buf.toString('base64')}`
   } catch {
-    bgSrc = undefined
+    return undefined
   }
+}
 
+export function createInvoicePDF(data: InvoiceData) {
+  const logoSrc = loadImage('Images/Attireburg logo.png')
   const isDE = (data.lang || 'de') === 'de'
 
-  const labels = isDE ? {
+  const L = isDE ? {
     kunde: 'Kunde',
     versand: 'Versandadresse',
     rechnung: 'RECHNUNG Nr.',
@@ -236,124 +234,133 @@ export function createInvoicePDF(data: InvoiceData) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Background */}
-        {bgSrc && <Image src={bgSrc} style={styles.bgImage} />}
 
-        {/* Company address top-right */}
-        <View style={styles.topHeader}>
-          <Text style={styles.companyName}>ATTIREBURG</Text>
-          <Text style={styles.companySmall}>Im Gewerbepark C25,</Text>
-          <Text style={styles.companySmall}>Regensburg 93059, DE</Text>
-          <Text style={styles.companySmall}>USt.-ID-Nr: DE455977446</Text>
+        {/* ── TOP CREAM BAND ── */}
+        <View style={styles.topBand}>
+          {logoSrc
+            ? <Image src={logoSrc} style={styles.logo} />
+            : <Text style={styles.companyName}>ATTIREBURG</Text>
+          }
+          <View style={styles.companyBlock}>
+            <Text style={styles.companyName}>ATTIREBURG</Text>
+            <Text style={styles.companySmall}>Im Gewerbepark C25,</Text>
+            <Text style={styles.companySmall}>Regensburg 93059, DE</Text>
+            <Text style={styles.companySmall}>USt.-ID-Nr: DE455977446</Text>
+          </View>
         </View>
 
-        {/* Info section */}
+        {/* ── INFO SECTION ── */}
         <View style={styles.infoSection}>
+          {/* Customer */}
           <View style={styles.infoCol}>
-            <Text style={styles.infoHeading}>{labels.kunde}</Text>
+            <Text style={styles.infoHeading}>{L.kunde}</Text>
             <Text style={styles.infoText}>{data.customer.firstName} {data.customer.lastName}</Text>
             <Text style={styles.infoText}>{data.customer.street}</Text>
             <Text style={styles.infoText}>{data.customer.city}</Text>
             <Text style={styles.infoText}>{data.customer.postalCode} {data.customer.country}</Text>
             <Text style={styles.infoBlue}>{data.customer.email}</Text>
           </View>
+          {/* Shipping address (same as billing) */}
           <View style={styles.infoCol}>
-            <Text style={styles.infoHeading}>{labels.versand}</Text>
+            <Text style={styles.infoHeading}>{L.versand}</Text>
             <Text style={styles.infoText}>{data.customer.firstName} {data.customer.lastName}</Text>
             <Text style={styles.infoText}>{data.customer.street}</Text>
             <Text style={styles.infoText}>{data.customer.city}</Text>
             <Text style={styles.infoText}>{data.customer.postalCode} {data.customer.country}</Text>
           </View>
+          {/* Invoice details */}
           <View style={styles.infoColRight}>
-            <Text style={styles.infoHeading}>{labels.rechnung} {data.invoiceNumber}</Text>
-            <Text style={styles.infoText}>{labels.bestellnummer} {data.orderNumber}</Text>
-            <Text style={styles.infoText}>{labels.datum} {data.invoiceDate}</Text>
-            <Text style={styles.infoText}>{labels.leistung}</Text>
+            <Text style={[styles.infoHeading, { textAlign: 'right' }]}>{L.rechnung} {data.invoiceNumber}</Text>
+            <Text style={[styles.infoText, { textAlign: 'right' }]}>{L.bestellnummer} {data.orderNumber}</Text>
+            <Text style={[styles.infoText, { textAlign: 'right' }]}>{L.datum} {data.invoiceDate}</Text>
+            <Text style={[styles.infoText, { textAlign: 'right' }]}>{L.leistung}</Text>
           </View>
         </View>
 
-        {/* Table + Totals as a flow block */}
-        <View style={{ position: 'absolute', top: 200, left: 45, right: 45 }}>
-          {/* Table */}
-          <View>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.th, styles.colNr]}>{labels.nr}</Text>
-              <Text style={[styles.th, styles.colArtikel]}>{labels.artikel}</Text>
-              <Text style={[styles.th, styles.colProdukt]}>{labels.produkt}</Text>
-              <Text style={[styles.th, styles.colMenge, { textAlign: 'center' }]}>{labels.menge}</Text>
-              <Text style={[styles.th, styles.colEinzel, { textAlign: 'right' }]}>{labels.einzel}</Text>
-              <Text style={[styles.th, styles.colGesamt, { textAlign: 'right', borderRightWidth: 0 }]}>{labels.gesamt}</Text>
+        {/* ── TABLE ── */}
+        <View style={styles.tableWrap}>
+          {/* Header */}
+          <View style={styles.tableHeader}>
+            <Text style={[styles.th, styles.colNr]}>{L.nr}</Text>
+            <Text style={[styles.th, styles.colArtikel]}>{L.artikel}</Text>
+            <Text style={[styles.th, styles.colProdukt]}>{L.produkt}</Text>
+            <Text style={[styles.th, styles.colMenge]}>{L.menge}</Text>
+            <Text style={[styles.th, styles.colEinzel]}>{L.einzel}</Text>
+            <Text style={[styles.th, styles.colGesamt]}>{L.gesamt}</Text>
+          </View>
+          {/* Rows */}
+          {data.items.map((item, i) => (
+            <View key={i} style={styles.tableRow}>
+              <Text style={[styles.td, styles.colNr]}>{item.pos}</Text>
+              <Text style={[styles.td, styles.colArtikel]}>{item.artikelNr}</Text>
+              <Text style={[styles.td, styles.colProdukt]}>{item.description}</Text>
+              <Text style={[styles.td, styles.colMenge]}>{item.quantity}</Text>
+              <Text style={[styles.td, styles.colEinzel]}>{fmt(item.unitPriceNet)}</Text>
+              <Text style={[styles.td, styles.colGesamt]}>{fmt(item.totalNet)}</Text>
             </View>
-            {data.items.map((item, i) => (
-              <View key={i} style={styles.tableRow}>
-                <Text style={[styles.td, styles.colNr]}>{item.pos}</Text>
-                <Text style={[styles.td, styles.colArtikel]}>{item.artikelNr}</Text>
-                <Text style={[styles.td, styles.colProdukt]}>{item.description}</Text>
-                <Text style={[styles.td, styles.colMenge]}>{item.quantity}</Text>
-                <Text style={[styles.td, styles.colEinzel]}>{formatEur(item.unitPriceNet)}</Text>
-                <Text style={[styles.td, styles.colGesamt]}>{formatEur(item.totalNet)}</Text>
-              </View>
-            ))}
-          </View>
+          ))}
+        </View>
 
-          {/* Totals — right-aligned, with gap below table */}
-          <View style={{ marginTop: 18, alignItems: 'flex-end' }}>
-            <View style={{ width: 218 }}>
-              <View style={styles.totalsRow}>
-                <Text style={styles.totalsLabel}>{labels.zwischensumme}</Text>
-                <Text style={styles.totalsValue}>{formatEur(data.subtotalNet)}</Text>
-              </View>
-              {data.discount && (
-                <View style={styles.totalsRow}>
-                  <Text style={styles.totalsLabel}>{labels.rabatt} [{data.discount.code}]</Text>
-                  <Text style={styles.totalsValue}>-{formatEur(data.discount.amount)}</Text>
-                </View>
-              )}
-              <View style={styles.totalsRow}>
-                <Text style={styles.totalsLabel}>{labels.versandNetto}</Text>
-                <Text style={styles.totalsValue}>{formatEur(data.shippingNet)}</Text>
-              </View>
-              <View style={styles.totalsRow}>
-                <Text style={styles.totalsItalic}>{labels.steuerpflichtig}</Text>
-                <Text style={styles.totalsItalic}>{formatEur(data.taxableAmount)}</Text>
-              </View>
-              <View style={styles.totalsRow}>
-                <Text style={styles.totalsItalic}>{labels.mwst}</Text>
-                <Text style={styles.totalsItalic}>{formatEur(data.vatAmount)}</Text>
-              </View>
-              <View style={[styles.totalsRow, { borderTopWidth: 1, borderColor: dark, marginTop: 3 }]}>
-                <Text style={styles.totalsGross}>{labels.brutto}</Text>
-                <Text style={styles.totalsGross}>{formatEur(data.grossTotal)}</Text>
-              </View>
-              <View style={styles.totalsRow}>
-                <Text style={styles.totalsLabel}>{labels.bezahlt}</Text>
-                <Text style={styles.totalsValue}>{formatEur(data.grossTotal)}</Text>
-              </View>
-              <View style={[styles.totalsRow, { marginTop: 2 }]}>
-                <Text style={styles.totalsPayment}>{labels.zahlungsmethode}</Text>
-                <Text style={styles.totalsPayment}>{data.paymentMethod.toUpperCase()}</Text>
-              </View>
-              {data.paymentDate && (
-                <View style={styles.totalsRow}>
-                  <Text style={styles.totalsLabel}>{labels.zahlungsdatum}</Text>
-                  <Text style={[styles.totalsValue, styles.blueText]}>{data.paymentDate}</Text>
-                </View>
-              )}
+        {/* ── TOTALS (right-aligned, below table with gap) ── */}
+        <View style={styles.totalsWrap}>
+          <View style={styles.totalsInner}>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>{L.zwischensumme}</Text>
+              <Text style={styles.totalsValue}>{fmt(data.subtotalNet)}</Text>
             </View>
+            {data.discount && (
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>{L.rabatt} [{data.discount.code}]</Text>
+                <Text style={styles.totalsValue}>-{fmt(data.discount.amount)}</Text>
+              </View>
+            )}
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>{L.versandNetto}</Text>
+              <Text style={styles.totalsValue}>{fmt(data.shippingNet)}</Text>
+            </View>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsItalic}>{L.steuerpflichtig}</Text>
+              <Text style={styles.totalsItalic}>{fmt(data.taxableAmount)}</Text>
+            </View>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsItalic}>{L.mwst}</Text>
+              <Text style={styles.totalsItalic}>{fmt(data.vatAmount)}</Text>
+            </View>
+            {/* Gross total with top border */}
+            <View style={[styles.totalsRow, styles.grossSeparator]}>
+              <Text style={styles.totalsGrossLabel}>{L.brutto}</Text>
+              <Text style={styles.totalsGrossValue}>{fmt(data.grossTotal)}</Text>
+            </View>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>{L.bezahlt}</Text>
+              <Text style={styles.totalsValue}>{fmt(data.grossTotal)}</Text>
+            </View>
+            <View style={[styles.totalsRow, { marginTop: 3 }]}>
+              <Text style={styles.totalsPayLabel}>{L.zahlungsmethode}</Text>
+              <Text style={styles.totalsPayValue}>{data.paymentMethod.toUpperCase()}</Text>
+            </View>
+            {data.paymentDate && (
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>{L.zahlungsdatum}</Text>
+                <Text style={[styles.totalsValue, styles.blueText]}>{data.paymentDate}</Text>
+              </View>
+            )}
           </View>
         </View>
 
-        {/* Thank you */}
-        <View style={styles.thankYou}>
-          <Text>{labels.danke}</Text>
-        </View>
+        {/* ── SPACER ── */}
+        <View style={styles.spacer} />
 
-        {/* Footer */}
-        <View style={styles.footer}>
+        {/* ── THANK YOU ── */}
+        <Text style={styles.thankYou}>{L.danke}</Text>
+
+        {/* ── BOTTOM CREAM BAND ── */}
+        <View style={styles.bottomBand}>
           <Text style={styles.footerText}>
             ATTIREBURG | Anschrift: Im Gewerbepark C25, 93059, Regensburg | Website: www.attireburg.de | Email: kontakt@attireburg.de | USt.-ID-Nr: DE 455 977 446 | Inhaberin: Khadija Tehami
           </Text>
         </View>
+
       </Page>
     </Document>
   )
