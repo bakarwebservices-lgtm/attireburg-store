@@ -4,6 +4,8 @@ import {
 } from '@react-pdf/renderer'
 import * as fs from 'fs'
 import * as path from 'path'
+import sharp from 'sharp'
+import { logoBase64 as embeddedLogo } from './logoBase64'
 
 const cream = '#eae3d2'
 const dark = '#333333'
@@ -168,42 +170,45 @@ function fmt(n: number) {
   return n.toFixed(2).replace('.', ',')
 }
 
-function loadImage(relativePath: string): string | undefined {
+async function loadImageBase64(relativePath: string): Promise<string | undefined> {
   try {
     const fullPath = path.join(process.cwd(), relativePath)
-    fs.accessSync(fullPath) // just check it exists
-    const buf = fs.readFileSync(fullPath)
-    const ext = relativePath.split('.').pop()?.toLowerCase() || 'png'
-    const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png'
-    console.log(`[InvoicePDF] Loaded image: ${fullPath} (${buf.length} bytes)`)
-    return `data:${mime};base64,${buf.toString('base64')}`
+    fs.accessSync(fullPath)
+    // Re-encode via sharp to strip interlacing/profiles that break react-pdf
+    const buf = await sharp(fullPath)
+      .png({ compressionLevel: 6, progressive: false })
+      .toBuffer()
+    console.log(`[InvoicePDF] Loaded+processed image: ${fullPath} (${buf.length} bytes)`)
+    return `data:image/png;base64,${buf.toString('base64')}`
   } catch (e) {
     console.warn(`[InvoicePDF] Could not load image: ${relativePath}`, e)
     return undefined
   }
 }
 
-function getLogoPath(): string | undefined {
+async function getLogoBase64Async(): Promise<string | undefined> {
+  // Primary: use the pre-embedded static base64 (always works, no file I/O at runtime)
+  if (embeddedLogo) {
+    console.log('[InvoicePDF] Using embedded static logo')
+    return embeddedLogo
+  }
+  // Fallback: try to load and reprocess at runtime
   const candidates = [
     'public/attireburg-logo.png',
     'public/logo.png',
     'Images/Attireburg logo.png',
   ]
   for (const p of candidates) {
-    const full = path.join(process.cwd(), p)
-    try {
-      fs.accessSync(full)
-      console.log(`[InvoicePDF] Using logo: ${full}`)
-      return full  // return absolute path — react-pdf handles this directly
-    } catch {}
+    const result = await loadImageBase64(p)
+    if (result) return result
   }
   console.warn('[InvoicePDF] No logo file found')
   return undefined
 }
 
-export function createInvoicePDF(data: InvoiceData) {
-  // Try multiple paths to find the logo — returns absolute file path for react-pdf
-  const logoPath = getLogoPath()
+export async function createInvoicePDF(data: InvoiceData) {
+  // Load logo as re-encoded base64 (sharp strips interlacing that breaks react-pdf)
+  const logoSrc = await getLogoBase64Async()
   const isDE = (data.lang || 'de') === 'de'
 
   const L = isDE ? {
@@ -261,13 +266,13 @@ export function createInvoicePDF(data: InvoiceData) {
         {/* ── TOP CREAM BAND ── */}
         <View style={styles.topBand}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 } as any}>
-            {logoPath && (
+            {logoSrc && (
               <Image
-                src={logoPath}
+                src={logoSrc}
                 style={{ height: 45, width: 130, objectFit: 'contain' } as any}
               />
             )}
-            {!logoPath && (
+            {!logoSrc && (
               <Text style={{ fontSize: 18, fontFamily: 'Helvetica-Bold', color: dark, letterSpacing: 2 } as any}>
                 ATTIREBURG
               </Text>

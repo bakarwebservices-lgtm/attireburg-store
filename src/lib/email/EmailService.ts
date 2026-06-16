@@ -394,7 +394,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
         paymentDate: new Intl.DateTimeFormat('de-DE').format(new Date()),
       }
 
-      const pdfElement = createInvoicePDF(invoiceData)
+      const pdfElement = await createInvoicePDF(invoiceData)
       pdfBuffer = await renderToBuffer(pdfElement as any)
     } catch (pdfError) {
       console.error('PDF generation failed:', pdfError)
