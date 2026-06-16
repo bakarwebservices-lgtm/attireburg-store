@@ -171,10 +171,11 @@ function fmt(n: number) {
 function loadImage(relativePath: string): string | undefined {
   try {
     const fullPath = path.join(process.cwd(), relativePath)
+    fs.accessSync(fullPath) // just check it exists
     const buf = fs.readFileSync(fullPath)
     const ext = relativePath.split('.').pop()?.toLowerCase() || 'png'
     const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png'
-    console.log(`[InvoicePDF] Loaded image: ${fullPath}`)
+    console.log(`[InvoicePDF] Loaded image: ${fullPath} (${buf.length} bytes)`)
     return `data:${mime};base64,${buf.toString('base64')}`
   } catch (e) {
     console.warn(`[InvoicePDF] Could not load image: ${relativePath}`, e)
@@ -182,10 +183,27 @@ function loadImage(relativePath: string): string | undefined {
   }
 }
 
+function getLogoPath(): string | undefined {
+  const candidates = [
+    'public/attireburg-logo.png',
+    'public/logo.png',
+    'Images/Attireburg logo.png',
+  ]
+  for (const p of candidates) {
+    const full = path.join(process.cwd(), p)
+    try {
+      fs.accessSync(full)
+      console.log(`[InvoicePDF] Using logo: ${full}`)
+      return full  // return absolute path — react-pdf handles this directly
+    } catch {}
+  }
+  console.warn('[InvoicePDF] No logo file found')
+  return undefined
+}
+
 export function createInvoicePDF(data: InvoiceData) {
-  // Try the dedicated invoice logo first, then the main site logo
-  const logoSrc = loadImage('Images/Attireburg logo.png')
-    || loadImage('public/logo.png')
+  // Try multiple paths to find the logo — returns absolute file path for react-pdf
+  const logoPath = getLogoPath()
   const isDE = (data.lang || 'de') === 'de'
 
   const L = isDE ? {
@@ -243,13 +261,13 @@ export function createInvoicePDF(data: InvoiceData) {
         {/* ── TOP CREAM BAND ── */}
         <View style={styles.topBand}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 } as any}>
-            {logoSrc && (
+            {logoPath && (
               <Image
-                src={logoSrc}
-                style={{ height: 40, width: 120, objectFit: 'contain' } as any}
+                src={logoPath}
+                style={{ height: 45, width: 130, objectFit: 'contain' } as any}
               />
             )}
-            {!logoSrc && (
+            {!logoPath && (
               <Text style={{ fontSize: 18, fontFamily: 'Helvetica-Bold', color: dark, letterSpacing: 2 } as any}>
                 ATTIREBURG
               </Text>
