@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId: user.id,
           status: initialStatus,
-          totalAmount: totalAmount + (shippingCost || 0) + (tax || 0) + (codFee || 0),
+          totalAmount: totalAmount,  // totalAmount from checkout is already the final gross total
           currency: 'EUR',
           shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.company ? shippingAddress.company + '\n' : ''}${shippingAddress.street}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.country}`,
           shippingCity: shippingAddress.city,
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
             size: item.size,
             color: item.color
           })),
-          totalAmount: totalAmount + (shippingCost || 0) + (tax || 0) + (codFee || 0),
+          totalAmount: totalAmount,  // already the gross final total
           shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.company ? shippingAddress.company + '\n' : ''}${shippingAddress.street}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.country}`,
           paymentMethod: paymentMethod === 'cod' ? 'Nachnahme' : paymentMethod === 'paypal' ? 'PayPal' : 'Google Pay',
           estimatedDelivery: '2-3 Werktage'

@@ -170,17 +170,22 @@ function fmt(n: number) {
 
 function loadImage(relativePath: string): string | undefined {
   try {
-    const buf = fs.readFileSync(path.join(process.cwd(), relativePath))
+    const fullPath = path.join(process.cwd(), relativePath)
+    const buf = fs.readFileSync(fullPath)
     const ext = relativePath.split('.').pop()?.toLowerCase() || 'png'
     const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png'
+    console.log(`[InvoicePDF] Loaded image: ${fullPath}`)
     return `data:${mime};base64,${buf.toString('base64')}`
-  } catch {
+  } catch (e) {
+    console.warn(`[InvoicePDF] Could not load image: ${relativePath}`, e)
     return undefined
   }
 }
 
 export function createInvoicePDF(data: InvoiceData) {
+  // Try the dedicated invoice logo first, then the main site logo
   const logoSrc = loadImage('Images/Attireburg logo.png')
+    || loadImage('public/logo.png')
   const isDE = (data.lang || 'de') === 'de'
 
   const L = isDE ? {
@@ -237,10 +242,19 @@ export function createInvoicePDF(data: InvoiceData) {
 
         {/* ── TOP CREAM BAND ── */}
         <View style={styles.topBand}>
-          {logoSrc
-            ? <Image src={logoSrc} style={styles.logo} />
-            : <Text style={styles.companyName}>ATTIREBURG</Text>
-          }
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 } as any}>
+            {logoSrc && (
+              <Image
+                src={logoSrc}
+                style={{ height: 40, width: 120, objectFit: 'contain' } as any}
+              />
+            )}
+            {!logoSrc && (
+              <Text style={{ fontSize: 18, fontFamily: 'Helvetica-Bold', color: dark, letterSpacing: 2 } as any}>
+                ATTIREBURG
+              </Text>
+            )}
+          </View>
           <View style={styles.companyBlock}>
             <Text style={styles.companyName}>ATTIREBURG</Text>
             <Text style={styles.companySmall}>Im Gewerbepark C25,</Text>
