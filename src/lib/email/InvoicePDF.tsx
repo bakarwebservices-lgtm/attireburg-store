@@ -16,9 +16,15 @@ const styles = StyleSheet.create({
     color: dark,
     backgroundColor: white,
     flexDirection: 'column',
+    paddingTop: 86,    // reserved for fixed header band
+    paddingBottom: 44, // reserved for fixed footer band
   },
-  // ── TOP CREAM BAND ──
+  // ── TOP CREAM BAND (fixed — repeats on every page) ──
   topBand: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     backgroundColor: cream,
     paddingHorizontal: 33,
     paddingVertical: 10,
@@ -26,7 +32,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     minHeight: 66,
-  },
+  } as any,
   logo: { height: 45, width: 'auto' } as any,
   companyBlock: { textAlign: 'right' },
   companyName: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', marginBottom: 1 },
@@ -111,8 +117,6 @@ const styles = StyleSheet.create({
   totalsPayValue: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: dark, marginTop: 2 },
   grossSeparator: { borderTopWidth: 1, borderColor: dark, marginTop: 2, paddingTop: 5 },
   blueText: { color: blue },
-  // ── SPACER ──
-  spacer: { flex: 1 },
   // ── THANK YOU ──
   thankYou: {
     textAlign: 'center',
@@ -120,8 +124,12 @@ const styles = StyleSheet.create({
     color: '#333333',
     paddingVertical: 18,
   },
-  // ── BOTTOM CREAM BAND ──
+  // ── BOTTOM CREAM BAND (fixed — repeats on every page) ──
   bottomBand: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: cream,
     paddingHorizontal: 30,
     paddingVertical: 8,
@@ -264,8 +272,8 @@ export async function createInvoicePDF(data: InvoiceData) {
     <Document>
       <Page size="A4" style={styles.page}>
 
-        {/* ── TOP CREAM BAND ── */}
-        <View style={styles.topBand}>
+        {/* ── TOP CREAM BAND — fixed, repeats on every page ── */}
+        <View fixed style={styles.topBand}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 } as any}>
             {logoSrc && (
               <Image
@@ -386,14 +394,11 @@ export async function createInvoicePDF(data: InvoiceData) {
           </View>
         </View>
 
-        {/* ── SPACER ── */}
-        <View style={styles.spacer} />
-
-        {/* ── THANK YOU ── */}
+        {/* ── THANK YOU — inline, appears after totals on last page ── */}
         <Text style={styles.thankYou}>{L.danke}</Text>
 
-        {/* ── BOTTOM CREAM BAND ── */}
-        <View style={styles.bottomBand}>
+        {/* ── BOTTOM CREAM BAND — fixed, repeats on every page ── */}
+        <View fixed style={styles.bottomBand}>
           <Text style={styles.footerText}>
             ATTIREBURG | Anschrift: Im Gewerbepark C25, 93059, Regensburg | Website: www.attireburg.de | Email: kontakt@attireburg.de | USt.-ID-Nr: DE 455 977 446 | Inhaberin: Khadija Tehami
           </Text>
