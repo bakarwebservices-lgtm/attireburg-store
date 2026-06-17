@@ -2,9 +2,6 @@ import React from 'react'
 import {
   Document, Page, View, Text, Image, StyleSheet
 } from '@react-pdf/renderer'
-import * as fs from 'fs'
-import * as path from 'path'
-import sharp from 'sharp'
 import { logoBase64 as embeddedLogo } from './logoBase64'
 
 const cream = '#eae3d2'
@@ -172,6 +169,10 @@ function fmt(n: number) {
 
 async function loadImageBase64(relativePath: string): Promise<string | undefined> {
   try {
+    // Dynamic imports to avoid Next.js bundling native modules at compile time
+    const fs = await import('fs')
+    const path = await import('path')
+    const sharp = (await import('sharp')).default
     const fullPath = path.join(process.cwd(), relativePath)
     fs.accessSync(fullPath)
     // Re-encode via sharp to strip interlacing/profiles that break react-pdf

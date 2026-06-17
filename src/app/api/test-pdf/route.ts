@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createInvoicePDF } from '@/lib/email/InvoicePDF'
 import React from 'react'
-import * as fs from 'fs'
-import * as path from 'path'
 
 // Only for development — view the PDF directly in browser to check logo
 export async function GET(request: NextRequest) {
@@ -12,6 +10,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Debug: list logo candidates
+  const fs = await import('fs')
+  const path = await import('path')
   const candidates = ['public/attireburg-logo.png', 'public/logo.png', 'Images/Attireburg logo.png']
   const found: Record<string, string> = {}
   for (const p of candidates) {
