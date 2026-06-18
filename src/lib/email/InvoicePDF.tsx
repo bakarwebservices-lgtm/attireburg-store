@@ -16,10 +16,10 @@ const styles = StyleSheet.create({
     color: dark,
     backgroundColor: white,
     flexDirection: 'column',
-    paddingTop: 86,    // reserved for fixed header band
-    paddingBottom: 44, // reserved for fixed footer band
+    paddingTop: 80,
+    paddingBottom: 60,
   },
-  // ── TOP CREAM BAND (fixed — repeats on every page) ──
+  // ── TOP CREAM BAND (fixed — absolute at top of every page) ──
   topBand: {
     position: 'absolute',
     top: 0,
@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    minHeight: 66,
+    height: 66,
   } as any,
   logo: { height: 45, width: 'auto' } as any,
   companyBlock: { textAlign: 'right' },
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     color: '#333333',
     paddingVertical: 18,
   },
-  // ── BOTTOM CREAM BAND (fixed — repeats on every page) ──
+  // ── BOTTOM CREAM BAND (fixed — absolute at bottom of every page) ──
   bottomBand: {
     position: 'absolute',
     bottom: 0,
@@ -134,6 +134,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingVertical: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
   } as any,
   footerText: { fontSize: 7.5, color: '#333333', textAlign: 'center', lineHeight: 1.7 },
 })
@@ -295,6 +297,13 @@ export async function createInvoicePDF(data: InvoiceData) {
           </View>
         </View>
 
+        {/* ── BOTTOM CREAM BAND — fixed, repeats on every page ── */}
+        <View fixed style={styles.bottomBand}>
+          <Text style={styles.footerText}>
+            ATTIREBURG | Anschrift: Im Gewerbepark C25, 93059, Regensburg | Website: www.attireburg.de | Email: kontakt@attireburg.de | USt.-ID-Nr: DE 455 977 446 | Inhaberin: Khadija Tehami
+          </Text>
+        </View>
+
         {/* ── INFO SECTION ── */}
         <View style={styles.infoSection}>
           {/* Customer */}
@@ -396,13 +405,6 @@ export async function createInvoicePDF(data: InvoiceData) {
 
         {/* ── THANK YOU — inline, appears after totals on last page ── */}
         <Text style={styles.thankYou}>{L.danke}</Text>
-
-        {/* ── BOTTOM CREAM BAND — fixed, repeats on every page ── */}
-        <View fixed style={styles.bottomBand}>
-          <Text style={styles.footerText}>
-            ATTIREBURG | Anschrift: Im Gewerbepark C25, 93059, Regensburg | Website: www.attireburg.de | Email: kontakt@attireburg.de | USt.-ID-Nr: DE 455 977 446 | Inhaberin: Khadija Tehami
-          </Text>
-        </View>
 
       </Page>
     </Document>
