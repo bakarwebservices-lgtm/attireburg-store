@@ -56,6 +56,68 @@ interface Review {
   }
 }
 
+const renderFormattedDescription = (text: string) => {
+  if (!text) return null
+
+  const parseInlineStyles = (line: string) => {
+    const parts = line.split(/(\*\*.*?\*\*|\*.*?\*)/g)
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index} className="font-bold text-gray-900">{part.slice(2, -2)}</strong>
+      }
+      if (part.startsWith('*') && part.endsWith('*')) {
+        return <strong key={index} className="font-bold text-gray-900">{part.slice(1, -1)}</strong>
+      }
+      return part
+    })
+  }
+
+  const normalizedText = text.replace(/\r\n/g, '\n')
+  const lines = normalizedText.split('\n')
+  const blocks: React.ReactNode[] = []
+  let currentList: React.ReactNode[] = []
+
+  const pushCurrentList = (key: string | number) => {
+    if (currentList.length > 0) {
+      blocks.push(
+        <ul key={`list-${key}`} className="list-disc pl-5 mb-4 space-y-1 text-gray-700">
+          {currentList}
+        </ul>
+      )
+      currentList = []
+    }
+  }
+
+  lines.forEach((line, index) => {
+    const trimmedLine = line.trim()
+    
+    if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+      const content = trimmedLine.substring(2)
+      currentList.push(
+        <li key={`li-${index}`} className="text-gray-700">
+          {parseInlineStyles(content)}
+        </li>
+      )
+    } else {
+      pushCurrentList(index)
+
+      if (trimmedLine === '') {
+        return
+      }
+
+      blocks.push(
+        <p key={`p-${index}`} className="text-gray-700 leading-relaxed mb-4">
+          {parseInlineStyles(line)}
+        </p>
+      )
+    }
+  })
+
+  pushCurrentList('end')
+
+  return <div className="space-y-1">{blocks}</div>
+}
+
 export default function ProductDetail() {
   const params = useParams()
   const { lang } = useLanguage()
@@ -553,9 +615,9 @@ export default function ProductDetail() {
             {/* Description */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">{t.productDetail.description}</h3>
-              <p className="text-gray-700 leading-relaxed">
-                {lang === 'de' ? product.description : product.descriptionEn}
-              </p>
+              <div className="text-gray-700">
+                {renderFormattedDescription(lang === 'de' ? product.description : product.descriptionEn)}
+              </div>
             </div>
 
             {/* Variant Selection */}
