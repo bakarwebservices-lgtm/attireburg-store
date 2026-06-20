@@ -457,6 +457,7 @@ Ihr Attireburg Team
     fileName?: string
     fileBuffer?: Buffer
     fileType?: string
+    fileUrl?: string
   }): Promise<boolean> {
     const ownerEmail = process.env.OWNER_EMAIL || 'tehami.k719@gmail.com'
 
@@ -475,7 +476,7 @@ ${data.clientType === 'business' ? `Firma: ${data.company || 'Nicht angegeben'}\
 Beschreibung / Wünsche:
 ${data.message || 'Keine Beschreibung angegeben.'}
 -----------------------------------------
-
+${data.fileName ? `Design-Datei: ${data.fileName}\n` : ''}${data.fileUrl ? `Download-Link: ${data.fileUrl}\n` : ''}
 Diese Anfrage wurde über das Print-on-Demand Formular eingereicht.
 `
     const ownerHtml = `
@@ -514,7 +515,24 @@ Diese Anfrage wurde über das Print-on-Demand Formular eingereicht.
           <p style="white-space: pre-wrap; margin-bottom: 0;">${data.message || 'Keine Beschreibung angegeben.'}</p>
         </div>
         
-        ${data.fileName ? `<p><strong>Anhang:</strong> ${data.fileName} (beigefügt)</p>` : ''}
+        ${data.fileName ? `
+        <div style="margin-top: 20px; padding: 15px; border: 1px solid #eee; border-radius: 6px; background: #fff;">
+          <p style="margin-top: 0; font-weight: bold;">Angehängte Design-Datei:</p>
+          <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">Dateiname: ${data.fileName}</p>
+          
+          ${data.fileUrl ? `
+          <p style="margin-bottom: 15px;">
+            <a href="${data.fileUrl}" target="_blank" style="display: inline-block; background: #47131e; color: white; padding: 10px 18px; text-decoration: none; border-radius: 4px; font-size: 0.9em; font-weight: bold;">Datei im Browser öffnen / herunterladen</a>
+          </p>
+          ` : ''}
+          
+          ${data.fileType?.startsWith('image/') ? `
+          <div style="margin-top: 15px; border: 1px solid #ddd; padding: 5px; border-radius: 4px; display: inline-block; max-width: 100%;">
+            <img src="cid:designFile" alt="Design-Vorschau" style="max-width: 100%; max-height: 350px; display: block; height: auto;" />
+          </div>
+          ` : ''}
+        </div>
+        ` : ''}
         
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
         <p style="font-size: 0.9em; color: #666; text-align: center;">Attireburg - Premium Deutsche Kleidung</p>
@@ -524,7 +542,8 @@ Diese Anfrage wurde über das Print-on-Demand Formular eingereicht.
     const attachments = data.fileBuffer && data.fileName ? [{
       filename: data.fileName,
       content: data.fileBuffer,
-      contentType: data.fileType || 'application/octet-stream'
+      contentType: data.fileType || 'application/octet-stream',
+      ...(data.fileType?.startsWith('image/') ? { cid: 'designFile' } : {})
     }] : undefined
 
     const ownerEmailSent = await this.sendSMTPEmail(ownerEmail, {
@@ -545,7 +564,7 @@ Wir haben Ihre Nachricht und Details erhalten. Unser Team wird Ihre Anfrage prü
 Ihre Anfrage-Details:
 - Kundentyp: ${data.clientType === 'business' ? 'Unternehmen' : 'Privatperson'}
 - Nachricht: ${data.message || 'Keine Beschreibung angegeben'}
-
+${data.fileName ? `- Design-Datei: ${data.fileName}\n` : ''}${data.fileUrl ? `- Download-Link: ${data.fileUrl}\n` : ''}
 Mit freundlichen Grüßen,
 Ihr Attireburg Team
 `
@@ -561,7 +580,11 @@ Ihr Attireburg Team
           <h4 style="margin-top: 0; color: #47131e;">Zusammenfassung Ihrer Anfrage:</h4>
           <p><strong>Typ:</strong> ${data.clientType === 'business' ? 'Unternehmen' : 'Privatperson'}</p>
           <p><strong>Nachricht:</strong> ${data.message || 'Keine Beschreibung angegeben'}</p>
-          ${data.fileName ? `<p><strong>Design-Datei:</strong> ${data.fileName}</p>` : ''}
+          ${data.fileName ? `
+            <p><strong>Design-Datei:</strong> ${data.fileName} 
+              ${data.fileUrl ? `(<a href="${data.fileUrl}" target="_blank" style="color: #47131e; text-decoration: underline; font-weight: bold;">Ansehen / Herunterladen</a>)` : ''}
+            </p>
+          ` : ''}
         </div>
         
         <p>Falls Sie noch Fragen haben oder weitere Details hinzufügen möchten, können Sie einfach auf diese E-Mail antworten.</p>
