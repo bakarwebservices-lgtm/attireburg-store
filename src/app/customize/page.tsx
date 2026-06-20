@@ -10,10 +10,12 @@ type ClientType = 'individual' | 'business'
 export default function CustomizePage() {
   const { lang } = useLanguage()
   const t = translations[lang].customize
+  const tc = translations[lang].common
   const [step, setStep] = useState<Step>('type')
   const [clientType, setClientType] = useState<ClientType | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', message: '', file: null as File | null })
 
@@ -27,9 +29,35 @@ export default function CustomizePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    await new Promise(r => setTimeout(r, 1000))
-    setSubmitting(false)
-    setStep('success')
+    setError(null)
+    try {
+      const formData = new FormData()
+      formData.append('clientType', clientType || '')
+      formData.append('name', form.name)
+      formData.append('email', form.email)
+      if (form.phone) formData.append('phone', form.phone)
+      if (form.company) formData.append('company', form.company)
+      if (form.message) formData.append('message', form.message)
+      if (form.file) formData.append('file', form.file)
+
+      const response = await fetch('/api/customize', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || tc.error)
+      }
+
+      setStep('success')
+    } catch (err) {
+      console.error('Customize submit error:', err)
+      setError(err instanceof Error ? err.message : tc.error)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -78,7 +106,7 @@ export default function CustomizePage() {
         {step === 'details' && (
           <div>
             <button
-              onClick={() => setStep('type')}
+              onClick={() => { setStep('type'); setError(null) }}
               className="flex items-center text-gray-600 hover:text-gray-900 mb-8 text-sm font-medium"
             >
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,6 +116,12 @@ export default function CustomizePage() {
             </button>
 
             <h2 className="text-2xl font-bold text-gray-900 mb-8">{t.yourRequest}</h2>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
+                {error}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

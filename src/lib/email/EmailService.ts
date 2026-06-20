@@ -446,6 +446,139 @@ Ihr Attireburg Team
 
     return await this.sendEmail(customerEmail, template)
   }
+
+  async sendCustomizeInquiry(data: {
+    clientType: 'individual' | 'business'
+    name: string
+    email: string
+    phone?: string
+    company?: string
+    message?: string
+    fileName?: string
+    fileBuffer?: Buffer
+    fileType?: string
+  }): Promise<boolean> {
+    const ownerEmail = process.env.OWNER_EMAIL || 'tehami.k719@gmail.com'
+
+    // 1. Email to the Owner
+    const ownerSubject = `[Print on Demand] Neue Anfrage von ${data.name} (${data.clientType === 'business' ? 'Unternehmen' : 'Privatperson'})`
+    const ownerText = `
+Neue Print on Demand Anfrage erhalten!
+
+Details:
+-----------------------------------------
+Name: ${data.name}
+E-Mail: ${data.email}
+Telefon: ${data.phone || 'Nicht angegeben'}
+Kundentyp: ${data.clientType === 'business' ? 'Unternehmen' : 'Privatperson'}
+${data.clientType === 'business' ? `Firma: ${data.company || 'Nicht angegeben'}\n` : ''}
+Beschreibung / Wünsche:
+${data.message || 'Keine Beschreibung angegeben.'}
+-----------------------------------------
+
+Diese Anfrage wurde über das Print-on-Demand Formular eingereicht.
+`
+    const ownerHtml = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+        <h2 style="background: #47131e; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-top-left-radius: 8px; border-top-right-radius: 8px; text-align: center;">Neue Print on Demand Anfrage</h2>
+        <p>Hallo Admin,</p>
+        <p>eine neue Print on Demand Anfrage wurde eingereicht:</p>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold; width: 150px;">Name:</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${data.name}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">E-Mail:</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;"><a href="mailto:${data.email}">${data.email}</a></td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Telefon:</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${data.phone || 'Nicht angegeben'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Kundentyp:</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${data.clientType === 'business' ? 'Unternehmen' : 'Privatperson'}</td>
+          </tr>
+          ${data.clientType === 'business' ? `
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Firma:</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${data.company || 'Nicht angegeben'}</td>
+          </tr>
+          ` : ''}
+        </table>
+        
+        <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #eee; margin-bottom: 20px;">
+          <h4 style="margin-top: 0;">Beschreibung / Wünsche:</h4>
+          <p style="white-space: pre-wrap; margin-bottom: 0;">${data.message || 'Keine Beschreibung angegeben.'}</p>
+        </div>
+        
+        ${data.fileName ? `<p><strong>Anhang:</strong> ${data.fileName} (beigefügt)</p>` : ''}
+        
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 0.9em; color: #666; text-align: center;">Attireburg - Premium Deutsche Kleidung</p>
+      </div>
+    `
+
+    const attachments = data.fileBuffer && data.fileName ? [{
+      filename: data.fileName,
+      content: data.fileBuffer,
+      contentType: data.fileType || 'application/octet-stream'
+    }] : undefined
+
+    const ownerEmailSent = await this.sendSMTPEmail(ownerEmail, {
+      subject: ownerSubject,
+      text: ownerText,
+      html: ownerHtml
+    }, { attachments })
+
+    // 2. Confirmation Email to the Customer
+    const customerSubject = `Ihre Print-on-Demand Anfrage bei Attireburg`
+    const customerText = `
+Hallo ${data.name},
+
+vielen Dank für Ihre Print-on-Demand Anfrage bei Attireburg!
+
+Wir haben Ihre Nachricht und Details erhalten. Unser Team wird Ihre Anfrage prüfen und sich in Kürze mit Ihnen in Verbindung setzen.
+
+Ihre Anfrage-Details:
+- Kundentyp: ${data.clientType === 'business' ? 'Unternehmen' : 'Privatperson'}
+- Nachricht: ${data.message || 'Keine Beschreibung angegeben'}
+
+Mit freundlichen Grüßen,
+Ihr Attireburg Team
+`
+
+    const customerHtml = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+        <h2 style="background: #47131e; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-top-left-radius: 8px; border-top-right-radius: 8px; text-align: center;">Vielen Dank für Ihre Anfrage</h2>
+        <p>Hallo ${data.name},</p>
+        <p>vielen Dank für Ihre Print-on-Demand Anfrage bei Attireburg!</p>
+        <p>Wir haben Ihre Anfrage erhalten. Unser Team prüft Ihre Anforderungen und wird sich in Kürze (normalerweise innerhalb von 24 Stunden) mit einem individuellen Angebot bei Ihnen melden.</p>
+        
+        <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #eee; margin-top: 20px;">
+          <h4 style="margin-top: 0; color: #47131e;">Zusammenfassung Ihrer Anfrage:</h4>
+          <p><strong>Typ:</strong> ${data.clientType === 'business' ? 'Unternehmen' : 'Privatperson'}</p>
+          <p><strong>Nachricht:</strong> ${data.message || 'Keine Beschreibung angegeben'}</p>
+          ${data.fileName ? `<p><strong>Design-Datei:</strong> ${data.fileName}</p>` : ''}
+        </div>
+        
+        <p>Falls Sie noch Fragen haben oder weitere Details hinzufügen möchten, können Sie einfach auf diese E-Mail antworten.</p>
+        
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 0.9em; color: #666; text-align: center;">Attireburg - Premium Deutsche Kleidung</p>
+      </div>
+    `
+
+    const customerEmailSent = await this.sendSMTPEmail(data.email, {
+      subject: customerSubject,
+      text: customerText,
+      html: customerHtml
+    })
+
+    return ownerEmailSent && customerEmailSent
+  }
 }
 
 export const emailService = new EmailService()
