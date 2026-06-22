@@ -25,6 +25,8 @@ interface SiteSettings {
   taxRate: number
   orderNotifications: boolean
   lowStockAlerts: boolean
+  announcementDe: string
+  announcementEn: string
 }
 
 const DEFAULTS: SiteSettings = {
@@ -46,6 +48,8 @@ const DEFAULTS: SiteSettings = {
   taxRate: 19,
   orderNotifications: true,
   lowStockAlerts: true,
+  announcementDe: 'Kostenloser Versand ab 50 €\nNeue Kollektion jetzt verfügbar\nPrint on Demand — Ihr Design, unsere Qualität\nKostenlose Rückgabe innerhalb von 30 Tagen',
+  announcementEn: 'Free shipping from €50\nNew collection now available\nPrint on Demand — Your design, our quality\nFree returns within 30 days',
 }
 
 export default function AdminSettings() {
@@ -246,6 +250,26 @@ export default function AdminSettings() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Subtitle (EN)</label>
               <input type="text" value={settings.heroSubtitleEn} onChange={e => set('heroSubtitleEn', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-800" />
+            </div>
+          </div>
+        </div>
+
+        {/* Announcement Bar */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-5">Ankündigungsleiste (Marquee)</h3>
+          <p className="text-sm text-gray-500 mb-4">Geben Sie jede Ankündigung in eine neue Zeile ein</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ankündigungen (DE)</label>
+              <textarea value={settings.announcementDe} onChange={e => set('announcementDe', e.target.value)} rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-800 focus:border-transparent text-sm"
+                placeholder="Kostenloser Versand ab 50 €&#10;Neue Kollektion..." />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Announcements (EN)</label>
+              <textarea value={settings.announcementEn} onChange={e => set('announcementEn', e.target.value)} rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-800 focus:border-transparent text-sm"
+                placeholder="Free shipping...&#10;New collection..." />
             </div>
           </div>
         </div>

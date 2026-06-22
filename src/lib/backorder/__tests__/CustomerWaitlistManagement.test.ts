@@ -24,4 +24,289 @@ function generateMockWaitlistSubscription(email?: string) {
     email: email || `test${Math.floor(Math.random() * 1000)}@example.com`,
     productId: `product-${Math.floor(Math.random() * 100)}`,
     variantId: Math.random() > 0.5 ? `variant-${Math.floor(Math.random() * 100)}` : undefined,
-    isActive: Math.random() > 0.2, // 80% chance of being active\n    createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000),\n    productName: `Test Product ${Math.floor(Math.random() * 100)}`,\n    productNameEn: `Test Product EN ${Math.floor(Math.random() * 100)}`,\n    expectedRestockDate: Math.random() > 0.5 ? new Date(Date.now() + Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000) : undefined\n  }\n}\n\n// Mock waitlist service functions\nclass MockWaitlistService {\n  private subscriptions: Map<string, any[]> = new Map()\n\n  async getSubscriptionsByEmail(email: string) {\n    return this.subscriptions.get(email) || []\n  }\n\n  async addSubscription(email: string, subscription: any) {\n    const userSubscriptions = this.subscriptions.get(email) || []\n    userSubscriptions.push(subscription)\n    this.subscriptions.set(email, userSubscriptions)\n    return subscription\n  }\n\n  async removeSubscription(email: string, productId: string, variantId?: string) {\n    const userSubscriptions = this.subscriptions.get(email) || []\n    const filteredSubscriptions = userSubscriptions.filter(sub => \n      !(sub.productId === productId && sub.variantId === variantId)\n    )\n    this.subscriptions.set(email, filteredSubscriptions)\n    return true\n  }\n\n  async updateSubscriptionStatus(email: string, productId: string, variantId: string | undefined, isActive: boolean) {\n    const userSubscriptions = this.subscriptions.get(email) || []\n    const subscription = userSubscriptions.find(sub => \n      sub.productId === productId && sub.variantId === variantId\n    )\n    if (subscription) {\n      subscription.isActive = isActive\n    }\n    return subscription\n  }\n}\n\nconst mockWaitlistService = new MockWaitlistService()\n\ndescribe('Customer Waitlist Management Property Tests', () => {\n  it('Property 19: Customer waitlist management - subscription retrieval consistency', async () => {\n    // **Property 19: Customer waitlist management**\n    // **Validates: Requirements 7.1, 7.2**\n    \n    // Generate test data\n    const user = generateMockUser()\n    const subscriptions = Array.from({ length: Math.floor(Math.random() * 10) + 1 }, () => \n      generateMockWaitlistSubscription(user.email)\n    )\n\n    // Add subscriptions to the service\n    for (const subscription of subscriptions) {\n      await mockWaitlistService.addSubscription(user.email, subscription)\n    }\n\n    // Property: Retrieved subscriptions should match added subscriptions\n    const retrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)\n    \n    assert.strictEqual(\n      retrievedSubscriptions.length,\n      subscriptions.length,\n      'Retrieved subscription count should match added subscription count'\n    )\n\n    // Property: All added subscriptions should be retrievable\n    for (const originalSubscription of subscriptions) {\n      const found = retrievedSubscriptions.find(sub => \n        sub.productId === originalSubscription.productId && \n        sub.variantId === originalSubscription.variantId\n      )\n      assert.ok(found, `Subscription for product ${originalSubscription.productId} should be retrievable`)\n      assert.strictEqual(found.email, user.email, 'Retrieved subscription should have correct email')\n    }\n  })\n\n  it('Property 19: Customer waitlist management - subscription filtering by status', async () => {\n    // Generate test data with mixed active/inactive subscriptions\n    const user = generateMockUser()\n    const activeSubscriptions = Array.from({ length: Math.floor(Math.random() * 5) + 1 }, () => {\n      const sub = generateMockWaitlistSubscription(user.email)\n      sub.isActive = true\n      return sub\n    })\n    const inactiveSubscriptions = Array.from({ length: Math.floor(Math.random() * 5) + 1 }, () => {\n      const sub = generateMockWaitlistSubscription(user.email)\n      sub.isActive = false\n      return sub\n    })\n\n    // Add all subscriptions\n    const allSubscriptions = [...activeSubscriptions, ...inactiveSubscriptions]\n    for (const subscription of allSubscriptions) {\n      await mockWaitlistService.addSubscription(user.email, subscription)\n    }\n\n    // Property: Should be able to filter active vs inactive subscriptions\n    const retrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)\n    const retrievedActive = retrievedSubscriptions.filter(sub => sub.isActive)\n    const retrievedInactive = retrievedSubscriptions.filter(sub => !sub.isActive)\n\n    assert.strictEqual(\n      retrievedActive.length,\n      activeSubscriptions.length,\n      'Active subscription count should match'\n    )\n    assert.strictEqual(\n      retrievedInactive.length,\n      inactiveSubscriptions.length,\n      'Inactive subscription count should match'\n    )\n  })\n\n  it('Property 19: Customer waitlist management - subscription removal consistency', async () => {\n    // Generate test data\n    const user = generateMockUser()\n    const subscriptions = Array.from({ length: Math.floor(Math.random() * 5) + 3 }, () => \n      generateMockWaitlistSubscription(user.email)\n    )\n\n    // Add subscriptions\n    for (const subscription of subscriptions) {\n      await mockWaitlistService.addSubscription(user.email, subscription)\n    }\n\n    // Remove a random subscription\n    const subscriptionToRemove = subscriptions[Math.floor(Math.random() * subscriptions.length)]\n    await mockWaitlistService.removeSubscription(\n      user.email, \n      subscriptionToRemove.productId, \n      subscriptionToRemove.variantId\n    )\n\n    // Property: Removed subscription should not be retrievable\n    const retrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)\n    const removedSubscriptionFound = retrievedSubscriptions.find(sub => \n      sub.productId === subscriptionToRemove.productId && \n      sub.variantId === subscriptionToRemove.variantId\n    )\n\n    assert.strictEqual(\n      removedSubscriptionFound,\n      undefined,\n      'Removed subscription should not be found in retrieved subscriptions'\n    )\n\n    // Property: Other subscriptions should remain\n    const expectedRemainingCount = subscriptions.length - 1\n    assert.strictEqual(\n      retrievedSubscriptions.length,\n      expectedRemainingCount,\n      'Remaining subscription count should be correct'\n    )\n  })\n\n  it('Property 19: Customer waitlist management - subscription status updates', async () => {\n    // Generate test data\n    const user = generateMockUser()\n    const subscription = generateMockWaitlistSubscription(user.email)\n    subscription.isActive = true\n\n    // Add subscription\n    await mockWaitlistService.addSubscription(user.email, subscription)\n\n    // Property: Status updates should be persistent\n    await mockWaitlistService.updateSubscriptionStatus(\n      user.email, \n      subscription.productId, \n      subscription.variantId, \n      false\n    )\n\n    const retrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)\n    const updatedSubscription = retrievedSubscriptions.find(sub => \n      sub.productId === subscription.productId && \n      sub.variantId === subscription.variantId\n    )\n\n    assert.ok(updatedSubscription, 'Updated subscription should be found')\n    assert.strictEqual(\n      updatedSubscription.isActive,\n      false,\n      'Subscription status should be updated to inactive'\n    )\n\n    // Property: Status can be toggled back\n    await mockWaitlistService.updateSubscriptionStatus(\n      user.email, \n      subscription.productId, \n      subscription.variantId, \n      true\n    )\n\n    const reRetrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)\n    const reUpdatedSubscription = reRetrievedSubscriptions.find(sub => \n      sub.productId === subscription.productId && \n      sub.variantId === subscription.variantId\n    )\n\n    assert.ok(reUpdatedSubscription, 'Re-updated subscription should be found')\n    assert.strictEqual(\n      reUpdatedSubscription.isActive,\n      true,\n      'Subscription status should be updated back to active'\n    )\n  })\n\n  it('Property 19: Customer waitlist management - email isolation', async () => {\n    // Generate test data for multiple users\n    const user1 = generateMockUser()\n    const user2 = generateMockUser()\n    const user1Subscriptions = Array.from({ length: Math.floor(Math.random() * 5) + 1 }, () => \n      generateMockWaitlistSubscription(user1.email)\n    )\n    const user2Subscriptions = Array.from({ length: Math.floor(Math.random() * 5) + 1 }, () => \n      generateMockWaitlistSubscription(user2.email)\n    )\n\n    // Add subscriptions for both users\n    for (const subscription of user1Subscriptions) {\n      await mockWaitlistService.addSubscription(user1.email, subscription)\n    }\n    for (const subscription of user2Subscriptions) {\n      await mockWaitlistService.addSubscription(user2.email, subscription)\n    }\n\n    // Property: Each user should only see their own subscriptions\n    const user1Retrieved = await mockWaitlistService.getSubscriptionsByEmail(user1.email)\n    const user2Retrieved = await mockWaitlistService.getSubscriptionsByEmail(user2.email)\n\n    assert.strictEqual(\n      user1Retrieved.length,\n      user1Subscriptions.length,\n      'User 1 should see correct number of subscriptions'\n    )\n    assert.strictEqual(\n      user2Retrieved.length,\n      user2Subscriptions.length,\n      'User 2 should see correct number of subscriptions'\n    )\n\n    // Property: No cross-contamination between users\n    for (const subscription of user1Retrieved) {\n      assert.strictEqual(subscription.email, user1.email, 'User 1 subscriptions should have user 1 email')\n    }\n    for (const subscription of user2Retrieved) {\n      assert.strictEqual(subscription.email, user2.email, 'User 2 subscriptions should have user 2 email')\n    }\n  })\n\n  it('Property 19: Customer waitlist management - subscription uniqueness', async () => {\n    // Generate test data\n    const user = generateMockUser()\n    const subscription = generateMockWaitlistSubscription(user.email)\n\n    // Add the same subscription multiple times\n    await mockWaitlistService.addSubscription(user.email, subscription)\n    await mockWaitlistService.addSubscription(user.email, { ...subscription, id: 'different-id' })\n    await mockWaitlistService.addSubscription(user.email, { ...subscription, id: 'another-id' })\n\n    const retrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)\n    const matchingSubscriptions = retrievedSubscriptions.filter(sub => \n      sub.productId === subscription.productId && \n      sub.variantId === subscription.variantId\n    )\n\n    // Property: Multiple subscriptions for the same product/variant should be allowed\n    // (This tests the current implementation behavior - in a real system, you might want uniqueness)\n    assert.ok(\n      matchingSubscriptions.length >= 1,\n      'At least one matching subscription should exist'\n    )\n\n    // Property: All subscriptions should have the correct email\n    for (const sub of matchingSubscriptions) {\n      assert.strictEqual(sub.email, user.email, 'All subscriptions should have correct email')\n      assert.strictEqual(sub.productId, subscription.productId, 'All subscriptions should have correct product ID')\n    }\n  })\n})\n"
+    isActive: Math.random() > 0.2, // 80% chance of being active
+    createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000),
+    productName: `Test Product ${Math.floor(Math.random() * 100)}`,
+    productNameEn: `Test Product EN ${Math.floor(Math.random() * 100)}`,
+    expectedRestockDate: Math.random() > 0.5 ? new Date(Date.now() + Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000) : undefined
+  }
+}
+
+// Mock waitlist service functions
+class MockWaitlistService {
+  private subscriptions: Map<string, any[]> = new Map()
+
+  async getSubscriptionsByEmail(email: string) {
+    return this.subscriptions.get(email) || []
+  }
+
+  async addSubscription(email: string, subscription: any) {
+    const userSubscriptions = this.subscriptions.get(email) || []
+    userSubscriptions.push(subscription)
+    this.subscriptions.set(email, userSubscriptions)
+    return subscription
+  }
+
+  async removeSubscription(email: string, productId: string, variantId?: string) {
+    const userSubscriptions = this.subscriptions.get(email) || []
+    const filteredSubscriptions = userSubscriptions.filter(sub => 
+      !(sub.productId === productId && sub.variantId === variantId)
+    )
+    this.subscriptions.set(email, filteredSubscriptions)
+    return true
+  }
+
+  async updateSubscriptionStatus(email: string, productId: string, variantId: string | undefined, isActive: boolean) {
+    const userSubscriptions = this.subscriptions.get(email) || []
+    const subscription = userSubscriptions.find(sub => 
+      sub.productId === productId && sub.variantId === variantId
+    )
+    if (subscription) {
+      subscription.isActive = isActive
+    }
+    return subscription
+  }
+}
+
+const mockWaitlistService = new MockWaitlistService()
+
+describe('Customer Waitlist Management Property Tests', () => {
+  it('Property 19: Customer waitlist management - subscription retrieval consistency', async () => {
+    // **Property 19: Customer waitlist management**
+    // **Validates: Requirements 7.1, 7.2**
+    
+    // Generate test data
+    const user = generateMockUser()
+    const subscriptions = Array.from({ length: Math.floor(Math.random() * 10) + 1 }, () => 
+      generateMockWaitlistSubscription(user.email)
+    )
+
+    // Add subscriptions to the service
+    for (const subscription of subscriptions) {
+      await mockWaitlistService.addSubscription(user.email, subscription)
+    }
+
+    // Property: Retrieved subscriptions should match added subscriptions
+    const retrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)
+    
+    assert.strictEqual(
+      retrievedSubscriptions.length,
+      subscriptions.length,
+      'Retrieved subscription count should match added subscription count'
+    )
+
+    // Property: All added subscriptions should be retrievable
+    for (const originalSubscription of subscriptions) {
+      const found = retrievedSubscriptions.find(sub => 
+        sub.productId === originalSubscription.productId && 
+        sub.variantId === originalSubscription.variantId
+      )
+      assert.ok(found, `Subscription for product ${originalSubscription.productId} should be retrievable`)
+      assert.strictEqual(found.email, user.email, 'Retrieved subscription should have correct email')
+    }
+  })
+
+  it('Property 19: Customer waitlist management - subscription filtering by status', async () => {
+    // Generate test data with mixed active/inactive subscriptions
+    const user = generateMockUser()
+    const activeSubscriptions = Array.from({ length: Math.floor(Math.random() * 5) + 1 }, () => {
+      const sub = generateMockWaitlistSubscription(user.email)
+      sub.isActive = true
+      return sub
+    })
+    const inactiveSubscriptions = Array.from({ length: Math.floor(Math.random() * 5) + 1 }, () => {
+      const sub = generateMockWaitlistSubscription(user.email)
+      sub.isActive = false
+      return sub
+    })
+
+    // Add all subscriptions
+    const allSubscriptions = [...activeSubscriptions, ...inactiveSubscriptions]
+    for (const subscription of allSubscriptions) {
+      await mockWaitlistService.addSubscription(user.email, subscription)
+    }
+
+    // Property: Should be able to filter active vs inactive subscriptions
+    const retrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)
+    const retrievedActive = retrievedSubscriptions.filter(sub => sub.isActive)
+    const retrievedInactive = retrievedSubscriptions.filter(sub => !sub.isActive)
+
+    assert.strictEqual(
+      retrievedActive.length,
+      activeSubscriptions.length,
+      'Active subscription count should match'
+    )
+    assert.strictEqual(
+      retrievedInactive.length,
+      inactiveSubscriptions.length,
+      'Inactive subscription count should match'
+    )
+  })
+
+  it('Property 19: Customer waitlist management - subscription removal consistency', async () => {
+    // Generate test data
+    const user = generateMockUser()
+    const subscriptions = Array.from({ length: Math.floor(Math.random() * 5) + 3 }, () => 
+      generateMockWaitlistSubscription(user.email)
+    )
+
+    // Add subscriptions
+    for (const subscription of subscriptions) {
+      await mockWaitlistService.addSubscription(user.email, subscription)
+    }
+
+    // Remove a random subscription
+    const subscriptionToRemove = subscriptions[Math.floor(Math.random() * subscriptions.length)]
+    await mockWaitlistService.removeSubscription(
+      user.email, 
+      subscriptionToRemove.productId, 
+      subscriptionToRemove.variantId
+    )
+
+    // Property: Removed subscription should not be retrievable
+    const retrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)
+    const removedSubscriptionFound = retrievedSubscriptions.find(sub => 
+      sub.productId === subscriptionToRemove.productId && 
+      sub.variantId === subscriptionToRemove.variantId
+    )
+
+    assert.strictEqual(
+      removedSubscriptionFound,
+      undefined,
+      'Removed subscription should not be found in retrieved subscriptions'
+    )
+
+    // Property: Other subscriptions should remain
+    const expectedRemainingCount = subscriptions.length - 1
+    assert.strictEqual(
+      retrievedSubscriptions.length,
+      expectedRemainingCount,
+      'Remaining subscription count should be correct'
+    )
+  })
+
+  it('Property 19: Customer waitlist management - subscription status updates', async () => {
+    // Generate test data
+    const user = generateMockUser()
+    const subscription = generateMockWaitlistSubscription(user.email)
+    subscription.isActive = true
+
+    // Add subscription
+    await mockWaitlistService.addSubscription(user.email, subscription)
+
+    // Property: Status updates should be persistent
+    await mockWaitlistService.updateSubscriptionStatus(
+      user.email, 
+      subscription.productId, 
+      subscription.variantId, 
+      false
+    )
+
+    const retrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)
+    const updatedSubscription = retrievedSubscriptions.find(sub => 
+      sub.productId === subscription.productId && 
+      sub.variantId === subscription.variantId
+    )
+
+    assert.ok(updatedSubscription, 'Updated subscription should be found')
+    assert.strictEqual(
+      updatedSubscription.isActive,
+      false,
+      'Subscription status should be updated to inactive'
+    )
+
+    // Property: Status can be toggled back
+    await mockWaitlistService.updateSubscriptionStatus(
+      user.email, 
+      subscription.productId, 
+      subscription.variantId, 
+      true
+    )
+
+    const reRetrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)
+    const reUpdatedSubscription = reRetrievedSubscriptions.find(sub => 
+      sub.productId === subscription.productId && 
+      sub.variantId === subscription.variantId
+    )
+
+    assert.ok(reUpdatedSubscription, 'Re-updated subscription should be found')
+    assert.strictEqual(
+      reUpdatedSubscription.isActive,
+      true,
+      'Subscription status should be updated back to active'
+    )
+  })
+
+  it('Property 19: Customer waitlist management - email isolation', async () => {
+    // Generate test data for multiple users
+    const user1 = generateMockUser()
+    const user2 = generateMockUser()
+    const user1Subscriptions = Array.from({ length: Math.floor(Math.random() * 5) + 1 }, () => 
+      generateMockWaitlistSubscription(user1.email)
+    )
+    const user2Subscriptions = Array.from({ length: Math.floor(Math.random() * 5) + 1 }, () => 
+      generateMockWaitlistSubscription(user2.email)
+    )
+
+    // Add subscriptions for both users
+    for (const subscription of user1Subscriptions) {
+      await mockWaitlistService.addSubscription(user1.email, subscription)
+    }
+    for (const subscription of user2Subscriptions) {
+      await mockWaitlistService.addSubscription(user2.email, subscription)
+    }
+
+    // Property: Each user should only see their own subscriptions
+    const user1Retrieved = await mockWaitlistService.getSubscriptionsByEmail(user1.email)
+    const user2Retrieved = await mockWaitlistService.getSubscriptionsByEmail(user2.email)
+
+    assert.strictEqual(
+      user1Retrieved.length,
+      user1Subscriptions.length,
+      'User 1 should see correct number of subscriptions'
+    )
+    assert.strictEqual(
+      user2Retrieved.length,
+      user2Subscriptions.length,
+      'User 2 should see correct number of subscriptions'
+    )
+
+    // Property: No cross-contamination between users
+    for (const subscription of user1Retrieved) {
+      assert.strictEqual(subscription.email, user1.email, 'User 1 subscriptions should have user 1 email')
+    }
+    for (const subscription of user2Retrieved) {
+      assert.strictEqual(subscription.email, user2.email, 'User 2 subscriptions should have user 2 email')
+    }
+  })
+
+  it('Property 19: Customer waitlist management - subscription uniqueness', async () => {
+    // Generate test data
+    const user = generateMockUser()
+    const subscription = generateMockWaitlistSubscription(user.email)
+
+    // Add the same subscription multiple times
+    await mockWaitlistService.addSubscription(user.email, subscription)
+    await mockWaitlistService.addSubscription(user.email, { ...subscription, id: 'different-id' })
+    await mockWaitlistService.addSubscription(user.email, { ...subscription, id: 'another-id' })
+
+    const retrievedSubscriptions = await mockWaitlistService.getSubscriptionsByEmail(user.email)
+    const matchingSubscriptions = retrievedSubscriptions.filter(sub => 
+      sub.productId === subscription.productId && 
+      sub.variantId === subscription.variantId
+    )
+
+    // Property: Multiple subscriptions for the same product/variant should be allowed
+    // (This tests the current implementation behavior - in a real system, you might want uniqueness)
+    assert.ok(
+      matchingSubscriptions.length >= 1,
+      'At least one matching subscription should exist'
+    )
+
+    // Property: All subscriptions should have the correct email
+    for (const sub of matchingSubscriptions) {
+      assert.strictEqual(sub.email, user.email, 'All subscriptions should have correct email')
+      assert.strictEqual(sub.productId, subscription.productId, 'All subscriptions should have correct product ID')
+    }
+  })
+})

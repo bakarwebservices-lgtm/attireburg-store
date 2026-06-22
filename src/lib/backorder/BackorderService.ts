@@ -83,8 +83,9 @@ export class BackorderService {
             }
           }
 
-          // Verify variant is out of stock
-          if (variant.stock >= item.quantity) {
+          // Verify variant is out of stock (using combined variant and parent product stock)
+          const availableStock = Math.min(variant.stock, product.stock)
+          if (availableStock >= item.quantity) {
             return {
               success: false,
               message: `Product variant ${variant.sku} is in stock and cannot be backordered`

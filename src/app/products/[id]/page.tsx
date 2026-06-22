@@ -269,7 +269,9 @@ export default function ProductDetail() {
 
   // Get current stock
   const getCurrentStock = () => {
-    if (selectedVariant) return selectedVariant.stock
+    if (selectedVariant) {
+      return Math.min(selectedVariant.stock, product?.stock || 0)
+    }
     return product?.stock || 0
   }
 
@@ -651,7 +653,7 @@ export default function ProductDetail() {
                         const isSelected = selectedAttributes[attributeName] === value
                         const testAttributes = { ...selectedAttributes, [attributeName]: value }
                         const testVariant = findVariantByAttributes(testAttributes)
-                        const isAvailable = testVariant && testVariant.isActive && testVariant.stock > 0
+                        const isAvailable = testVariant && testVariant.isActive && testVariant.stock > 0 && (product?.stock || 0) > 0
                         
                         return (
                           <button
@@ -677,20 +679,27 @@ export default function ProductDetail() {
                 {/* Selected Variant Stock Status */}
                 {selectedVariant && (
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${selectedVariant.stock > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <span className={`text-sm font-medium ${selectedVariant.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {selectedVariant.stock > 0
-                        ? selectedVariant.stock <= 5
-                          ? `${lang === 'de' ? 'Nur noch' : 'Only'} ${selectedVariant.stock} ${lang === 'de' ? 'verfügbar' : 'left'}`
-                          : lang === 'de' ? 'Auf Lager' : 'In stock'
-                        : lang === 'de' ? 'Nicht verfügbar' : 'Out of stock'
-                      }
-                    </span>
-                    {selectedVariant.stock === 0 && restockDate && (
-                      <span className="text-xs text-gray-500">
-                        · {lang === 'de' ? 'Wieder verfügbar' : 'Back'}: {new Intl.DateTimeFormat(lang === 'de' ? 'de-DE' : 'en-GB', { month: 'long', day: 'numeric' }).format(restockDate)}
-                      </span>
-                    )}
+                    {(() => {
+                      const displayStock = Math.min(selectedVariant.stock, product?.stock || 0)
+                      return (
+                        <>
+                          <div className={`w-2 h-2 rounded-full ${displayStock > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
+                          <span className={`text-sm font-medium ${displayStock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {displayStock > 0
+                              ? displayStock <= 5
+                                ? `${lang === 'de' ? 'Nur noch' : 'Only'} ${displayStock} ${lang === 'de' ? 'verfügbar' : 'left'}`
+                                : lang === 'de' ? 'Auf Lager' : 'In stock'
+                              : lang === 'de' ? 'Nicht verfügbar' : 'Out of stock'
+                            }
+                          </span>
+                          {displayStock === 0 && restockDate && (
+                            <span className="text-xs text-gray-500">
+                              · {lang === 'de' ? 'Wieder verfügbar' : 'Back'}: {new Intl.DateTimeFormat(lang === 'de' ? 'de-DE' : 'en-GB', { month: 'long', day: 'numeric' }).format(restockDate)}
+                            </span>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                 )}
               </div>
@@ -822,7 +831,7 @@ export default function ProductDetail() {
 
             {/* Stock Status */}
             <div className="text-sm">
-              {product.stock > 0 ? (
+              {getCurrentStock() > 0 ? (
                 <span className="text-green-600 flex items-center">
                   <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />

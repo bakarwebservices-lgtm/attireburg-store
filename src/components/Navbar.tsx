@@ -8,20 +8,6 @@ import { translations } from '@/lib/translations'
 import LanguageSwitcher from './LanguageSwitcher'
 import ClientOnly from './ClientOnly'
 
-const MARQUEE_DE = [
-  'Kostenloser Versand ab 50 €',
-  'Neue Kollektion jetzt verfügbar',
-  'Print on Demand — Ihr Design, unsere Qualität',
-  'Kostenlose Rückgabe innerhalb von 30 Tagen',
-]
-
-const MARQUEE_EN = [
-  'Free shipping from €50',
-  'New collection now available',
-  'Print on Demand — Your design, our quality',
-  'Free returns within 30 days',
-]
-
 export default function Navbar() {
   const { lang } = useLanguage()
   const { user, logout } = useAuth()
@@ -29,17 +15,24 @@ export default function Navbar() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [logoUrl, setLogoUrl] = useState('/logo.png')
+  const [announcements, setAnnouncements] = useState<string[]>([])
   const t = translations[lang]
 
   useEffect(() => {
     fetch('/api/admin/settings')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.logoUrl) setLogoUrl(d.logoUrl) })
+      .then(d => {
+        if (d?.logoUrl) setLogoUrl(d.logoUrl)
+        const announcementText = lang === 'de' ? d?.announcementDe : d?.announcementEn
+        if (announcementText) {
+          const list = announcementText.split('\n').map((s: string) => s.trim()).filter(Boolean)
+          setAnnouncements(list)
+        }
+      })
       .catch(() => {})
-  }, [])
+  }, [lang])
 
-  const marqueeBase = lang === 'de' ? MARQUEE_DE : MARQUEE_EN
-  const marqueeItems = [...marqueeBase, ...marqueeBase]
+  const marqueeItems = [...announcements, ...announcements]
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200">

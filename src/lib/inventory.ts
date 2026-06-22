@@ -36,17 +36,26 @@ class InventoryService {
     for (const item of items) {
       try {
         if (item.variantId) {
-          // Check variant stock
-          const variant = await prisma.productVariant.findUnique({
-            where: { id: item.variantId },
-            select: { stock: true, isActive: true }
-          })
+          // Check variant and product stock
+          const [variant, product] = await Promise.all([
+            prisma.productVariant.findUnique({
+              where: { id: item.variantId },
+              select: { stock: true, isActive: true }
+            }),
+            prisma.product.findUnique({
+              where: { id: item.productId },
+              select: { stock: true, isActive: true }
+            })
+          ])
+
+          const combinedStock = Math.min(variant?.stock || 0, product?.stock || 0)
+          const isAvailable = (variant?.isActive && product?.isActive && combinedStock >= item.quantity) || false
 
           stockInfo.push({
             productId: item.productId,
             variantId: item.variantId,
-            currentStock: variant?.stock || 0,
-            available: (variant?.isActive && (variant?.stock || 0) >= item.quantity) || false
+            currentStock: combinedStock,
+            available: isAvailable
           })
         } else {
           // Check product stock
@@ -111,6 +120,15 @@ class InventoryService {
                 }
               }
             })
+            // Also update parent product stock
+            await tx.product.update({
+              where: { id: item.productId },
+              data: {
+                stock: {
+                  decrement: item.quantity
+                }
+              }
+            })
           } else {
             // Update product stock
             await tx.product.update({
@@ -152,6 +170,15 @@ class InventoryService {
             // Restore variant stock
             await tx.productVariant.update({
               where: { id: item.variantId },
+              data: {
+                stock: {
+                  increment: item.quantity
+                }
+              }
+            })
+            // Also restore parent product stock
+            await tx.product.update({
+              where: { id: item.productId },
               data: {
                 stock: {
                   increment: item.quantity
@@ -216,11 +243,17 @@ class InventoryService {
         }
       }
 
-      const totalVariantStock = product.variants.reduce((sum, variant) => sum + variant.stock, 0)
+      // Map variants stock to be the minimum of variant stock and parent product stock
+      const mappedVariants = product.variants.map(v => ({
+        ...v,
+        stock: Math.min(v.stock, product.stock)
+      }))
+
+      const totalVariantStock = mappedVariants.reduce((sum, variant) => sum + variant.stock, 0)
 
       return {
         productStock: product.stock,
-        variants: product.variants,
+        variants: mappedVariants,
         totalVariantStock
       }
     } catch (error) {

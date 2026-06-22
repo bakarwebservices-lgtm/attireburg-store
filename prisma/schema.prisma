@@ -244,6 +244,8 @@ model SiteSettings {
   taxRate     Float    @default(19)
   orderNotifications    Boolean @default(true)
   lowStockAlerts        Boolean @default(true)
+  announcementDe        String   @default("Kostenloser Versand ab 50 €\nNeue Kollektion jetzt verfügbar\nPrint on Demand — Ihr Design, unsere Qualität\nKostenlose Rückgabe innerhalb von 30 Tagen")
+  announcementEn        String   @default("Free shipping from €50\nNew collection now available\nPrint on Demand — Your design, our quality\nFree returns within 30 days")
   updatedAt   DateTime @updatedAt
 }
 
