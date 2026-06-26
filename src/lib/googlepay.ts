@@ -38,9 +38,9 @@ class GooglePayService {
 
   constructor() {
     this.config = {
-      environment: (process.env.GOOGLE_PAY_ENVIRONMENT as 'TEST' | 'PRODUCTION') || 'TEST',
-      merchantId: process.env.GOOGLE_PAY_MERCHANT_ID || '',
-      merchantName: process.env.GOOGLE_PAY_MERCHANT_NAME || 'Attireburg'
+      environment: (process.env.NEXT_PUBLIC_GOOGLE_PAY_ENVIRONMENT as 'TEST' | 'PRODUCTION') || 'TEST',
+      merchantId: process.env.NEXT_PUBLIC_GOOGLE_PAY_MERCHANT_ID || '',
+      merchantName: process.env.NEXT_PUBLIC_GOOGLE_PAY_MERCHANT_NAME || 'Attireburg'
     }
   }
 

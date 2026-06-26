@@ -166,32 +166,29 @@ export async function POST(request: NextRequest) {
       // Here you would integrate with payment processors
       // For now, we'll simulate successful payment processing
       
-      // Send order confirmation email
-      try {
-        await emailService.sendOrderConfirmation({
-          orderNumber: `ATB-${order.id.slice(-6).toUpperCase()}`,
-          customerName: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
-          customerEmail: shippingAddress.email,
-          items: items.map((item: any) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: item.salePrice || item.price,
-            size: item.size,
-            color: item.color
-          })),
-          totalAmount: totalAmount,  // already the gross final total
-          shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.company ? shippingAddress.company + '\n' : ''}${shippingAddress.street}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.country}`,
-          paymentMethod: paymentMethod === 'cod' ? 'Nachnahme' : paymentMethod === 'paypal' ? 'PayPal' : 'Google Pay',
-          estimatedDelivery: '2-3 Werktage'
-        })
-      } catch (emailError) {
-        errorLogger.error('Failed to send order confirmation email', { 
+      // Send order confirmation email in the background (non-blocking)
+      emailService.sendOrderConfirmation({
+        orderNumber: `ATB-${order.id.slice(-6).toUpperCase()}`,
+        customerName: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+        customerEmail: shippingAddress.email,
+        items: items.map((item: any) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.salePrice || item.price,
+          size: item.size,
+          color: item.color
+        })),
+        totalAmount: totalAmount,  // already the gross final total
+        shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.company ? shippingAddress.company + '\n' : ''}${shippingAddress.street}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.country}`,
+        paymentMethod: paymentMethod === 'cod' ? 'Nachnahme' : paymentMethod === 'paypal' ? 'PayPal' : 'Google Pay',
+        estimatedDelivery: '2-3 Werktage'
+      }).catch((emailError) => {
+        errorLogger.error('Failed to send order confirmation email in background', { 
           orderId: order.id,
           customerEmail: shippingAddress.email 
         }, emailError as Error)
-        console.error('Failed to send order confirmation email:', emailError)
-        // Don't fail the order if email fails
-      }
+        console.error('Failed to send order confirmation email in background:', emailError)
+      })
       
       return NextResponse.json({
         orderId: order.id,

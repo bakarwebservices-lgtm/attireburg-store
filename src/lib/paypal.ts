@@ -63,7 +63,9 @@ class PayPalService {
     })
 
     if (!response.ok) {
-      throw new Error('Failed to get PayPal access token')
+      const errorText = await response.text()
+      console.error('PayPal OAuth credentials error:', errorText)
+      throw new Error(`Failed to get PayPal access token: ${errorText}`)
     }
 
     const data = await response.json()
@@ -72,6 +74,11 @@ class PayPalService {
 
   async createOrder(orderRequest: PayPalOrderRequest): Promise<PayPalOrderResponse> {
     const accessToken = await this.getAccessToken()
+
+    const itemTotalValue = orderRequest.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    const itemTotal = parseFloat(itemTotalValue.toFixed(2))
+    const totalAmount = parseFloat(orderRequest.amount.toFixed(2))
+    const shippingTotal = Math.max(0, totalAmount - itemTotal)
 
     const paypalOrder = {
       intent: 'CAPTURE',
@@ -83,7 +90,11 @@ class PayPalService {
           breakdown: {
             item_total: {
               currency_code: orderRequest.currency,
-              value: orderRequest.items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)
+              value: itemTotal.toFixed(2)
+            },
+            shipping: {
+              currency_code: orderRequest.currency,
+              value: shippingTotal.toFixed(2)
             }
           }
         },
@@ -115,15 +126,11 @@ class PayPalService {
             locale: 'de-DE',
             landing_page: 'LOGIN',
             shipping_preference: 'SET_PROVIDED_ADDRESS',
-            user_action: 'PAY_NOW'
+            user_action: 'PAY_NOW',
+            return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success`,
+            cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout`
           }
         }
-      },
-      application_context: {
-        return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success`,
-        cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout`,
-        shipping_preference: 'SET_PROVIDED_ADDRESS',
-        user_action: 'PAY_NOW'
       }
     }
 

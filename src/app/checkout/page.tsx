@@ -89,6 +89,17 @@ export default function Checkout() {
     }
   }, [user, router])
 
+  // Set initial payment method from query parameters
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const payment = params.get('payment')
+      if (payment === 'paypal' || payment === 'googlepay' || payment === 'cod' || payment === 'card') {
+        setPaymentMethod(payment as PaymentMethod)
+      }
+    }
+  }, [])
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('de-DE', {
       style: 'currency',
@@ -233,7 +244,7 @@ export default function Checkout() {
       // Handle different payment methods
       if (paymentMethod === 'paypal') {
         // Check if we're in demo mode
-        const isDemo = process.env.PAYPAL_CLIENT_ID === 'demo' || !process.env.PAYPAL_CLIENT_ID
+        const isDemo = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID === 'demo' || !process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
         
         if (isDemo) {
           // Demo mode - simulate successful payment
@@ -278,7 +289,7 @@ export default function Checkout() {
         }
       } else if (paymentMethod === 'googlepay') {
         // Check if we're in demo mode
-        const isDemo = process.env.GOOGLE_PAY_MERCHANT_ID === 'demo' || !process.env.GOOGLE_PAY_MERCHANT_ID
+        const isDemo = process.env.NEXT_PUBLIC_GOOGLE_PAY_MERCHANT_ID === 'demo' || !process.env.NEXT_PUBLIC_GOOGLE_PAY_MERCHANT_ID
         
         if (isDemo) {
           // Demo mode - simulate successful payment

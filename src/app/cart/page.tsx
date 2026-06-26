@@ -370,9 +370,12 @@ export default function Cart() {
                   </div>
                 )}
                 
-                <button className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 px-4 rounded-lg transition-colors">
+                <Link
+                  href={user ? "/checkout?payment=paypal" : "/login?redirect=/checkout?payment=paypal"}
+                  className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 px-4 rounded-lg transition-colors text-center block"
+                >
                   {t.cart.paypalExpress}
-                </button>
+                </Link>
               </div>
 
               {/* Security Info */}

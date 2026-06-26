@@ -48,10 +48,12 @@ export async function POST(request: NextRequest) {
       shippingAddress
     })
 
+    console.log('Created PayPal Order response:', JSON.stringify(paypalOrder, null, 2))
+
     return NextResponse.json({
       success: true,
       paypalOrderId: paypalOrder.id,
-      approvalUrl: paypalOrder.links.find(link => link.rel === 'approve')?.href
+      approvalUrl: paypalOrder.links.find(link => link.rel === 'approve' || link.rel === 'payer-action')?.href
     })
 
   } catch (error) {

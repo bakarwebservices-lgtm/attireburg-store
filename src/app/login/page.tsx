@@ -38,6 +38,14 @@ export default function Login() {
 
       if (response.ok) {
         login(data.user, data.token)
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search)
+          const redirect = params.get('redirect')
+          if (redirect) {
+            router.push(redirect)
+            return
+          }
+        }
         router.push('/')
       } else {
         setError(data.error || 'Anmeldung fehlgeschlagen')
