@@ -26,6 +26,8 @@ export default function RootLayout({
       <head>
         {/* Google Pay API */}
         <script src="https://pay.google.com/gp/p/js/pay.js" async></script>
+        {/* Google Identity Services for Google Auth */}
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body className={inter.className}>
         <ClientLayout>

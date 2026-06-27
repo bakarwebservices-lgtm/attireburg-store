@@ -14,7 +14,7 @@ interface PayPalOrderRequest {
     quantity: number
     price: number
   }>
-  shippingAddress: {
+  shippingAddress?: {
     firstName: string
     lastName: string
     street: string
@@ -50,7 +50,7 @@ class PayPalService {
       : 'https://api.sandbox.paypal.com'
   }
 
-  private async getAccessToken(): Promise<string> {
+  async getAccessToken(): Promise<string> {
     const auth = Buffer.from(`${this.config.clientId}:${this.config.clientSecret}`).toString('base64')
     
     const response = await fetch(`${this.baseURL}/v1/oauth2/token`, {
@@ -64,8 +64,8 @@ class PayPalService {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('PayPal OAuth credentials error:', errorText)
-      throw new Error(`Failed to get PayPal access token: ${errorText}`)
+      console.error('PayPal OAuth failed:', errorText)
+      throw new Error('Failed to get PayPal access token')
     }
 
     const data = await response.json()
@@ -80,7 +80,7 @@ class PayPalService {
     const totalAmount = parseFloat(orderRequest.amount.toFixed(2))
     const shippingTotal = Math.max(0, totalAmount - itemTotal)
 
-    const paypalOrder = {
+    const paypalOrder: any = {
       intent: 'CAPTURE',
       purchase_units: [{
         reference_id: orderRequest.orderId,
@@ -105,18 +105,7 @@ class PayPalService {
             currency_code: orderRequest.currency,
             value: item.price.toFixed(2)
           }
-        })),
-        shipping: {
-          name: {
-            full_name: `${orderRequest.shippingAddress.firstName} ${orderRequest.shippingAddress.lastName}`
-          },
-          address: {
-            address_line_1: orderRequest.shippingAddress.street,
-            admin_area_2: orderRequest.shippingAddress.city,
-            postal_code: orderRequest.shippingAddress.postalCode,
-            country_code: orderRequest.shippingAddress.country === 'Deutschland' ? 'DE' : 'DE'
-          }
-        }
+        }))
       }],
       payment_source: {
         paypal: {
@@ -125,11 +114,26 @@ class PayPalService {
             brand_name: 'Attireburg',
             locale: 'de-DE',
             landing_page: 'LOGIN',
-            shipping_preference: 'SET_PROVIDED_ADDRESS',
+            shipping_preference: 'GET_FROM_FILE', // Let customer pick/specify address in PayPal Express
             user_action: 'PAY_NOW',
             return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success`,
             cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout`
           }
+        }
+      }
+    }
+
+    // Include shipping address if provided
+    if (orderRequest.shippingAddress) {
+      paypalOrder.purchase_units[0].shipping = {
+        name: {
+          full_name: `${orderRequest.shippingAddress.firstName} ${orderRequest.shippingAddress.lastName}`
+        },
+        address: {
+          address_line_1: orderRequest.shippingAddress.street,
+          admin_area_2: orderRequest.shippingAddress.city,
+          postal_code: orderRequest.shippingAddress.postalCode,
+          country_code: orderRequest.shippingAddress.country === 'Deutschland' ? 'DE' : 'DE'
         }
       }
     }

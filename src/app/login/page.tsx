@@ -64,6 +64,101 @@ export default function Login() {
     }))
   }
 
+  const handleGoogleLogin = () => {
+    const clientID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+
+    if (!clientID) {
+      // Simulate Google Sign-in for local demo testing when no Client ID is configured!
+      setLoading(true)
+      setError('')
+      setTimeout(async () => {
+        try {
+          const response = await fetch('/api/auth/google', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ isDemo: true, email: 'google-demo@attireburg.de', name: 'Google Test User' }),
+          })
+          const data = await response.json()
+          if (response.ok) {
+            login(data.user, data.token)
+            if (typeof window !== 'undefined') {
+              const params = new URLSearchParams(window.location.search)
+              const redirect = params.get('redirect')
+              if (redirect) {
+                router.push(redirect)
+                return
+              }
+            }
+            router.push('/')
+          } else {
+            setError(data.error || 'Google Login fehlgeschlagen.')
+          }
+        } catch (err) {
+          setError('Google Login fehlgeschlagen.')
+        } finally {
+          setLoading(false)
+        }
+      }, 800)
+      return
+    }
+
+    try {
+      const google = (window as any).google
+      if (!google) {
+        setError('Google Sign-In SDK konnte nicht geladen werden. Bitte laden Sie die Seite neu.')
+        return
+      }
+
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: clientID,
+        scope: 'openid email profile',
+        callback: async (tokenResponse: any) => {
+          if (tokenResponse.error_subtype) {
+            setError('Google Sign-In abgebrochen.')
+            return
+          }
+          setLoading(true)
+          setError('')
+          try {
+            const res = await fetch('/api/auth/google', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ accessToken: tokenResponse.access_token }),
+            })
+            const data = await res.json()
+            if (res.ok) {
+              login(data.user, data.token)
+              if (typeof window !== 'undefined') {
+                const params = new URLSearchParams(window.location.search)
+                const redirect = params.get('redirect')
+                if (redirect) {
+                  router.push(redirect)
+                  return
+                }
+              }
+              router.push('/')
+            } else {
+              setError(data.error || 'Google Anmeldung fehlgeschlagen')
+            }
+          } catch (err) {
+            setError('Netzwerkfehler während der Google Anmeldung')
+          } finally {
+            setLoading(false)
+          }
+        }
+      })
+
+      client.requestAccessToken()
+    } catch (err) {
+      console.error('Error initiating Google Login:', err)
+      setError('Fehler bei Google Sign-In Initialisierung.')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -208,6 +303,7 @@ export default function Login() {
             <div className="mt-6">
               <button
                 type="button"
+                onClick={handleGoogleLogin}
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
               >
                 <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24">

@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
       // For now, we'll simulate successful payment processing
       
       // Send order confirmation email in the background (non-blocking)
-      emailService.sendOrderConfirmation({
+      const emailData = {
         orderNumber: `ATB-${order.id.slice(-6).toUpperCase()}`,
         customerName: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
         customerEmail: shippingAddress.email,
@@ -182,13 +182,23 @@ export async function POST(request: NextRequest) {
         shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.company ? shippingAddress.company + '\n' : ''}${shippingAddress.street}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.country}`,
         paymentMethod: paymentMethod === 'cod' ? 'Nachnahme' : paymentMethod === 'paypal' ? 'PayPal' : 'Google Pay',
         estimatedDelivery: '2-3 Werktage'
-      }).catch((emailError) => {
-        errorLogger.error('Failed to send order confirmation email in background', { 
-          orderId: order.id,
-          customerEmail: shippingAddress.email 
-        }, emailError as Error)
-        console.error('Failed to send order confirmation email in background:', emailError)
-      })
+      }
+
+      if (process.env.VERCEL === '1' || process.env.NODE_ENV === 'production') {
+        try {
+          await emailService.sendOrderConfirmation(emailData)
+        } catch (emailError) {
+          console.error('Failed to send order confirmation email:', emailError)
+        }
+      } else {
+        emailService.sendOrderConfirmation(emailData).catch((emailError) => {
+          errorLogger.error('Failed to send order confirmation email in background', { 
+            orderId: order.id,
+            customerEmail: shippingAddress.email 
+          }, emailError as Error)
+          console.error('Failed to send order confirmation email in background:', emailError)
+        })
+      }
       
       return NextResponse.json({
         orderId: order.id,

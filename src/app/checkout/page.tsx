@@ -363,6 +363,117 @@ export default function Checkout() {
     }
   }
 
+  const handlePayPalExpress = async () => {
+    setLoading(true)
+    setErrors({})
+    try {
+      const session = localStorage.getItem('attireburg_session')
+      const token = session ? JSON.parse(session).token : null
+
+      if (!token) {
+        router.push('/login?redirect=/checkout')
+        return
+      }
+
+      const dummyAddress = {
+        firstName: user?.firstName || 'PayPal',
+        lastName: user?.lastName || 'Express',
+        company: '',
+        street: 'PayPal-Strasse 1',
+        city: 'Berlin',
+        postalCode: '10115',
+        country: 'Deutschland',
+        phone: '015112345678',
+        email: user?.email || 'paypal-kunde@attireburg.de'
+      }
+
+      // Update local state
+      setShippingAddress(dummyAddress)
+
+      const orderData = {
+        items: items.map(item => ({
+          productId: item.productId,
+          name: item.name,
+          nameEn: item.nameEn,
+          price: item.price,
+          salePrice: item.salePrice,
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color,
+        })),
+        shippingAddress: dummyAddress,
+        billingAddress: dummyAddress,
+        paymentMethod: 'paypal',
+        totalAmount: finalTotal,
+        shippingCost,
+        tax: vatBreakdown.vatAmount,
+        codFee,
+      }
+
+      // Create Prisma order
+      const orderResponse = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderData),
+      })
+
+      const orderResult = await orderResponse.json()
+
+      if (!orderResponse.ok) {
+        setErrors({ general: orderResult.error || 'Fehler beim Erstellen der Bestellung' })
+        setLoading(false)
+        return
+      }
+
+      // Redirect to PayPal
+      const isDemo = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID === 'demo' || !process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
+      
+      if (isDemo) {
+        clearCart()
+        router.push(`/checkout/success?orderId=${orderResult.orderId}&demo=true`)
+        return
+      }
+
+      const paypalResponse = await fetch('/api/payments/paypal/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          amount: finalTotal,
+          currency: 'EUR',
+          orderId: orderResult.orderId,
+          items: items.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.salePrice || item.price
+          }))
+        }),
+      })
+
+      const paypalResult = await paypalResponse.json()
+
+      if (paypalResponse.ok && paypalResult.approvalUrl) {
+        localStorage.setItem('pending_order_id', orderResult.orderId)
+        localStorage.setItem('paypal_order_id', paypalResult.paypalOrderId)
+        window.location.href = paypalResult.approvalUrl
+        return
+      } else {
+        setErrors({ general: 'Fehler bei der PayPal-Integration' })
+      }
+
+    } catch (error) {
+      console.error('PayPal Express Checkout failed:', error)
+      setErrors({ general: 'Ein Fehler ist aufgetreten.' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const shippingCost = totalPrice >= 50 ? 0 : 4.99
   const codFee = paymentMethod === 'cod' ? 2.50 : 0
   const finalTotal = totalPrice + shippingCost + codFee
@@ -414,6 +525,32 @@ export default function Checkout() {
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">
                   {t.checkout.shippingAddress}
                 </h2>
+
+                {paymentMethod === 'paypal' && (
+                  <div className="mb-8 p-5 bg-amber-50 border border-amber-200 rounded-xl text-center">
+                    <p className="text-sm text-amber-800 mb-3 font-medium">
+                      {lang === 'de'
+                        ? 'Sie haben PayPal Express gewählt. Sie können die manuelle Adresseingabe überspringen.'
+                        : 'You selected PayPal Express. You can skip manual address entry.'}
+                    </p>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={handlePayPalExpress}
+                      className="inline-flex items-center justify-center bg-yellow-400 hover:bg-yellow-500 disabled:bg-gray-200 text-gray-900 font-semibold py-2.5 px-6 rounded-lg transition-colors gap-2 shadow-sm"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.067 8.478c.148-.88.083-1.636-.264-2.29-.427-.803-1.328-1.258-2.617-1.258H8.843c-.454 0-.846.313-.93.757L5.59 18.062a.473.473 0 00.465.56h3.424a.474.474 0 00.465-.386l.904-4.577a.95.95 0 01.93-.772h1.616c2.5 0 4.394-1.018 4.962-3.86.234-1.168.128-2.128-.289-2.846v-.003z" />
+                      </svg>
+                      {lang === 'de' ? 'Express-Kauf mit PayPal' : 'Express Checkout with PayPal'}
+                    </button>
+                    <div className="mt-2 text-xs text-gray-500">
+                      {lang === 'de'
+                        ? 'Ihre Adresse wird sicher von Ihrem PayPal-Konto übernommen.'
+                        : 'Your shipping address will be securely retrieved from your PayPal account.'}
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

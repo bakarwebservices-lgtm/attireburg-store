@@ -37,6 +37,31 @@ export async function POST(request: NextRequest) {
     const captureResult = await paypalService.captureOrder(paypalOrderId)
 
     if (captureResult.status === 'COMPLETED') {
+      // Parse shipping details from PayPal response if available
+      let shippingDetails: any = {}
+      try {
+        const purchaseUnit = captureResult.purchase_units?.[0]
+        const shipping = purchaseUnit?.shipping
+        const address = shipping?.address
+        const name = shipping?.name?.full_name || ''
+        
+        if (address) {
+          const street = address.address_line_1 + (address.address_line_2 ? '\n' + address.address_line_2 : '')
+          const city = address.admin_area_2 || ''
+          const postalCode = address.postal_code || ''
+          const countryCode = address.country_code || 'DE'
+          const country = countryCode === 'DE' ? 'Deutschland' : countryCode
+
+          shippingDetails = {
+            shippingAddress: `${name}\n${street}\n${postalCode} ${city}\n${country}`,
+            shippingCity: city,
+            shippingPostal: postalCode
+          }
+        }
+      } catch (parseError) {
+        console.error('Failed to parse shipping details from PayPal capture:', parseError)
+      }
+
       // Update order status in database
       try {
         await prisma.order.update({
@@ -44,7 +69,8 @@ export async function POST(request: NextRequest) {
           data: {
             status: 'PROCESSING',
             paypalOrderId: paypalOrderId,
-            paypalPayerId: captureResult.payer?.payer_id
+            paypalPayerId: captureResult.payer?.payer_id,
+            ...shippingDetails
           }
         })
       } catch (dbError) {
