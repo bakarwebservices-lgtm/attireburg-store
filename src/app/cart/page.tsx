@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -13,6 +13,22 @@ export default function Cart() {
   const { user } = useAuth()
   const t = translations[lang]
   const [promoCode, setPromoCode] = useState('')
+  const [siteSettings, setSiteSettings] = useState<{
+    freeShippingThreshold: number
+    standardShippingCost: number
+    taxRate: number
+  } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) {
+          setSiteSettings(data)
+        }
+      })
+      .catch(err => console.error('Failed to fetch settings:', err))
+  }, [])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('de-DE', {
@@ -21,7 +37,13 @@ export default function Cart() {
     }).format(price)
   }
 
-  const shippingCost = totalPrice >= 50 ? 0 : 4.99
+  const settings = siteSettings || {
+    freeShippingThreshold: 50,
+    standardShippingCost: 4.99,
+    taxRate: 19
+  }
+
+  const shippingCost = totalPrice >= settings.freeShippingThreshold ? 0 : settings.standardShippingCost
   const finalTotal = totalPrice + shippingCost
 
   if (items.length === 0) {
@@ -324,9 +346,9 @@ export default function Cart() {
                     )}
                   </span>
                 </div>
-                {shippingCost > 0 && (
+                 {shippingCost > 0 && (
                   <p className="text-xs text-gray-500">
-                    {t.cart.freeShippingNote} {formatPrice(50)}
+                    {t.cart.freeShippingNote} {formatPrice(settings.freeShippingThreshold)}
                   </p>
                 )}
                 <div className="border-t border-gray-200 pt-3 space-y-2">
@@ -336,10 +358,10 @@ export default function Cart() {
                   </div>
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>{t.common.vatAmount}</span>
-                    <span>{formatPrice(calculateVATFromGross(finalTotal).vatAmount)}</span>
+                    <span>{formatPrice(calculateVATFromGross(finalTotal, settings.taxRate).vatAmount)}</span>
                   </div>
                   <p className="text-xs text-gray-500 text-right">
-                    {t.common.vatIncluded}
+                    {t.common.vatIncluded.replace('19', settings.taxRate.toString())}
                   </p>
                 </div>
               </div>

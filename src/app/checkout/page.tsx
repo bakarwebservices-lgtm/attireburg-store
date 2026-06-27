@@ -48,6 +48,11 @@ function CheckoutPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [paypalToken, setPaypalToken] = useState<string | null>(null)
   const [paypalPayerId, setPaypalPayerId] = useState<string | null>(null)
+  const [siteSettings, setSiteSettings] = useState<{
+    freeShippingThreshold: number
+    standardShippingCost: number
+    taxRate: number
+  } | null>(null)
   const [isProcessingPayPalExpress, setIsProcessingPayPalExpress] = useState(false)
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
@@ -523,6 +528,15 @@ function CheckoutPage() {
 
   // Check URL parameters for PayPal Return
   useEffect(() => {
+    fetch('/api/admin/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) {
+          setSiteSettings(data)
+        }
+      })
+      .catch(err => console.error('Failed to fetch settings:', err))
+
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const tokenParam = params.get('token')
@@ -574,10 +588,16 @@ function CheckoutPage() {
     }
   }, [])
 
-  const shippingCost = totalPrice >= 50 ? 0 : 4.99
+  const settings = siteSettings || {
+    freeShippingThreshold: 50,
+    standardShippingCost: 4.99,
+    taxRate: 19
+  }
+
+  const shippingCost = totalPrice >= settings.freeShippingThreshold ? 0 : settings.standardShippingCost
   const codFee = paymentMethod === 'cod' ? 2.50 : 0
   const finalTotal = totalPrice + shippingCost + codFee
-  const vatBreakdown = calculateVATFromGross(finalTotal)
+  const vatBreakdown = calculateVATFromGross(finalTotal, settings.taxRate)
 
   if (!user || items.length === 0) {
     return null // Will redirect
@@ -1246,7 +1266,7 @@ function CheckoutPage() {
                     <span>{formatPrice(vatBreakdown.vatAmount)}</span>
                   </div>
                   <p className="text-xs text-gray-500 text-right">
-                    {t.common.vatIncluded}
+                    {t.common.vatIncluded.replace('19', settings.taxRate.toString())}
                   </p>
                 </div>
               </div>
