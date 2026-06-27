@@ -8,14 +8,34 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    // Simulate — in production you'd send a password reset email
-    await new Promise(r => setTimeout(r, 800))
-    setSubmitted(true)
-    setLoading(false)
+    setError('')
+    
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        setSubmitted(true)
+      } else {
+        setError(data.error || 'Fehler beim Senden des Reset-Links')
+      }
+    } catch (err) {
+      setError('Ein Netzwerkfehler ist aufgetreten. Bitte versuchen Sie es erneut.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -56,35 +76,42 @@ export default function ForgotPassword() {
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {lang === 'de' ? 'E-Mail-Adresse' : 'Email address'}
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder={lang === 'de' ? 'ihre@email.de' : 'your@email.com'}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-800 focus:border-transparent"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-brand-800 hover:bg-brand-700 disabled:bg-gray-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
-              >
-                {loading
-                  ? (lang === 'de' ? 'Wird gesendet...' : 'Sending...')
-                  : (lang === 'de' ? 'Reset-Link senden' : 'Send reset link')}
-              </button>
-              <p className="text-center text-sm text-gray-500">
-                <Link href="/login" className="text-brand-800 hover:text-brand-700 font-medium">
-                  {lang === 'de' ? '← Zurück zur Anmeldung' : '← Back to login'}
-                </Link>
-              </p>
-            </form>
+            <>
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+                  {error}
+                </div>
+              )}
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {lang === 'de' ? 'E-Mail-Adresse' : 'Email address'}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder={lang === 'de' ? 'ihre@email.de' : 'your@email.com'}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-800 focus:border-transparent"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-brand-800 hover:bg-brand-700 disabled:bg-gray-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
+                >
+                  {loading
+                    ? (lang === 'de' ? 'Wird gesendet...' : 'Sending...')
+                    : (lang === 'de' ? 'Reset-Link senden' : 'Send reset link')}
+                </button>
+                <p className="text-center text-sm text-gray-500">
+                  <Link href="/login" className="text-brand-800 hover:text-brand-700 font-medium">
+                    {lang === 'de' ? '← Zurück zur Anmeldung' : '← Back to login'}
+                  </Link>
+                </p>
+              </form>
+            </>
           )}
         </div>
       </div>

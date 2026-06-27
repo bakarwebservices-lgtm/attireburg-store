@@ -447,6 +447,58 @@ Ihr Attireburg Team
     return await this.sendEmail(customerEmail, template)
   }
 
+  async sendPasswordReset(email: string, name: string, resetUrl: string): Promise<boolean> {
+    const template: EmailTemplate = {
+      subject: 'Passwort zurücksetzen - Attireburg',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+          <div style="background: #47131e; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 24px;">Attireburg</h1>
+          </div>
+          <div style="padding: 20px; background: #f9f9f9; border: 1px solid #eee; border-radius: 0 0 8px 8px;">
+            <h2 style="margin-top: 0; color: #47131e;">Passwort zurücksetzen</h2>
+            <p>Hallo ${name},</p>
+            <p>wir haben eine Anfrage zum Zurücksetzen Ihres Passworts erhalten. Klicken Sie auf den folgenden Link, um ein neues Passwort zu erstellen:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetUrl}" style="background: #47131e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Passwort zurücksetzen</a>
+            </div>
+            <p>Dieser Link ist für <strong>1 Stunde</strong> gültig.</p>
+            <p>Falls Sie diese Anfrage nicht gestellt haben, können Sie diese E-Mail einfach ignorieren. Ihr Passwort bleibt unverändert.</p>
+            <p style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; font-size: 12px; color: #666;">
+              Wenn Sie Probleme mit dem Button haben, kopieren Sie den folgenden Link und fügen Sie ihn in Ihren Browser ein:<br>
+              <a href="${resetUrl}" style="color: #47131e;">${resetUrl}</a>
+            </p>
+            <p style="margin-top: 20px; font-size: 14px;">Mit freundlichen Grüßen,<br>Ihr Attireburg Team</p>
+          </div>
+        </div>
+      `,
+      text: `
+Passwort zurücksetzen - Attireburg
+
+Hallo ${name},
+
+wir haben eine Anfrage zum Zurücksetzen Ihres Passworts erhalten. Kopieren Sie den folgenden Link und fügen Sie ihn in Ihren Browser ein, um ein neues Passwort zu erstellen:
+
+${resetUrl}
+
+Dieser Link ist für 1 Stunde gültig.
+
+Falls Sie diese Anfrage nicht gestellt haben, können Sie diese E-Mail einfach ignorieren. Ihr Passwort bleibt unverändert.
+
+Mit freundlichen Grüßen,
+Ihr Attireburg Team
+      `
+    }
+
+    console.log('====================================')
+    console.log('PASSWORD RESET LINK SENT (Local Debug):')
+    console.log(`To: ${email}`)
+    console.log(`URL: ${resetUrl}`)
+    console.log('====================================')
+
+    return await this.sendEmail(email, template)
+  }
+
   async sendCustomizeInquiry(data: {
     clientType: 'individual' | 'business'
     name: string
