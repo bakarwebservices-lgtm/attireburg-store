@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -31,7 +31,12 @@ interface CardDetails {
 
 type PaymentMethod = 'card' | 'paypal' | 'googlepay' | 'cod'
 
-export default function Checkout() {
+function CheckoutPage() {
+  const searchParams = useSearchParams()
+  const urlPayment = searchParams.get('payment')
+  const urlToken = searchParams.get('token')
+  const urlPayerId = searchParams.get('PayerID')
+
   const { lang } = useLanguage()
   const { items, totalPrice, totalItems, clearCart } = useCart()
   const { user } = useAuth()
@@ -578,13 +583,15 @@ export default function Checkout() {
     return null // Will redirect
   }
 
-  if (isProcessingPayPalExpress || (loading && currentStep === 1 && paymentMethod === 'paypal')) {
+  const isAutoRedirecting = urlPayment === 'paypal' && !urlToken
+
+  if (isProcessingPayPalExpress || isAutoRedirecting || (loading && currentStep === 1 && paymentMethod === 'paypal')) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-16">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">
-            {isProcessingPayPalExpress 
+            {isProcessingPayPalExpress || urlToken
               ? 'Zahlungs- und Versanddetails werden von PayPal geladen...' 
               : 'Sie werden zu PayPal weitergeleitet...'}
           </p>
@@ -1258,5 +1265,20 @@ export default function Checkout() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function Checkout() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-16">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Laden...</p>
+        </div>
+      </div>
+    }>
+      <CheckoutPage />
+    </Suspense>
   )
 }
