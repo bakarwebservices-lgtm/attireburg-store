@@ -50,6 +50,18 @@ export async function POST(request: NextRequest) {
 
     console.log('Created PayPal Order response:', JSON.stringify(paypalOrder, null, 2))
 
+    // Save paypalOrderId immediately to the database order record
+    try {
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paypalOrderId: paypalOrder.id
+        }
+      })
+    } catch (dbErr) {
+      console.error('Failed to save paypalOrderId in db order:', dbErr)
+    }
+
     return NextResponse.json({
       success: true,
       paypalOrderId: paypalOrder.id,

@@ -41,6 +41,9 @@ export default function Checkout() {
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [paypalToken, setPaypalToken] = useState<string | null>(null)
+  const [paypalPayerId, setPaypalPayerId] = useState<string | null>(null)
+  const [isProcessingPayPalExpress, setIsProcessingPayPalExpress] = useState(false)
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: user?.firstName || '',
@@ -200,6 +203,44 @@ export default function Checkout() {
 
       if (!token) {
         router.push('/login?redirect=/checkout')
+        return
+      }
+
+      // If we already have a paypalToken (meaning the customer returned from PayPal Express checkout),
+      // we capture the payment immediately.
+      if (paymentMethod === 'paypal' && paypalToken) {
+        const pendingOrderId = localStorage.getItem('pending_order_id')
+        
+        if (!pendingOrderId) {
+          setErrors({ general: 'Sitzung abgelaufen. Bitte wiederholen Sie den Bestellvorgang.' })
+          setLoading(false)
+          return
+        }
+
+        // Capture payment
+        const response = await fetch('/api/payments/paypal/capture-order', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            paypalOrderId: paypalToken,
+            orderId: pendingOrderId
+          }),
+        })
+
+        const result = await response.json()
+
+        if (response.ok && result.success) {
+          clearCart()
+          localStorage.removeItem('pending_order_id')
+          localStorage.removeItem('paypal_order_id')
+          router.push(`/checkout/success?orderId=${pendingOrderId}`)
+        } else {
+          setErrors({ general: result.error || 'Zahlung konnte nicht abgeschlossen werden' })
+        }
+        setLoading(false)
         return
       }
 
@@ -451,7 +492,8 @@ export default function Checkout() {
             name: item.name,
             quantity: item.quantity,
             price: item.salePrice || item.price
-          }))
+          })),
+          shippingAddress: dummyAddress
         }),
       })
 
@@ -474,6 +516,59 @@ export default function Checkout() {
     }
   }
 
+  // Check URL parameters for PayPal Return
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const tokenParam = params.get('token')
+      const payerIdParam = params.get('PayerID')
+
+      if (tokenParam && payerIdParam) {
+        setPaypalToken(tokenParam)
+        setPaypalPayerId(payerIdParam)
+        setPaymentMethod('paypal')
+        
+        // Fetch shipping address from PayPal
+        const fetchPayPalAddress = async () => {
+          setIsProcessingPayPalExpress(true)
+          try {
+            const session = localStorage.getItem('attireburg_session')
+            const authToken = session ? JSON.parse(session).token : null
+            if (!authToken) return
+
+            const response = await fetch(`/api/payments/paypal/get-order?paypalOrderId=${tokenParam}`, {
+              headers: {
+                'Authorization': `Bearer ${authToken}`
+              }
+            })
+            const data = await response.ok ? await response.json() : null
+            if (data && data.success && data.shippingAddress) {
+              setShippingAddress(data.shippingAddress)
+              // Go directly to step 3 (Review Order)
+              setCurrentStep(3)
+            } else {
+              setErrors({ general: 'PayPal-Zahlungsadresse konnte nicht abgerufen werden.' })
+            }
+          } catch (err) {
+            console.error('Error fetching PayPal details:', err)
+            setErrors({ general: 'Fehler beim Laden der PayPal-Daten' })
+          } finally {
+            setIsProcessingPayPalExpress(false)
+          }
+        }
+        fetchPayPalAddress()
+      } else {
+        // Handle direct auto-redirect if ?payment=paypal is passed in URL on first checkout load
+        const payment = params.get('payment')
+        if (payment === 'paypal') {
+          setTimeout(() => {
+            handlePayPalExpress()
+          }, 300)
+        }
+      }
+    }
+  }, [])
+
   const shippingCost = totalPrice >= 50 ? 0 : 4.99
   const codFee = paymentMethod === 'cod' ? 2.50 : 0
   const finalTotal = totalPrice + shippingCost + codFee
@@ -481,6 +576,21 @@ export default function Checkout() {
 
   if (!user || items.length === 0) {
     return null // Will redirect
+  }
+
+  if (isProcessingPayPalExpress || (loading && currentStep === 1 && paymentMethod === 'paypal')) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-16">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">
+            {isProcessingPayPalExpress 
+              ? 'Zahlungs- und Versanddetails werden von PayPal geladen...' 
+              : 'Sie werden zu PayPal weitergeleitet...'}
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
