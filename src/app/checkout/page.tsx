@@ -67,7 +67,7 @@ export default function Checkout() {
   })
 
   const [sameAsShipping, setSameAsShipping] = useState(true)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('paypal')
   const [cardDetails, setCardDetails] = useState<CardDetails>({
     cardNumber: '',
     expiryDate: '',
@@ -885,7 +885,7 @@ export default function Checkout() {
                 </h2>
 
                 <div className="space-y-4 mb-6">
-                  {/* PayPal (includes cards) */}
+                  {/* PayPal */}
                   <div className={`border rounded-lg p-4 cursor-pointer transition-colors ${
                     paymentMethod === 'paypal' ? 'border-primary-600 bg-primary-50' : 'border-gray-200'
                   }`} onClick={() => setPaymentMethod('paypal')}>
@@ -900,42 +900,16 @@ export default function Checkout() {
                       />
                       <label className="ml-3 flex items-center">
                         <span className="text-sm font-medium text-gray-900">
-                          PayPal & Kreditkarten
+                          PayPal
                         </span>
                         <div className="ml-2 flex space-x-1">
-                          <div className="w-16 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center">PayPal</div>
-                          <div className="w-8 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center">VISA</div>
-                          <div className="w-8 h-5 bg-red-600 rounded text-white text-xs flex items-center justify-center">MC</div>
+                          <div className="w-16 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center font-bold">PayPal</div>
                         </div>
                       </label>
                     </div>
                     <p className="text-xs text-gray-600 mt-2 ml-7">
-                      Zahlen Sie mit PayPal-Konto oder Kreditkarte (ohne PayPal-Konto)
+                      {lang === 'de' ? 'Zahlen Sie sicher und schnell mit Ihrem PayPal-Konto.' : 'Pay safely and quickly with your PayPal account.'}
                     </p>
-                  </div>
-
-
-
-                  {/* Google Pay */}
-                  <div className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                    paymentMethod === 'googlepay' ? 'border-primary-600 bg-primary-50' : 'border-gray-200'
-                  }`} onClick={() => setPaymentMethod('googlepay')}>
-                    <div className="flex items-center">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="googlepay"
-                        checked={paymentMethod === 'googlepay'}
-                        onChange={() => setPaymentMethod('googlepay')}
-                        className="h-4 w-4 text-primary-600 focus:ring-primary-500"
-                      />
-                      <label className="ml-3 flex items-center">
-                        <span className="text-sm font-medium text-gray-900">
-                          {t.checkout.paymentMethods.googlepay}
-                        </span>
-                        <div className="ml-2 w-16 h-5 bg-gray-800 rounded text-white text-xs flex items-center justify-center">G Pay</div>
-                      </label>
-                    </div>
                   </div>
 
                   {/* Cash on Delivery */}
