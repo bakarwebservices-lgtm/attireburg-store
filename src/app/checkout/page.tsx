@@ -427,6 +427,24 @@ function CheckoutPage() {
         return
       }
 
+      // Load settings dynamically inside the function to ensure we have the latest values
+      let currentSettings = {
+        freeShippingThreshold: 50,
+        standardShippingCost: 4.99,
+        taxRate: 19
+      }
+      try {
+        const response = await fetch('/api/admin/settings')
+        if (response.ok) {
+          const data = await response.json()
+          if (data && !data.error) {
+            currentSettings = data
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load settings in handlePayPalExpress:', err)
+      }
+
       const dummyAddress = {
         firstName: user?.firstName || 'PayPal',
         lastName: user?.lastName || 'Express',
@@ -442,6 +460,11 @@ function CheckoutPage() {
       // Update local state
       setShippingAddress(dummyAddress)
 
+      const computedShipping = totalPrice >= currentSettings.freeShippingThreshold ? 0 : currentSettings.standardShippingCost
+      const computedCodFee = 0 // PayPal Express never has COD fee
+      const computedTotal = totalPrice + computedShipping + computedCodFee
+      const computedVat = calculateVATFromGross(computedTotal, currentSettings.taxRate)
+
       const orderData = {
         items: items.map(item => ({
           productId: item.productId,
@@ -456,10 +479,10 @@ function CheckoutPage() {
         shippingAddress: dummyAddress,
         billingAddress: dummyAddress,
         paymentMethod: 'paypal',
-        totalAmount: finalTotal,
-        shippingCost,
-        tax: vatBreakdown.vatAmount,
-        codFee,
+        totalAmount: computedTotal,
+        shippingCost: computedShipping,
+        tax: computedVat.vatAmount,
+        codFee: computedCodFee,
       }
 
       // Create Prisma order
@@ -496,7 +519,7 @@ function CheckoutPage() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          amount: finalTotal,
+          amount: computedTotal,
           currency: 'EUR',
           orderId: orderResult.orderId,
           items: items.map(item => ({

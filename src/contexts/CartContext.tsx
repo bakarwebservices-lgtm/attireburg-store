@@ -50,7 +50,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Load cart from localStorage or server
   useEffect(() => {
-    setMounted(true)
     const savedCart = localStorage.getItem('attireburg_cart')
     if (savedCart) {
       try {
@@ -59,12 +58,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         console.error('Error loading cart from localStorage:', error)
       }
     }
+    setMounted(true)
   }, [])
 
   // Save cart to localStorage
   useEffect(() => {
-    localStorage.setItem('attireburg_cart', JSON.stringify(items))
-  }, [items])
+    if (mounted) {
+      localStorage.setItem('attireburg_cart', JSON.stringify(items))
+    }
+  }, [items, mounted])
 
   const addItem = async (newItem: Omit<CartItem, 'id'>) => {
     setIsLoading(true)

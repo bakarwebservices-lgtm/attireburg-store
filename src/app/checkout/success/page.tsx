@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useLanguage } from '@/components/ClientLayout'
@@ -23,6 +23,8 @@ function CheckoutSuccessContent() {
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const captureInitiated = useRef(false)
 
   useEffect(() => {
     const handlePayPalReturn = async () => {
@@ -48,6 +50,9 @@ function CheckoutSuccessContent() {
       }
       
       if (paypalOrderId && payerId) {
+        if (captureInitiated.current) return
+        captureInitiated.current = true
+
         // Handle PayPal return
         try {
           const session = localStorage.getItem('attireburg_session')
@@ -75,12 +80,25 @@ function CheckoutSuccessContent() {
           const result = await response.json()
 
           if (response.ok && result.success) {
+            // Fetch the updated order to display real totalAmount and details
+            let realAmount = 0
+            try {
+              const ordersRes = await fetch('/api/orders', {
+                headers: { 'Authorization': `Bearer ${token}` }
+              })
+              const ordersData = await ordersRes.json()
+              const matchingOrder = ordersData.orders?.find((o: any) => o.id === pendingOrderId)
+              if (matchingOrder) {
+                realAmount = matchingOrder.totalAmount
+              }
+            } catch (err) {}
+
             // Payment successful
             setOrderDetails({
               orderId: pendingOrderId,
               orderNumber: `ATB-${pendingOrderId.slice(-6).toUpperCase()}`,
               status: 'PROCESSING',
-              totalAmount: 0, // You might want to fetch this from the order
+              totalAmount: realAmount,
               paymentMethod: 'PayPal'
             })
             
@@ -96,9 +114,40 @@ function CheckoutSuccessContent() {
           setError('Fehler beim Abschließen der Zahlung')
         }
       } else {
-        // Direct success page access (e.g., from COD)
+        // Direct success page access (e.g., from COD or PayPal Express redirect)
         const orderId = searchParams.get('orderId')
         if (orderId) {
+          try {
+            const session = localStorage.getItem('attireburg_session')
+            const token = session ? JSON.parse(session).token : null
+            if (token) {
+              const response = await fetch('/api/orders', {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              })
+              if (response.ok) {
+                const data = await response.json()
+                const foundOrder = data.orders?.find((o: any) => o.id === orderId)
+                if (foundOrder) {
+                  setOrderDetails({
+                    orderId: foundOrder.id,
+                    orderNumber: `ATB-${foundOrder.id.slice(-6).toUpperCase()}`,
+                    status: foundOrder.status,
+                    totalAmount: foundOrder.totalAmount,
+                    paymentMethod: foundOrder.paymentMethod === 'cod' ? 'Nachnahme' : foundOrder.paymentMethod === 'paypal' ? 'PayPal' : 'Google Pay'
+                  })
+                  clearCart()
+                  setLoading(false)
+                  return
+                }
+              }
+            }
+          } catch (fetchErr) {
+            console.error('Failed to fetch dynamic order details in success page:', fetchErr)
+          }
+
+          // Fallback to defaults
           setOrderDetails({
             orderId,
             orderNumber: `ATB-${orderId.slice(-6).toUpperCase()}`,
