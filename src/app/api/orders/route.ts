@@ -184,20 +184,22 @@ export async function POST(request: NextRequest) {
         estimatedDelivery: '2-3 Werktage'
       }
 
-      if (process.env.VERCEL === '1' || process.env.NODE_ENV === 'production') {
-        try {
-          await emailService.sendOrderConfirmation(emailData)
-        } catch (emailError) {
-          console.error('Failed to send order confirmation email:', emailError)
+      if (paymentMethod !== 'paypal') {
+        if (process.env.VERCEL === '1' || process.env.NODE_ENV === 'production') {
+          try {
+            await emailService.sendOrderConfirmation(emailData)
+          } catch (emailError) {
+            console.error('Failed to send order confirmation email:', emailError)
+          }
+        } else {
+          emailService.sendOrderConfirmation(emailData).catch((emailError) => {
+            errorLogger.error('Failed to send order confirmation email in background', { 
+              orderId: order.id,
+              customerEmail: shippingAddress.email 
+            }, emailError as Error)
+            console.error('Failed to send order confirmation email in background:', emailError)
+          })
         }
-      } else {
-        emailService.sendOrderConfirmation(emailData).catch((emailError) => {
-          errorLogger.error('Failed to send order confirmation email in background', { 
-            orderId: order.id,
-            customerEmail: shippingAddress.email 
-          }, emailError as Error)
-          console.error('Failed to send order confirmation email in background:', emailError)
-        })
       }
       
       return NextResponse.json({

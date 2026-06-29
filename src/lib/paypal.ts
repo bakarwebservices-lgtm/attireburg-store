@@ -117,7 +117,7 @@ class PayPalService {
             shipping_preference: 'GET_FROM_FILE', // Let customer pick/specify address in PayPal Express
             user_action: 'PAY_NOW',
             return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success`,
-            cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout`
+            cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart?payment_cancelled=true`
           }
         }
       }

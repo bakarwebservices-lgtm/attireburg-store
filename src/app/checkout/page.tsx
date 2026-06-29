@@ -246,6 +246,7 @@ function CheckoutPage() {
           clearCart()
           localStorage.removeItem('pending_order_id')
           localStorage.removeItem('paypal_order_id')
+          localStorage.removeItem('paypal_express_initiated')
           router.push(`/checkout/success?orderId=${pendingOrderId}`)
         } else {
           setErrors({ general: result.error || 'Zahlung konnte nicht abgeschlossen werden' })
@@ -512,6 +513,13 @@ function CheckoutPage() {
       if (paypalResponse.ok && paypalResult.approvalUrl) {
         localStorage.setItem('pending_order_id', orderResult.orderId)
         localStorage.setItem('paypal_order_id', paypalResult.paypalOrderId)
+        localStorage.setItem('paypal_express_initiated', 'true')
+        
+        // Remove query parameters from history state so browser Back button won't trigger redirect loop
+        if (typeof window !== 'undefined') {
+          window.history.replaceState(null, '', '/checkout')
+        }
+        
         window.location.href = paypalResult.approvalUrl
         return
       } else {
@@ -541,8 +549,12 @@ function CheckoutPage() {
       const params = new URLSearchParams(window.location.search)
       const tokenParam = params.get('token')
       const payerIdParam = params.get('PayerID')
+      const expressInitiated = localStorage.getItem('paypal_express_initiated') === 'true'
 
       if (tokenParam && payerIdParam) {
+        // Clear flag since they completed PayPal checkout auth successfully
+        localStorage.removeItem('paypal_express_initiated')
+        
         setPaypalToken(tokenParam)
         setPaypalPayerId(payerIdParam)
         setPaymentMethod('paypal')
@@ -576,6 +588,12 @@ function CheckoutPage() {
           }
         }
         fetchPayPalAddress()
+      } else if (expressInitiated) {
+        // Customer returned/clicked back/cancelled PayPal checkout
+        localStorage.removeItem('paypal_express_initiated')
+        localStorage.removeItem('pending_order_id')
+        localStorage.removeItem('paypal_order_id')
+        router.push('/cart?payment_cancelled=true')
       } else {
         // Handle direct auto-redirect if ?payment=paypal is passed in URL on first checkout load
         const payment = params.get('payment')
@@ -663,31 +681,7 @@ function CheckoutPage() {
                   {t.checkout.shippingAddress}
                 </h2>
 
-                {paymentMethod === 'paypal' && (
-                  <div className="mb-8 p-5 bg-amber-50 border border-amber-200 rounded-xl text-center">
-                    <p className="text-sm text-amber-800 mb-3 font-medium">
-                      {lang === 'de'
-                        ? 'Sie haben PayPal Express gewählt. Sie können die manuelle Adresseingabe überspringen.'
-                        : 'You selected PayPal Express. You can skip manual address entry.'}
-                    </p>
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={handlePayPalExpress}
-                      className="inline-flex items-center justify-center bg-yellow-400 hover:bg-yellow-500 disabled:bg-gray-200 text-gray-900 font-semibold py-2.5 px-6 rounded-lg transition-colors gap-2 shadow-sm"
-                    >
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20.067 8.478c.148-.88.083-1.636-.264-2.29-.427-.803-1.328-1.258-2.617-1.258H8.843c-.454 0-.846.313-.93.757L5.59 18.062a.473.473 0 00.465.56h3.424a.474.474 0 00.465-.386l.904-4.577a.95.95 0 01.93-.772h1.616c2.5 0 4.394-1.018 4.962-3.86.234-1.168.128-2.128-.289-2.846v-.003z" />
-                      </svg>
-                      {lang === 'de' ? 'Express-Kauf mit PayPal' : 'Express Checkout with PayPal'}
-                    </button>
-                    <div className="mt-2 text-xs text-gray-500">
-                      {lang === 'de'
-                        ? 'Ihre Adresse wird sicher von Ihrem PayPal-Konto übernommen.'
-                        : 'Your shipping address will be securely retrieved from your PayPal account.'}
-                    </div>
-                  </div>
-                )}
+
 
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1037,15 +1031,14 @@ function CheckoutPage() {
                       />
                       <label className="ml-3 flex items-center">
                         <span className="text-sm font-medium text-gray-900">
-                          PayPal
+                          {lang === 'de' ? 'PayPal & Kreditkarten' : 'PayPal & Credit Cards'}
                         </span>
-                        <div className="ml-2 flex space-x-1">
-                          <div className="w-16 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center font-bold">PayPal</div>
-                        </div>
                       </label>
                     </div>
                     <p className="text-xs text-gray-600 mt-2 ml-7">
-                      {lang === 'de' ? 'Zahlen Sie sicher und schnell mit Ihrem PayPal-Konto.' : 'Pay safely and quickly with your PayPal account.'}
+                      {lang === 'de' 
+                        ? 'Zahlen Sie sicher und schnell mit Ihrem PayPal-Konto oder mit Ihrer Kreditkarte.' 
+                        : 'Pay safely and quickly with your PayPal account or credit card.'}
                     </p>
                   </div>
 

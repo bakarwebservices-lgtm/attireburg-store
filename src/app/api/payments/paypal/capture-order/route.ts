@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { paypalService } from '@/lib/paypal'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { emailService } from '@/lib/email/EmailService'
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,18 +64,59 @@ export async function POST(request: NextRequest) {
       }
 
       // Update order status in database
+      let updatedOrder = null
       try {
-        await prisma.order.update({
+        updatedOrder = await prisma.order.update({
           where: { id: orderId },
           data: {
             status: 'PROCESSING',
             paypalOrderId: paypalOrderId,
             paypalPayerId: captureResult.payer?.payer_id,
             ...shippingDetails
+          },
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            },
+            user: true
           }
         })
       } catch (dbError) {
-        console.log('Database not available, payment captured but order not updated')
+        console.error('Database update failed during capture:', dbError)
+      }
+
+      // Send order confirmation email / invoice now that payment is captured and address is updated
+      if (updatedOrder) {
+        const emailData = {
+          orderNumber: `ATB-${updatedOrder.id.slice(-6).toUpperCase()}`,
+          customerName: updatedOrder.shippingAddress.split('\n')[0] || updatedOrder.user.name,
+          customerEmail: updatedOrder.user.email,
+          items: updatedOrder.items.map((item: any) => ({
+            name: item.product.name,
+            quantity: item.quantity,
+            price: item.price,
+            size: item.size,
+            color: item.color
+          })),
+          totalAmount: updatedOrder.totalAmount,
+          shippingAddress: updatedOrder.shippingAddress,
+          paymentMethod: 'PayPal',
+          estimatedDelivery: '2-3 Werktage'
+        }
+
+        if (process.env.VERCEL === '1' || process.env.NODE_ENV === 'production') {
+          try {
+            await emailService.sendOrderConfirmation(emailData)
+          } catch (emailError) {
+            console.error('Failed to send order confirmation email:', emailError)
+          }
+        } else {
+          emailService.sendOrderConfirmation(emailData).catch((emailError) => {
+            console.error('Failed to send order confirmation email in background:', emailError)
+          })
+        }
       }
 
       return NextResponse.json({

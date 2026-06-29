@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer'
 import React from 'react'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createInvoicePDF, InvoiceData } from './InvoicePDF'
+import { prisma } from '@/lib/prisma'
 
 interface EmailConfig {
   provider: 'smtp' | 'sendgrid' | 'mailgun' | 'resend'
@@ -349,18 +350,36 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
     // Generate invoice PDF
     let pdfBuffer: Buffer | undefined
     try {
-      const vatRate = 19
+      // Load store settings dynamically from database
+      let dbSettings = null
+      try {
+        dbSettings = await prisma.siteSettings.findUnique({ where: { id: 'default' } })
+      } catch (err) {
+        console.error('Failed to load settings in EmailService:', err)
+      }
+
+      const settings = dbSettings || {
+        freeShippingThreshold: 50,
+        standardShippingCost: 4.99,
+        taxRate: 19
+      }
+
+      const vatRate = settings.taxRate
+      const divisor = 1 + (vatRate / 100)
+
       // Prices coming in are GROSS (VAT included)
       const itemsGross = data.items.reduce((s, i) => s + i.price * i.quantity, 0)
-      const subtotalNet = itemsGross / (1 + vatRate / 100)
+      const subtotalNet = itemsGross / divisor
       // Shipping = totalAmount minus items gross (may include COD fee at 0% VAT)
       const extraFees = data.totalAmount - itemsGross
-      // Assume shipping is standard 0-4.99, COD 2.50 — pass shipping gross separately if available
-      // For now derive net from gross total
+      
       const grossTotal = data.totalAmount
-      const shippingGross = extraFees > 0 ? extraFees : 0
-      const shippingNet = shippingGross / (1 + vatRate / 100)
-      const taxableAmount = subtotalNet + shippingNet
+      const hasCodFee = data.paymentMethod.toLowerCase().includes('nachnahme') || data.paymentMethod.toLowerCase().includes('cod')
+      const codFeeVal = hasCodFee ? 2.50 : 0
+      const shippingGross = Math.max(0, extraFees - codFeeVal)
+      const shippingNet = shippingGross / divisor
+      
+      const taxableAmount = (grossTotal - codFeeVal) / divisor
       const vatAmount = taxableAmount * (vatRate / 100)
 
       const invoiceData: InvoiceData = {
@@ -381,8 +400,8 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
           artikelNr: `100${String(1000000 + i).slice(1)}`,
           description: `${item.name}${item.size ? ` [${item.size}]` : ''}${item.color ? ` [${item.color}]` : ''}`,
           quantity: item.quantity,
-          unitPriceNet: item.price / 1.19,
-          totalNet: (item.price * item.quantity) / 1.19,
+          unitPriceNet: item.price / divisor,
+          totalNet: (item.price * item.quantity) / divisor,
         })),
         subtotalNet,
         shippingNet: shippingNet > 0 ? shippingNet : 0,
