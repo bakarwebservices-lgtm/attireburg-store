@@ -309,7 +309,7 @@ function CheckoutSuccessContent() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
-            href="/orders"
+            href="/account/orders"
             className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
           >
             Meine Bestellungen anzeigen

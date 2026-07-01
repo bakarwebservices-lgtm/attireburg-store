@@ -319,6 +319,11 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
           user: this.config.smtpUser,
           pass: this.config.smtpPass,
         },
+        tls: {
+          rejectUnauthorized: false
+        },
+        debug: process.env.NODE_ENV !== 'production',
+        logger: true
       })
 
       await transporter.sendMail({
