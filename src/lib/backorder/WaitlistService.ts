@@ -45,13 +45,11 @@ export class WaitlistService {
       }
 
       // Check if subscription already exists
-      const existingSubscription = await this.prisma.waitlistSubscription.findUnique({
+      const existingSubscription = await this.prisma.waitlistSubscription.findFirst({
         where: {
-          email_productId_variantId: {
-            email: data.email,
-            productId: data.productId,
-            variantId: (data.variantId || undefined) as any
-          }
+          email: data.email,
+          productId: data.productId,
+          variantId: data.variantId || null
         }
       })
 
@@ -136,13 +134,11 @@ export class WaitlistService {
    */
   async unsubscribe(email: string, productId: string, variantId?: string): Promise<{ success: boolean; message: string }> {
     try {
-       const subscription = await this.prisma.waitlistSubscription.findUnique({
+       const subscription = await this.prisma.waitlistSubscription.findFirst({
         where: {
-          email_productId_variantId: {
-            email,
-            productId,
-            variantId: (variantId || undefined) as any
-          }
+          email,
+          productId,
+          variantId: variantId || null
         }
       })
 
@@ -215,12 +211,10 @@ export class WaitlistService {
       // Get restock dates for each subscription
       const subscriptionsWithDates = await Promise.all(
         subscriptions.map(async (sub) => {
-          const restockSchedule = await this.prisma.restockSchedule.findUnique({
+          const restockSchedule = await this.prisma.restockSchedule.findFirst({
             where: {
-              productId_variantId: {
-                productId: sub.productId,
-                variantId: (sub.variantId || 'null') as string
-              }
+              productId: sub.productId,
+              variantId: sub.variantId || null
             }
           })
 
@@ -383,13 +377,11 @@ export class WaitlistService {
    */
   async isSubscribed(email: string, productId: string, variantId?: string): Promise<boolean> {
     try {
-       const subscription = await this.prisma.waitlistSubscription.findUnique({
+       const subscription = await this.prisma.waitlistSubscription.findFirst({
         where: {
-          email_productId_variantId: {
-            email,
-            productId,
-            variantId: (variantId || undefined) as any
-          }
+          email,
+          productId,
+          variantId: variantId || null
         }
       })
 

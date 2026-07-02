@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { getSession } from '@/lib/session'
 
 interface BackorderModalProps {
   isOpen: boolean
@@ -65,7 +66,14 @@ export default function BackorderModal({
 
   const handleBackorderSubmit = async () => {
     if (!user) {
-      alert('Bitte melden Sie sich an, um eine Vorbestellung aufzugeben')
+      // Redirect to login so they can authenticate
+      window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname)
+      return
+    }
+
+    const session = getSession()
+    if (!session?.token) {
+      window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname)
       return
     }
 
@@ -79,10 +87,10 @@ export default function BackorderModal({
       const response = await fetch('/api/backorders/create', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.token}`
         },
         body: JSON.stringify({
-          userId: user.id,
           items: [{
             productId: product.id,
             variantId: variant?.id,
@@ -105,7 +113,6 @@ export default function BackorderModal({
       if (response.ok) {
         alert('Vorbestellung erfolgreich aufgegeben!')
         onClose()
-        // Redirect to order confirmation or account page
         window.location.href = `/account/orders`
       } else {
         alert(data.error || 'Fehler beim Aufgeben der Vorbestellung')
