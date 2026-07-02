@@ -206,27 +206,6 @@ export default function OutOfStockActions({
         )}
       </div>
 
-      {/* Backorder Section */}
-      <div className="space-y-3 pt-4 border-t border-gray-200">
-        <h4 className="font-semibold text-gray-900">Vorbestellen</h4>
-        <p className="text-sm text-gray-600">
-          Bestellen Sie jetzt vor und erhalten Sie das Produkt, sobald es wieder verfügbar ist.
-          {expectedRestockDate && (
-            <span className="block mt-1">
-              Voraussichtliche Lieferung: {formatDate(expectedRestockDate)}
-            </span>
-          )}
-        </p>
-        <button
-          onClick={onBackorderClick}
-          className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-        >
-          Für {formatPrice(currentPrice)} vorbestellen
-        </button>
-        <p className="text-xs text-gray-500">
-          Zahlung erfolgt sofort. Kostenlose Stornierung jederzeit möglich.
-        </p>
-      </div>
     </div>
   )
 }

@@ -344,20 +344,6 @@ export default function AdminDashboard() {
               </div>
             </Link>
 
-            <Link
-              href="/admin/backorders"
-              className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
-            >
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">{t.adminExtended.backorders.title}</p>
-                <p className="text-sm text-gray-600">{t.adminExtended.backorders.subtitle}</p>
-              </div>
-            </Link>
 
             <Link
               href="/admin/users"

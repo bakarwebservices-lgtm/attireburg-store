@@ -26,7 +26,7 @@ interface UserRow {
 
 export default function AdminUsers() {
   const { lang } = useLanguage()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const t = translations[lang]
   const [users, setUsers] = useState<UserRow[]>([])
@@ -57,10 +57,11 @@ export default function AdminUsers() {
   }, [filter, search])
 
   useEffect(() => {
+    if (isLoading) return
     if (!user) { router.push('/login'); return }
     if (!user.isAdmin) { router.push('/account'); return }
     fetchUsers()
-  }, [user, router, fetchUsers])
+  }, [user, isLoading, router, fetchUsers])
 
   const toggleAdmin = async (userId: string, isAdmin: boolean) => {
     if (!confirm('Admin-Berechtigung ändern?')) return

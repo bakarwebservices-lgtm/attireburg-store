@@ -80,13 +80,12 @@ export async function POST(request: NextRequest) {
 
         if (notifications.length === 1) {
           // Single notification
-          const subscription = await prisma.waitlistSubscription.findUnique({
+          const subscription = await prisma.waitlistSubscription.findFirst({
             where: {
-              email_productId_variantId: {
-                email,
-                productId: body.productId,
-                variantId: body.variantId || null
-              }
+              email,
+              productId: body.productId,
+              variantId: body.variantId || null,
+              isActive: true
             }
           })
 

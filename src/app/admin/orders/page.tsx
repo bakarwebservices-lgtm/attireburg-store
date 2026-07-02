@@ -38,7 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function AdminOrders() {
   const { lang } = useLanguage()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const t = translations[lang]
   const [orders, setOrders] = useState<Order[]>([])
@@ -69,10 +69,11 @@ export default function AdminOrders() {
   }, [filter, search])
 
   useEffect(() => {
+    if (isLoading) return
     if (!user) { router.push('/login'); return }
     if (!user.isAdmin) { router.push('/account'); return }
     fetchOrders()
-  }, [user, router, fetchOrders])
+  }, [user, isLoading, router, fetchOrders])
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     const session = getSession()

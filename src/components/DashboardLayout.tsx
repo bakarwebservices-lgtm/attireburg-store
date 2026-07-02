@@ -28,7 +28,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/admin', label: t.admin.overview, icon: 'overview' },
     { href: '/admin/products', label: t.admin.products, icon: 'products' },
     { href: '/admin/orders', label: t.admin.orders, icon: 'orders' },
-    { href: '/admin/backorders', label: t.adminExtended.backorders.title, icon: 'backorders' },
     { href: '/admin/waitlists', label: t.adminExtended.waitlist.title, icon: 'waitlist' },
     { href: '/admin/notifications', label: t.adminExtended.notifications.title, icon: 'notifications' },
     { href: '/admin/users', label: t.admin.users, icon: 'users' },

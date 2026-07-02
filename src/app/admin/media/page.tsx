@@ -16,7 +16,7 @@ interface MediaFile {
 }
 
 export default function MediaLibrary() {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -30,10 +30,11 @@ export default function MediaLibrary() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (isLoading) return
     if (!user) { router.push('/login'); return }
     if (!user.isAdmin) { router.push('/admin'); return }
     loadFiles()
-  }, [user, router])
+  }, [user, isLoading, router])
 
   const loadFiles = useCallback(async () => {
     const session = getSession()

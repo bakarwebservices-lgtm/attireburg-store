@@ -26,17 +26,18 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function AdminAnalytics() {
   const { lang } = useLanguage()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const t = translations[lang]
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (isLoading) return
     if (!user) { router.push('/login'); return }
     if (!user.isAdmin) { router.push('/account'); return }
     loadAnalytics()
-  }, [user, router])
+  }, [user, isLoading, router])
 
   const loadAnalytics = async () => {
     const session = getSession()

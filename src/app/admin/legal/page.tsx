@@ -13,7 +13,7 @@ const PAGES = [
 ]
 
 export default function AdminLegal() {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const [activePage, setActivePage] = useState('imprint')
   const [contents, setContents] = useState<Record<string, { contentDe: string; contentEn: string }>>({})
@@ -23,10 +23,11 @@ export default function AdminLegal() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (isLoading) return
     if (!user) { router.push('/login'); return }
     if (!user.isAdmin) { router.push('/account'); return }
     loadAll()
-  }, [user, router])
+  }, [user, isLoading, router])
 
   const loadAll = async () => {
     setLoading(true)

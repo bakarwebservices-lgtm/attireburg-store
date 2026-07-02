@@ -43,6 +43,8 @@ async function seedDatabase(type: string = 'all') {
       where: { sku: 'WP-001' }
     })
     
+    const unsplashSweater = 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=800&h=800&fit=crop&crop=center'
+    
     if (!existingProduct) {
       await prisma.product.create({
         data: {
@@ -58,12 +60,21 @@ async function seedDatabase(type: string = 'all') {
           sizes: ['S', 'M', 'L', 'XL'],
           colors: ['Schwarz', 'Grau', 'Beige'],
           tags: ['wolle', 'merino', 'klassisch', 'winter'],
-          images: ['/images/products/wool-sweater-1.jpg'],
+          images: [unsplashSweater],
           featured: true,
           onSale: true
         }
       })
       console.log('✅ Created sample product')
+    } else {
+      // Update existing seed product to use valid image URL
+      await prisma.product.update({
+        where: { id: existingProduct.id },
+        data: {
+          images: [unsplashSweater]
+        }
+      })
+      console.log('✅ Updated sample product images')
     }
   }
   

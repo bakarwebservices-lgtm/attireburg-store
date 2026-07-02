@@ -31,7 +31,7 @@ interface WaitlistAnalytics {
 }
 
 export default function AdminWaitlistDashboard() {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const { lang } = useLanguage()
   const t = translations[lang]
@@ -43,6 +43,7 @@ export default function AdminWaitlistDashboard() {
   const [sortBy, setSortBy] = useState('date')
 
   useEffect(() => {
+    if (isLoading) return
     if (!user) {
       router.push('/login')
       return
@@ -54,7 +55,7 @@ export default function AdminWaitlistDashboard() {
     }
 
     fetchWaitlistData()
-  }, [user, router])
+  }, [user, isLoading, router])
 
   const fetchWaitlistData = async () => {
     try {

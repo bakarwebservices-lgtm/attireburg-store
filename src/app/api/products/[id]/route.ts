@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sampleProducts, sampleReviews } from '@/lib/sampleData'
 import { verifyToken } from '@/lib/auth'
+import { InventoryMonitor } from '@/lib/backorder'
 
 export async function GET(
   request: NextRequest,
@@ -116,7 +117,8 @@ export async function PUT(
 
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
-      where: { id: id }
+      where: { id: id },
+      include: { variants: true }
     })
 
     if (!existingProduct) {
@@ -206,6 +208,38 @@ export async function PUT(
     }
 
     console.log('Product updated:', updatedProduct)
+
+    // Trigger restock processing in the background if stock went from 0 to > 0 (or variant stock did)
+    try {
+      const isProductRestocked = updatedProduct.stock > 0 && existingProduct.stock === 0
+      
+      if (isProductRestocked) {
+        const inventoryMonitor = new InventoryMonitor(prisma)
+        inventoryMonitor.triggerRestockProcessing(updatedProduct.id, undefined, updatedProduct.stock)
+          .catch(err => console.error('Background restock notification error:', err))
+      }
+
+      // Check variants if they were updated
+      if (body.hasVariants && body.variants && Array.isArray(body.variants)) {
+        const dbVariants = await prisma.productVariant.findMany({
+          where: { productId: id }
+        })
+
+        for (const variant of dbVariants) {
+          // Check if it was restocked
+          const prevVariant = existingProduct.variants?.find((v: any) => v.sku === variant.sku)
+          const isVariantRestocked = variant.stock > 0 && (!prevVariant || prevVariant.stock === 0)
+          
+          if (isVariantRestocked) {
+            const inventoryMonitor = new InventoryMonitor(prisma)
+            inventoryMonitor.triggerRestockProcessing(id, variant.id, variant.stock)
+              .catch(err => console.error('Background variant restock notification error:', err))
+          }
+        }
+      }
+    } catch (restockErr) {
+      console.error('Failed to trigger restock check:', restockErr)
+    }
 
     return NextResponse.json({
       success: true,

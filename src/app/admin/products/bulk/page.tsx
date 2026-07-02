@@ -27,7 +27,7 @@ interface BulkAction {
 
 export default function BulkProductOperations() {
   const { lang } = useLanguage()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const t = translations[lang]
   
@@ -38,6 +38,7 @@ export default function BulkProductOperations() {
   const [actionData, setActionData] = useState<any>({})
 
   useEffect(() => {
+    if (isLoading) return
     if (!user || !user.isAdmin) {
       router.push('/admin')
       return
