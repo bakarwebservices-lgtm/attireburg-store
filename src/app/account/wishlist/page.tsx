@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/contexts/CartContext'
+import { useToast } from '@/contexts/ToastContext'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
 import DashboardLayout from '@/components/DashboardLayout'
@@ -32,6 +33,7 @@ export default function UserWishlist() {
   const { lang } = useLanguage()
   const { user } = useAuth()
   const { addItem } = useCart()
+  const toast = useToast()
   const router = useRouter()
   const t = translations[lang]
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([])
@@ -92,7 +94,7 @@ export default function UserWishlist() {
     })
     
     // Show success message
-    alert('Produkt wurde zum Warenkorb hinzugefügt!')
+    toast.success('Produkt wurde zum Warenkorb hinzugefügt!')
   }
 
   const handleRemoveFromWishlist = async (itemId: string, productId: string) => {
@@ -109,11 +111,11 @@ export default function UserWishlist() {
 
       if (response.ok) {
         setWishlistItems(prev => prev.filter(item => item.id !== itemId))
-        alert('Produkt von der Wunschliste entfernt')
+        toast.success('Produkt von der Wunschliste entfernt')
       }
     } catch (error) {
       console.error('Error removing from wishlist:', error)
-      alert('Fehler beim Entfernen von der Wunschliste')
+      toast.error('Fehler beim Entfernen von der Wunschliste')
     }
   }
 

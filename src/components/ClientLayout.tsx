@@ -2,6 +2,7 @@
 import { useState, createContext, useContext, useEffect } from 'react'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { CartProvider } from '@/contexts/CartContext'
+import { ToastProvider } from '@/contexts/ToastContext'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 
@@ -41,11 +42,13 @@ export default function ClientLayout({
     <LanguageContext.Provider value={{ lang, setLang }}>
       <AuthProvider>
         <CartProvider>
-          <Navbar />
-          <main className="min-h-screen">
-            {children}
-          </main>
-          <Footer />
+          <ToastProvider>
+            <Navbar />
+            <main className="min-h-screen">
+              {children}
+            </main>
+            <Footer />
+          </ToastProvider>
         </CartProvider>
       </AuthProvider>
     </LanguageContext.Provider>

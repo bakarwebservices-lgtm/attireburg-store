@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sampleProducts, sampleReviews } from '@/lib/sampleData'
+import { verifyToken } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
@@ -97,15 +98,21 @@ export async function GET(
   }
 }
 
-// PUT /api/products/[id] - Update product
+// PUT /api/products/[id] - Update product (admin only)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Require admin auth
+  const authHeader = request.headers.get('authorization')
+  const token = authHeader?.replace('Bearer ', '')
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const adminUser = verifyToken(token)
+  if (!adminUser || !adminUser.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   try {
     const { id } = await params
     const body = await request.json()
-    console.log('Updating product with data:', body)
 
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
@@ -217,11 +224,18 @@ export async function PUT(
   }
 }
 
-// DELETE /api/products/[id] - Delete product
+// DELETE /api/products/[id] - Delete product (admin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Require admin auth
+  const authHeader = request.headers.get('authorization')
+  const token = authHeader?.replace('Bearer ', '')
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const adminUser = verifyToken(token)
+  if (!adminUser || !adminUser.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   try {
     const { id } = await params
 

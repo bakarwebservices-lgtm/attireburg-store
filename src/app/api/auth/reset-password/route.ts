@@ -2,10 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 import { hashPassword } from '@/lib/auth'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 5 attempts per IP per 15 minutes
+  const ip = getClientIp(request)
+  const rl = rateLimit(`reset-password:${ip}`, { windowMs: 15 * 60 * 1000, max: 5 })
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Zu viele Versuche. Bitte versuchen Sie es später erneut.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) },
+      }
+    )
+  }
+
   try {
     const { email, token, password } = await request.json()
 

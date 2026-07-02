@@ -75,7 +75,7 @@ class OrderStatusService {
       const updatedOrder = await prisma.order.update({
         where: { id: update.orderId },
         data: {
-          status: update.status,
+          status: update.status as any,
           ...(update.trackingNumber && { trackingNumber: update.trackingNumber }),
           updatedAt: new Date()
         }
@@ -223,7 +223,7 @@ class OrderStatusService {
   async getOrdersByStatus(status: OrderStatus): Promise<any[]> {
     try {
       return await prisma.order.findMany({
-        where: { status },
+        where: { status: status as any },
         include: {
           items: {
             include: {

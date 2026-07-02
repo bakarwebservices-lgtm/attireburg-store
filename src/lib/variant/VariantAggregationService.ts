@@ -67,7 +67,10 @@ class VariantAggregationService {
     try {
       const product = await prisma.product.findUnique({
         where: { id: productId },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          price: true,
           variants: {
             select: {
               id: true,
@@ -85,7 +88,12 @@ class VariantAggregationService {
         return null
       }
 
-      const variants = product.variants
+      const defaultPrice = product.price
+      const variants = product.variants.map(v => ({
+        ...v,
+        price: v.price !== null && v.price !== undefined ? v.price : defaultPrice
+      }))
+      
       const activeVariants = variants.filter(v => v.isActive)
       const inactiveVariants = variants.filter(v => !v.isActive)
       const outOfStockVariants = variants.filter(v => v.stock === 0)
@@ -131,7 +139,7 @@ class VariantAggregationService {
           where: { isActive: true },
           include: {
             product: {
-              select: { name: true }
+              select: { name: true, price: true }
             }
           }
         })
@@ -141,12 +149,17 @@ class VariantAggregationService {
       const totalVariants = variants.length
       const averageVariantsPerProduct = totalProducts > 0 ? totalVariants / totalProducts : 0
 
-      const totalInventoryValue = variants.reduce((sum, v) => sum + (v.price * v.stock), 0)
-      const outOfStockCount = variants.filter(v => v.stock === 0).length
-      const lowStockCount = variants.filter(v => v.stock > 0 && v.stock <= 5).length
+      const mappedVariants = variants.map(v => ({
+        ...v,
+        price: v.price !== null && v.price !== undefined ? v.price : v.product.price
+      }))
+
+      const totalInventoryValue = mappedVariants.reduce((sum, v) => sum + (v.price * v.stock), 0)
+      const outOfStockCount = mappedVariants.filter(v => v.stock === 0).length
+      const lowStockCount = mappedVariants.filter(v => v.stock > 0 && v.stock <= 5).length
 
       // Get top performing variants (by stock level as a proxy for sales)
-      const topPerformingVariants = variants
+      const topPerformingVariants = mappedVariants
         .sort((a, b) => b.stock - a.stock)
         .slice(0, 10)
         .map(v => ({

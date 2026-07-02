@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useLanguage } from '@/components/ClientLayout'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/contexts/ToastContext'
 import { translations } from '@/lib/translations'
 import { formatPriceWithVAT } from '@/lib/vat'
 import OutOfStockActions from '@/components/backorder/OutOfStockActions'
@@ -123,6 +124,7 @@ export default function ProductDetail() {
   const { lang } = useLanguage()
   const { addItem } = useCart()
   const { user } = useAuth()
+  const toast = useToast()
   const t = translations[lang]
   
   const [product, setProduct] = useState<Product | null>(null)
@@ -313,13 +315,13 @@ export default function ProductDetail() {
     // Check if product has variants and one is selected
     if (product.hasVariants) {
       if (!selectedVariant) {
-        alert('Bitte wählen Sie eine Variante aus')
+        toast.warning('Bitte wählen Sie eine Variante aus')
         return
       }
     } else {
       // Legacy size/color validation
       if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-        alert(t.productDetail.selectSize)
+        toast.warning(t.productDetail.selectSize)
         return
       }
     }
@@ -342,9 +344,9 @@ export default function ProductDetail() {
         attributes: selectedVariant ? selectedVariant.attributes : undefined
       })
 
-      alert(t.productDetail.addedToCart)
+      toast.success(t.productDetail.addedToCart)
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Fehler beim Hinzufügen zum Warenkorb')
+      toast.error(error instanceof Error ? error.message : 'Fehler beim Hinzufügen zum Warenkorb')
     }
   }
 
@@ -354,7 +356,7 @@ export default function ProductDetail() {
 
   const handleWishlistToggle = async () => {
     if (!user) {
-      alert('Bitte melden Sie sich an, um Produkte zur Wunschliste hinzuzufügen')
+      toast.warning('Bitte melden Sie sich an, um Produkte zur Wunschliste hinzuzufügen')
       return
     }
 
@@ -362,7 +364,7 @@ export default function ProductDetail() {
 
     const session = getSession()
     if (!session?.token) {
-      alert('Bitte melden Sie sich erneut an')
+      toast.warning('Bitte melden Sie sich erneut an')
       return
     }
 
@@ -380,7 +382,7 @@ export default function ProductDetail() {
         
         if (response.ok) {
           setIsInWishlist(false)
-          alert('Produkt von der Wunschliste entfernt')
+          toast.success('Produkt von der Wunschliste entfernt')
         } else {
           throw new Error('Failed to remove from wishlist')
         }
@@ -399,7 +401,7 @@ export default function ProductDetail() {
         
         if (response.ok) {
           setIsInWishlist(true)
-          alert('Produkt zur Wunschliste hinzugefügt')
+          toast.success('Produkt zur Wunschliste hinzugefügt')
         } else {
           const data = await response.json()
           throw new Error(data.error || 'Failed to add to wishlist')
@@ -407,7 +409,7 @@ export default function ProductDetail() {
       }
     } catch (error) {
       console.error('Error toggling wishlist:', error)
-      alert(error instanceof Error ? error.message : 'Fehler beim Bearbeiten der Wunschliste')
+      toast.error(error instanceof Error ? error.message : 'Fehler beim Bearbeiten der Wunschliste')
     } finally {
       setWishlistLoading(false)
     }

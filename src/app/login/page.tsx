@@ -185,14 +185,7 @@ export default function Login() {
               </div>
             )}
 
-            {/* Demo Credentials Info */}
-            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded">
-              <p className="text-sm font-medium mb-2">Demo-Zugangsdaten zum Testen:</p>
-              <p className="text-sm">
-                <strong>Benutzer:</strong> demo@attireburg.de / demo123<br />
-                <strong>Admin:</strong> admin@attireburg.de / admin123
-              </p>
-            </div>
+
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -277,16 +270,7 @@ export default function Login() {
                 {loading ? 'Wird angemeldet...' : 'Anmelden'}
               </button>
               
-              {/* Quick Demo Login */}
-              <button
-                type="button"
-                onClick={() => {
-                  setFormData({ email: 'demo@attireburg.de', password: 'demo123' })
-                }}
-                className="w-full flex justify-center py-2 px-4 border border-primary-600 rounded-md shadow-sm text-sm font-medium text-primary-600 bg-white hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                Demo-Login verwenden
-              </button>
+
             </div>
           </form>
 

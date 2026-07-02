@@ -1,15 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { verifyToken } from '@/lib/auth'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
+
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+])
+
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
 
 export async function POST(request: NextRequest) {
+  // Require admin authentication
+  const authHeader = request.headers.get('authorization')
+  const token = authHeader?.replace('Bearer ', '')
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const user = verifyToken(token)
+  if (!user || !user.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // Rate limit: 20 uploads per admin per hour
+  const ip = getClientIp(request)
+  const rl = rateLimit(`upload:${ip}`, { windowMs: 60 * 60 * 1000, max: 20 })
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Upload limit reached. Please try again later.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) },
+      }
+    )
+  }
+
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json({
-        error: `Missing env vars: URL=${!!supabaseUrl}, KEY=${!!supabaseKey}`
-      }, { status: 500 })
+      return NextResponse.json({ error: 'Storage not configured' }, { status: 500 })
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey)
@@ -21,23 +51,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
+    // Validate MIME type
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      return NextResponse.json(
+        { error: `File type not allowed. Allowed types: ${[...ALLOWED_MIME_TYPES].join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: `File too large. Maximum size is ${MAX_FILE_SIZE_BYTES / 1024 / 1024} MB` },
+        { status: 400 }
+      )
+    }
+
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-    const fileName = `products/${Date.now()}.${ext}`
 
-    console.log(`Uploading ${fileName} (${buffer.length} bytes) to Supabase...`)
+    // Derive extension from MIME type (never from user-supplied filename)
+    const mimeToExt: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'image/gif': 'gif',
+      'image/avif': 'avif',
+    }
+    const ext = mimeToExt[file.type] ?? 'jpg'
+    const fileName = `products/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
     const { data, error } = await supabase.storage
       .from('product-images')
       .upload(fileName, buffer, {
-        contentType: file.type || 'image/jpeg',
-        upsert: true
+        contentType: file.type,
+        upsert: false, // Never overwrite — prevents cache-poisoning
       })
 
     if (error) {
-      console.error('Supabase upload error:', JSON.stringify(error))
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Supabase upload error:', error.message)
+      return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
     }
 
     if (!data?.path) {
@@ -48,23 +101,14 @@ export async function POST(request: NextRequest) {
       .from('product-images')
       .getPublicUrl(data.path)
 
-    console.log('Upload successful:', publicUrl)
     return NextResponse.json({ url: publicUrl })
-
   } catch (error) {
     console.error('Upload exception:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
   }
 }
 
-// GET endpoint to test if the route and env vars are working
+// Health check — no credentials exposed
 export async function GET() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  return NextResponse.json({
-    hasUrl: !!supabaseUrl,
-    hasKey: !!supabaseKey,
-    url: supabaseUrl,
-    keyPreview: supabaseKey ? supabaseKey.substring(0, 20) + '...' : null
-  })
+  return NextResponse.json({ healthy: true })
 }

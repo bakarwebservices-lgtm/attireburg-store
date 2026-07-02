@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/contexts/ToastContext'
+import { getSession } from '@/lib/session'
 
 interface OutOfStockActionsProps {
   productId: string
@@ -24,6 +26,7 @@ export default function OutOfStockActions({
   onBackorderClick
 }: OutOfStockActionsProps) {
   const { user } = useAuth()
+  const toast = useToast()
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
@@ -57,7 +60,7 @@ export default function OutOfStockActions({
 
   const handleWaitlistSubscribe = async () => {
     if (!email) {
-      alert('Bitte geben Sie Ihre E-Mail-Adresse ein')
+      toast.warning('Bitte geben Sie Ihre E-Mail-Adresse ein')
       return
     }
 
@@ -80,13 +83,13 @@ export default function OutOfStockActions({
 
       if (response.ok) {
         setIsSubscribed(true)
-        alert('Sie wurden erfolgreich zur Warteliste hinzugefügt!')
+        toast.success('Sie wurden erfolgreich zur Warteliste hinzugefügt!')
       } else {
-        alert(data.error || 'Fehler beim Hinzufügen zur Warteliste')
+        toast.error(data.error || 'Fehler beim Hinzufügen zur Warteliste')
       }
     } catch (error) {
       console.error('Error subscribing to waitlist:', error)
-      alert('Fehler beim Hinzufügen zur Warteliste')
+      toast.error('Fehler beim Hinzufügen zur Warteliste')
     } finally {
       setLoading(false)
     }
@@ -97,10 +100,12 @@ export default function OutOfStockActions({
 
     setLoading(true)
     try {
+      const session = getSession()
       const response = await fetch('/api/waitlist/unsubscribe', {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(session?.token && { 'Authorization': `Bearer ${session.token}` })
         },
         body: JSON.stringify({
           email,
@@ -113,13 +118,13 @@ export default function OutOfStockActions({
 
       if (response.ok) {
         setIsSubscribed(false)
-        alert('Sie wurden erfolgreich von der Warteliste entfernt')
+        toast.success('Sie wurden erfolgreich von der Warteliste entfernt')
       } else {
-        alert(data.error || 'Fehler beim Entfernen von der Warteliste')
+        toast.error(data.error || 'Fehler beim Entfernen von der Warteliste')
       }
     } catch (error) {
       console.error('Error unsubscribing from waitlist:', error)
-      alert('Fehler beim Entfernen von der Warteliste')
+      toast.error('Fehler beim Entfernen von der Wunschliste')
     } finally {
       setLoading(false)
     }

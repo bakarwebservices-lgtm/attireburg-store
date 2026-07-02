@@ -3,8 +3,22 @@ import { paypalService } from '@/lib/paypal'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { emailService } from '@/lib/email/EmailService'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 10 capture attempts per IP per hour
+  const ip = getClientIp(request)
+  const rl = rateLimit(`paypal-capture:${ip}`, { windowMs: 60 * 60 * 1000, max: 10 })
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Zu viele Zahlungsversuche. Bitte versuchen Sie es später erneut.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) },
+      }
+    )
+  }
+
   try {
     // Get auth token from header
     const authHeader = request.headers.get('authorization')
@@ -34,7 +48,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Capture the PayPal payment
+    // Ownership check: ensure the order belongs to the authenticated user
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { userId: true }
+    })
+    if (!existingOrder) {
+      return NextResponse.json({ error: 'Bestellung nicht gefunden' }, { status: 404 })
+    }
+    if (existingOrder.userId !== user.id) {
+      return NextResponse.json({ error: 'Zugriff verweigert' }, { status: 403 })
+    }
+
+
     const captureResult = await paypalService.captureOrder(paypalOrderId)
 
     if (captureResult.status === 'COMPLETED') {

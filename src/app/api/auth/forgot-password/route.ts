@@ -2,10 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 import { emailService } from '@/lib/email/EmailService'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 3 requests per IP per 15 minutes
+  const ip = getClientIp(request)
+  const rl = rateLimit(`forgot-password:${ip}`, { windowMs: 15 * 60 * 1000, max: 3 })
+  if (!rl.allowed) {
+    // Still return 200 to prevent timing-based enumeration — just don't send an email
+    return NextResponse.json({
+      success: true,
+      message: 'Wenn ein Konto mit dieser E-Mail-Adresse existiert, wurde ein Link gesendet.'
+    })
+  }
+
   try {
     const { email } = await request.json()
 

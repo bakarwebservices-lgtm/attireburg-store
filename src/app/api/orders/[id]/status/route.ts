@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { orderStatusService, OrderStatus } from '@/lib/orders/OrderStatusService'
 import { verifyToken } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
@@ -8,23 +9,38 @@ export async function GET(
 ) {
   try {
     const { id } = params
-    const orderId = id
-    const status = await orderStatusService.getOrderStatus(orderId)
-    
+
+    // Require authentication
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    const user = verifyToken(token)
+    if (!user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    // Ownership check: non-admins may only read their own orders
+    if (!user.isAdmin) {
+      const order = await prisma.order.findUnique({ where: { id }, select: { userId: true } })
+      if (!order) {
+        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      }
+      if (order.userId !== user.id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    }
+
+    const status = await orderStatusService.getOrderStatus(id)
     if (!status) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
     return NextResponse.json({ status })
   } catch (error) {
     console.error('Get order status error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 

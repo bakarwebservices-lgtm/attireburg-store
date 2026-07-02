@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sampleProducts } from '@/lib/sampleData'
+import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -157,11 +158,17 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-// POST /api/products - Create new product
+// POST /api/products - Create new product (admin only)
 export async function POST(request: NextRequest) {
+  // Require admin auth
+  const authHeader = request.headers.get('authorization')
+  const token = authHeader?.replace('Bearer ', '')
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const user = verifyToken(token)
+  if (!user || !user.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   try {
     const body = await request.json()
-    console.log('Creating product with data:', body)
 
     // Validate required fields
     if (!body.name || !body.sku || !body.price) {

@@ -3,6 +3,7 @@ import { BackorderService } from './BackorderService'
 import { RestockService } from './RestockService'
 import { NotificationService } from './NotificationService'
 import { WaitlistService } from './WaitlistService'
+import { createUnsubscribeToken } from '@/lib/unsubscribeToken'
 
 export interface InventoryUpdateEvent {
   productId: string
@@ -108,6 +109,11 @@ export class InventoryMonitor {
           }
 
           if (product) {
+            const unsubToken = createUnsubscribeToken(
+              subscription.email,
+              event.productId,
+              event.variantId
+            )
             const notificationData = {
               email: subscription.email,
               productName: product.name,
@@ -118,8 +124,9 @@ export class InventoryMonitor {
               currentPrice: variant?.salePrice || variant?.price || product.salePrice || product.price,
               currency: 'EUR',
               purchaseUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/products/${event.productId}`,
-              unsubscribeUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/waitlist/unsubscribe?email=${encodeURIComponent(subscription.email)}&productId=${event.productId}&variantId=${event.variantId || ''}`
+              unsubscribeUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/waitlist/unsubscribe?email=${encodeURIComponent(subscription.email)}&productId=${event.productId}&variantId=${event.variantId || ''}&token=${encodeURIComponent(unsubToken)}`
             }
+
 
             notificationsByEmail.get(subscription.email)!.push(notificationData)
           }

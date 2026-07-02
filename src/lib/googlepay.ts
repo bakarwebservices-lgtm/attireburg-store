@@ -80,7 +80,7 @@ class GooglePayService {
   }
 
   getGooglePayPaymentDataRequest(request: GooglePayRequest) {
-    const paymentDataRequest = Object.assign({}, this.getGooglePayBaseRequest())
+    const paymentDataRequest: any = Object.assign({}, this.getGooglePayBaseRequest())
     
     paymentDataRequest.allowedPaymentMethods = this.getAllowedPaymentMethods()
     paymentDataRequest.transactionInfo = {
@@ -106,7 +106,7 @@ class GooglePayService {
       const paymentsClient = this.getGooglePaymentsClient()
       if (!paymentsClient) return false
 
-      const isReadyToPayRequest = Object.assign({}, this.getGooglePayBaseRequest())
+      const isReadyToPayRequest: any = Object.assign({}, this.getGooglePayBaseRequest())
       isReadyToPayRequest.allowedPaymentMethods = this.getAllowedPaymentMethods()
 
       const response = await paymentsClient.isReadyToPay(isReadyToPayRequest)

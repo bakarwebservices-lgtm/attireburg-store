@@ -6,51 +6,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    // Handle local demo mode when client ID isn't configured
-    if (body.isDemo) {
-      const email = body.email || 'google-demo@attireburg.de'
-      const name = body.name || 'Google Test User'
-
-      let user = null
-      try {
-        // Check if user already exists
-        user = await prisma.user.findUnique({
-          where: { email: email.toLowerCase() }
-        })
-
-        if (!user) {
-          // Create a new user with google login
-          user = await prisma.user.create({
-            data: {
-              email: email.toLowerCase(),
-              name: name,
-              password: '', // Empty password for oauth users
-            }
-          })
-        }
-      } catch (dbError) {
-        console.log('Database not available, using demo user object')
-        user = {
-          id: 'demo-google-user-1',
-          email: email.toLowerCase(),
-          name: name,
-          isAdmin: false
-        }
-      }
-
-      const token = generateToken(user)
-      return NextResponse.json({
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          isAdmin: 'isAdmin' in user ? user.isAdmin : false
-        },
-        token,
-        message: 'Erfolgreich angemeldet'
-      })
-    }
-
     const { credential, accessToken } = body
     if (!credential && !accessToken) {
       return NextResponse.json(
@@ -130,7 +85,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const token = generateToken(user)
+    const token = generateToken(user as any)
     return NextResponse.json({
       user: {
         id: user.id,

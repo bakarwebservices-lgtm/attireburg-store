@@ -12,15 +12,16 @@ export interface VATCalculation {
  * Calculate VAT breakdown from gross price (price including VAT)
  * German prices are typically displayed including VAT
  */
-export function calculateVATFromGross(grossPrice: number): VATCalculation {
-  const netPrice = grossPrice / (1 + VAT_RATE)
+export function calculateVATFromGross(grossPrice: number, taxRate?: number): VATCalculation {
+  const rate = taxRate !== undefined ? taxRate / 100 : VAT_RATE
+  const netPrice = grossPrice / (1 + rate)
   const vatAmount = grossPrice - netPrice
   
   return {
     grossPrice,
     netPrice,
     vatAmount,
-    vatRate: VAT_RATE
+    vatRate: rate
   }
 }
 

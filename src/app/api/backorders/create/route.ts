@@ -1,20 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { BackorderService } from '@/lib/backorder'
+import { verifyToken } from '@/lib/auth'
 
 const prisma = new PrismaClient()
 const backorderService = new BackorderService(prisma)
 
 export async function POST(request: NextRequest) {
   try {
+    // Require authentication
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    const user = verifyToken(token)
+    if (!user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
     const body = await request.json()
-    
-    // Validate required fields
-    if (!body.userId || !body.items || !Array.isArray(body.items) || body.items.length === 0) {
-      return NextResponse.json(
-        { error: 'User ID and items are required' },
-        { status: 400 }
-      )
+
+    if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
+      return NextResponse.json({ error: 'Items are required' }, { status: 400 })
     }
 
     if (!body.totalAmount || !body.shippingAddress || !body.shippingCity || !body.shippingPostal) {
@@ -34,16 +42,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create backorder
+    // Always use the authenticated user's ID — never trust body.userId
     const result = await backorderService.createBackorder({
-      userId: body.userId,
+      userId: user.id,
       items: body.items,
       totalAmount: parseFloat(body.totalAmount),
       currency: body.currency || 'EUR',
       shippingAddress: body.shippingAddress,
       shippingCity: body.shippingCity,
       shippingPostal: body.shippingPostal,
-      expectedFulfillmentDate: body.expectedFulfillmentDate ? new Date(body.expectedFulfillmentDate) : undefined,
+      expectedFulfillmentDate: body.expectedFulfillmentDate
+        ? new Date(body.expectedFulfillmentDate)
+        : undefined,
       paymentData: {
         paypalOrderId: body.paypalOrderId,
         paypalPayerId: body.paypalPayerId
@@ -51,24 +61,13 @@ export async function POST(request: NextRequest) {
     })
 
     if (result.success) {
-      return NextResponse.json({
-        success: true,
-        orderId: result.orderId,
-        message: result.message
-      })
+      return NextResponse.json({ success: true, orderId: result.orderId, message: result.message })
     } else {
-      return NextResponse.json(
-        { error: result.message },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: result.message }, { status: 400 })
     }
-
   } catch (error) {
     console.error('Backorder creation error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create backorder' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to create backorder' }, { status: 500 })
   } finally {
     await prisma.$disconnect()
   }

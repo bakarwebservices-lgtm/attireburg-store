@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateUser, generateToken } from '@/lib/auth'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 10 login attempts per IP per 15 minutes
+  const ip = getClientIp(request)
+  const rl = rateLimit(`login:${ip}`, { windowMs: 15 * 60 * 1000, max: 10 })
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Zu viele Anmeldeversuche. Bitte versuchen Sie es in einigen Minuten erneut.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) },
+      }
+    )
+  }
+
   try {
     const { email, password } = await request.json()
 
@@ -15,35 +29,24 @@ export async function POST(request: NextRequest) {
     let user = null
 
     try {
-      // Try database authentication first
+      // Database authentication
       user = await authenticateUser(email, password)
     } catch (dbError) {
-      console.log('Database not available, using demo authentication')
-      
-      // Demo authentication for testing
-      if (email === 'demo@attireburg.de' && password === 'demo123') {
-        user = {
-          id: 'demo-user-1',
-          email: 'demo@attireburg.de',
-          name: 'Demo User',
-          isAdmin: false
-        }
-      } else if (email === 'admin@attireburg.de' && password === 'admin123') {
-        user = {
-          id: 'demo-admin-1',
-          email: 'admin@attireburg.de',
-          name: 'Admin User',
-          isAdmin: true
-        }
-      }
+      console.error('Database unavailable during login:', dbError)
+      return NextResponse.json(
+        { error: 'Dienst vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.' },
+        { status: 503 }
+      )
     }
     
+
     if (!user) {
       return NextResponse.json(
-        { error: 'Ungültige Anmeldedaten. Versuchen Sie: demo@attireburg.de / demo123' },
+        { error: 'Ungültige E-Mail-Adresse oder Passwort' },
         { status: 401 }
       )
     }
+
 
     const token = generateToken(user)
 
