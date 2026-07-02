@@ -175,29 +175,65 @@ export async function PUT(
     if (body.hasVariants && body.variants && Array.isArray(body.variants)) {
       console.log('Processing variants:', body.variants)
       
-      // Delete existing variants
-      await prisma.productVariant.deleteMany({
+      // Find existing variants
+      const existingVariants = await prisma.productVariant.findMany({
         where: { productId: id }
       })
 
-      // Create new variants
-      if (body.variants.length > 0) {
-        const variantData = body.variants.map((variant: any) => ({
+      const skusInBody = body.variants.map((v: any) => v.sku)
+
+      // Delete variants that are no longer in the body
+      await prisma.productVariant.deleteMany({
+        where: {
           productId: id,
-          sku: variant.sku,
+          sku: { notIn: skusInBody }
+        }
+      })
+
+      // Update or create variants
+      for (const variant of body.variants) {
+        const existing = existingVariants.find(ev => ev.sku === variant.sku)
+        const variantStock = parseInt(variant.stock) || 0
+        
+        const variantData = {
           price: variant.price ? parseFloat(variant.price) : null,
           salePrice: variant.salePrice ? parseFloat(variant.salePrice) : null,
-          stock: parseInt(variant.stock) || 0,
+          stock: variantStock,
           images: variant.images || [],
           attributes: variant.attributes || {},
           isActive: variant.isActive !== undefined ? variant.isActive : true
-        }))
-        
-        console.log('Creating variants with data:', variantData)
-        
-        await prisma.productVariant.createMany({
-          data: variantData
-        })
+        }
+
+        if (existing) {
+          // Update existing variant
+          await prisma.productVariant.update({
+            where: { id: existing.id },
+            data: variantData
+          })
+
+          // Trigger restock check if stock went from 0 to > 0
+          if (variantStock > 0 && existing.stock === 0) {
+            const inventoryMonitor = new InventoryMonitor(prisma)
+            inventoryMonitor.triggerRestockProcessing(id, existing.id, variantStock)
+              .catch(err => console.error('Background variant restock notification error:', err))
+          }
+        } else {
+          // Create new variant
+          const createdVar = await prisma.productVariant.create({
+            data: {
+              productId: id,
+              sku: variant.sku,
+              ...variantData
+            }
+          })
+
+          // Trigger restock check if created with stock > 0
+          if (variantStock > 0) {
+            const inventoryMonitor = new InventoryMonitor(prisma)
+            inventoryMonitor.triggerRestockProcessing(id, createdVar.id, variantStock)
+              .catch(err => console.error('Background new variant restock notification error:', err))
+          }
+        }
       }
     } else if (body.hasVariants === false) {
       // If variants are disabled, remove all existing variants
@@ -209,33 +245,14 @@ export async function PUT(
 
     console.log('Product updated:', updatedProduct)
 
-    // Trigger restock processing in the background if stock went from 0 to > 0 (or variant stock did)
+    // Trigger restock processing in the background if product stock went from 0 to > 0 (only if no variants)
     try {
-      const isProductRestocked = updatedProduct.stock > 0 && existingProduct.stock === 0
+      const isProductRestocked = !body.hasVariants && updatedProduct.stock > 0 && existingProduct.stock === 0
       
       if (isProductRestocked) {
         const inventoryMonitor = new InventoryMonitor(prisma)
         inventoryMonitor.triggerRestockProcessing(updatedProduct.id, undefined, updatedProduct.stock)
           .catch(err => console.error('Background restock notification error:', err))
-      }
-
-      // Check variants if they were updated
-      if (body.hasVariants && body.variants && Array.isArray(body.variants)) {
-        const dbVariants = await prisma.productVariant.findMany({
-          where: { productId: id }
-        })
-
-        for (const variant of dbVariants) {
-          // Check if it was restocked
-          const prevVariant = existingProduct.variants?.find((v: any) => v.sku === variant.sku)
-          const isVariantRestocked = variant.stock > 0 && (!prevVariant || prevVariant.stock === 0)
-          
-          if (isVariantRestocked) {
-            const inventoryMonitor = new InventoryMonitor(prisma)
-            inventoryMonitor.triggerRestockProcessing(id, variant.id, variant.stock)
-              .catch(err => console.error('Background variant restock notification error:', err))
-          }
-        }
       }
     } catch (restockErr) {
       console.error('Failed to trigger restock check:', restockErr)
