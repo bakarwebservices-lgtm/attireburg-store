@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
+import { getSession } from '@/lib/session'
 import DashboardLayout from '@/components/DashboardLayout'
 import ImageUpload from '@/components/admin/ImageUpload'
 import RichTextarea from '@/components/admin/RichTextarea'
@@ -59,7 +60,7 @@ interface Product {
 
 export default function EditProduct() {
   const { lang } = useLanguage()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const params = useParams()
   const t = translations[lang]
@@ -73,6 +74,7 @@ export default function EditProduct() {
   const [generatingVariants, setGeneratingVariants] = useState(false)
 
   useEffect(() => {
+    if (isLoading) return
     if (!user || !user.isAdmin) {
       router.push('/admin')
       return
@@ -81,7 +83,7 @@ export default function EditProduct() {
     if (params.id) {
       fetchProduct(params.id as string)
     }
-  }, [user, router, params.id])
+  }, [user, isLoading, router, params.id])
 
   const fetchProduct = async (id: string) => {
     try {
@@ -251,10 +253,12 @@ export default function EditProduct() {
       
       console.log('Sending update data:', updateData)
       
+      const session = getSession()
       const response = await fetch(`/api/products/${product.id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.token}`
         },
         body: JSON.stringify(updateData)
       })

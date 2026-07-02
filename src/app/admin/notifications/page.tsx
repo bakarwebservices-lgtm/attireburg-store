@@ -26,7 +26,7 @@ interface NotificationLog {
 }
 
 export default function AdminNotificationDashboard() {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const { lang } = useLanguage()
   const t = translations[lang]
@@ -38,6 +38,7 @@ export default function AdminNotificationDashboard() {
   const [sortBy, setSortBy] = useState('date')
 
   useEffect(() => {
+    if (isLoading) return
     if (!user) {
       router.push('/login')
       return
@@ -49,7 +50,7 @@ export default function AdminNotificationDashboard() {
     }
 
     fetchNotificationData()
-  }, [user, router])
+  }, [user, isLoading, router])
 
   const fetchNotificationData = async () => {
     try {
@@ -200,7 +201,7 @@ export default function AdminNotificationDashboard() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">{t.adminExtended.notifications.sentAt}</p>
-                  <p className="text-2xl font-semibold text-gray-900">{analytics.totalSent}</p>
+                  <p className="text-2xl font-semibold text-gray-900">{analytics.totalSent || 0}</p>
                 </div>
               </div>
             </div>
@@ -215,7 +216,7 @@ export default function AdminNotificationDashboard() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">{t.adminExtended.notifications.markAllRead}</p>
-                  <p className="text-2xl font-semibold text-gray-900">{analytics.openRate.toFixed(1)}%</p>
+                  <p className="text-2xl font-semibold text-gray-900">{(analytics.openRate || 0).toFixed(1)}%</p>
                 </div>
               </div>
             </div>
@@ -229,7 +230,7 @@ export default function AdminNotificationDashboard() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">{t.adminExtended.analytics.conversionRate}</p>
-                  <p className="text-2xl font-semibold text-gray-900">{analytics.clickRate.toFixed(1)}%</p>
+                  <p className="text-2xl font-semibold text-gray-900">{(analytics.clickRate || 0).toFixed(1)}%</p>
                 </div>
               </div>
             </div>
@@ -243,7 +244,7 @@ export default function AdminNotificationDashboard() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">{t.adminExtended.analytics.conversionRate}</p>
-                  <p className="text-2xl font-semibold text-gray-900">{analytics.conversionRate.toFixed(1)}%</p>
+                  <p className="text-2xl font-semibold text-gray-900">{(analytics.conversionRate || 0).toFixed(1)}%</p>
                 </div>
               </div>
             </div>

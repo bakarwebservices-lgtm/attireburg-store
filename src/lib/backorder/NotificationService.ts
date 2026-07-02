@@ -66,9 +66,9 @@ export class NotificationService {
 
   async getNotificationAnalytics(): Promise<any> {
     return {
-      sentCount: 0,
-      openCount: 0,
-      clickCount: 0,
+      totalSent: 0,
+      openRate: 0,
+      clickRate: 0,
       conversionRate: 0
     }
   }

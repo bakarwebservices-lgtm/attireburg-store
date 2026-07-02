@@ -37,17 +37,18 @@ interface TopProduct {
 
 export default function AdminDashboard() {
   const { lang } = useLanguage()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const t = translations[lang]
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (isLoading) return
     if (!user) { router.push('/login'); return }
     if (!user.isAdmin) { router.push('/account'); return }
     loadDashboard()
-  }, [user, router])
+  }, [user, isLoading, router])
 
   const loadDashboard = async () => {
     const session = getSession()

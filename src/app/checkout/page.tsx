@@ -39,7 +39,7 @@ function CheckoutPage() {
 
   const { lang } = useLanguage()
   const { items, totalPrice, totalItems, clearCart } = useCart()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const t = translations[lang]
 
@@ -88,6 +88,18 @@ function CheckoutPage() {
     cardholderName: '',
   })
 
+  // Load site settings
+  useEffect(() => {
+    fetch('/api/admin/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) {
+          setSiteSettings(data)
+        }
+      })
+      .catch(err => console.error('Failed to fetch settings:', err))
+  }, [])
+
   // Redirect if cart is empty
   useEffect(() => {
     if (items.length === 0) {
@@ -97,10 +109,11 @@ function CheckoutPage() {
 
   // Redirect if not authenticated
   useEffect(() => {
+    if (isLoading) return
     if (!user) {
       router.push('/login?redirect=/checkout')
     }
-  }, [user, router])
+  }, [user, isLoading, router])
 
   // Set initial payment method from query parameters
   useEffect(() => {
@@ -639,6 +652,14 @@ function CheckoutPage() {
   const codFee = paymentMethod === 'cod' ? 2.50 : 0
   const finalTotal = totalPrice + shippingCost + codFee
   const vatBreakdown = calculateVATFromGross(finalTotal, settings.taxRate)
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-16">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
 
   if (!user || items.length === 0) {
     return null // Will redirect

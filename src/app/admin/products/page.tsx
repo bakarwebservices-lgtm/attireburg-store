@@ -30,7 +30,7 @@ interface Product {
 
 export default function AdminProducts() {
   const { lang } = useLanguage()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const t = translations[lang]
   const [products, setProducts] = useState<Product[]>([])
@@ -40,6 +40,7 @@ export default function AdminProducts() {
   const [variantCounts, setVariantCounts] = useState<Record<string, any>>({})
 
   useEffect(() => {
+    if (isLoading) return
     if (!user) {
       router.push('/login')
       return
@@ -52,7 +53,7 @@ export default function AdminProducts() {
     
     // Load products from database API
     fetchProducts()
-  }, [user, router])
+  }, [user, isLoading, router])
 
   const fetchProducts = async () => {
     try {
@@ -368,6 +369,7 @@ export default function AdminProducts() {
                                 src={product.images[0]}
                                 alt={product.name}
                                 className="w-full h-full object-cover"
+                                loading="lazy"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">

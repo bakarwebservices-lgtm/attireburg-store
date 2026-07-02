@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
+import { getSession } from '@/lib/session'
 import DashboardLayout from '@/components/DashboardLayout'
 import ImageUpload from '@/components/admin/ImageUpload'
 import RichTextarea from '@/components/admin/RichTextarea'
@@ -41,7 +42,7 @@ const DEFAULT_SIZES = ['S', 'M', 'L', 'XL', '2XL']
 
 export default function NewProduct() {
   const { lang } = useLanguage()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const t = translations[lang]
 
@@ -72,10 +73,11 @@ export default function NewProduct() {
   })
 
   useEffect(() => {
+    if (isLoading) return
     if (!user || !user.isAdmin) {
       router.push('/admin')
     }
-  }, [user, router])
+  }, [user, isLoading, router])
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -193,9 +195,13 @@ export default function NewProduct() {
         variants,
       }
 
+      const session = getSession()
       const response = await fetch('/api/products', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.token}`
+        },
         body: JSON.stringify(productData),
       })
 

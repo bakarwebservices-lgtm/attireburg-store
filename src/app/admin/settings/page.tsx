@@ -53,7 +53,7 @@ const DEFAULTS: SiteSettings = {
 }
 
 export default function AdminSettings() {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const { lang } = useLanguage()
   const router = useRouter()
   const [settings, setSettings] = useState<SiteSettings>(DEFAULTS)
@@ -65,10 +65,11 @@ export default function AdminSettings() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    if (isLoading) return
     if (!user) { router.push('/login'); return }
     if (!user.isAdmin) { router.push('/account'); return }
     loadSettings()
-  }, [user, router])
+  }, [user, isLoading, router])
 
   const loadSettings = async () => {
     try {

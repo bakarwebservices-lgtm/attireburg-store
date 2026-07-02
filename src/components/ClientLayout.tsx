@@ -3,6 +3,7 @@ import { useState, createContext, useContext, useEffect } from 'react'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { CartProvider } from '@/contexts/CartContext'
 import { ToastProvider } from '@/contexts/ToastContext'
+import { AlertProvider } from '@/contexts/AlertContext'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 
@@ -43,11 +44,13 @@ export default function ClientLayout({
       <AuthProvider>
         <CartProvider>
           <ToastProvider>
-            <Navbar />
-            <main className="min-h-screen">
-              {children}
-            </main>
-            <Footer />
+            <AlertProvider>
+              <Navbar />
+              <main className="min-h-screen">
+                {children}
+              </main>
+              <Footer />
+            </AlertProvider>
           </ToastProvider>
         </CartProvider>
       </AuthProvider>
