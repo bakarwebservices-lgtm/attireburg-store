@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useLanguage } from '@/components/ClientLayout'
+import Image from 'next/image'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -479,9 +480,12 @@ export default function ProductDetail() {
             {/* Main image with arrow navigation */}
             <div className="relative aspect-square bg-white rounded-lg overflow-hidden shadow-sm group">
               {getCurrentImages().length > 0 ? (
-                <img
+                <Image
                   src={getCurrentImages()[selectedImage]}
                   alt={lang === 'de' ? product.name : product.nameEn}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -526,11 +530,11 @@ export default function ProductDetail() {
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`aspect-square rounded overflow-hidden border-2 transition-colors ${
+                    className={`relative aspect-square rounded overflow-hidden border-2 transition-colors ${
                       selectedImage === index ? 'border-gray-900' : 'border-gray-200 hover:border-gray-400'
                     }`}
                   >
-                    <img src={image} alt={`${index + 1}`} className="w-full h-full object-cover" />
+                    <Image src={image} alt={`${index + 1}`} fill sizes="150px" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>

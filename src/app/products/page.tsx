@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
+import Image from 'next/image'
 
 interface Product {
   id: string
@@ -142,7 +143,14 @@ export default function Products() {
                 <Link key={product.id} href={`/products/${product.id}`} className="group">
                   <div className="relative aspect-[3/4] overflow-hidden bg-gray-100 mb-3">
                     {product.images[0] && (
-                      <img src={product.images[0]} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                      <Image
+                        src={product.images[0]}
+                        alt={name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
                     )}
                     {product.onSale && pct > 0 && (
                       <span className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 tracking-wide">
