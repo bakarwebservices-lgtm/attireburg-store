@@ -54,11 +54,7 @@ export default function Navbar() {
 
           {/* Left — nav links (desktop) */}
           <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-gray-700 flex-1">
-            <Link href="/" className="hover:text-black transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l9-9 9 9M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9" />
-              </svg>
-            </Link>
+            <Link href="/" className="hover:text-black transition-colors">Home</Link>
             <Link href="/products" className="hover:text-black transition-colors">{t.nav.products}</Link>
             <Link href="/customize" className="hover:text-black transition-colors">Print on Demand</Link>
             <Link href="/about" className="hover:text-black transition-colors">{t.nav.about}</Link>
@@ -138,9 +134,6 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-1 text-sm font-medium text-gray-700">
           <Link href="/" className="flex items-center gap-2 py-2.5 border-b border-gray-50" onClick={() => setMobileOpen(false)}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l9-9 9 9M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9" />
-            </svg>
             Startseite
           </Link>
           <Link href="/products" className="block py-2.5 border-b border-gray-50" onClick={() => setMobileOpen(false)}>{t.nav.products}</Link>

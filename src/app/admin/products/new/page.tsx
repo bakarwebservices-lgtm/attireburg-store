@@ -500,7 +500,7 @@ export default function NewProduct() {
                   <ImageUpload
                     images={formData.images}
                     onImagesChange={images => handleInputChange('images', images)}
-                    maxImages={10}
+                    maxImages={20}
                     title="Produktbilder"
                     description="Allgemeine Produktbilder (z.B. Lifestyle-Fotos, Details)"
                   />

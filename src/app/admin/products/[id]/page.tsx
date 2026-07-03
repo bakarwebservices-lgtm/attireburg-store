@@ -567,7 +567,7 @@ export default function EditProduct() {
                 <ImageUpload
                   images={formData.images || []}
                   onImagesChange={(newImages) => handleInputChange('images', newImages)}
-                  maxImages={10}
+                  maxImages={20}
                   title="Produktbilder"
                   description="Hauptbilder für das Produkt. Das erste Bild wird als Hauptbild verwendet."
                 />
