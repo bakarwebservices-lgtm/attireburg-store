@@ -620,14 +620,6 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            {/* Description */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t.productDetail.description}</h3>
-              <div className="text-gray-700">
-                {renderFormattedDescription(lang === 'de' ? product.description : product.descriptionEn)}
-              </div>
-            </div>
-
             {/* Variant Selection */}
             {product.hasVariants && product.variants ? (
               <div className="space-y-4">
@@ -853,6 +845,14 @@ export default function ProductDetail() {
                 </span>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Description — full width below images and selection */}
+        <div className="mt-10 bg-white rounded-lg shadow-sm p-6 sm:p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">{t.productDetail.description}</h3>
+          <div className="text-gray-700 max-w-3xl">
+            {renderFormattedDescription(lang === 'de' ? product.description : product.descriptionEn)}
           </div>
         </div>
 

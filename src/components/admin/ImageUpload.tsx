@@ -12,7 +12,7 @@ interface ImageUploadProps {
 export default function ImageUpload({ 
   images, 
   onImagesChange, 
-  maxImages = 10,
+  maxImages = 20,
   title = "Produktbilder",
   description = "Laden Sie Bilder für Ihr Produkt hoch"
 }: ImageUploadProps) {

@@ -13,6 +13,14 @@ export default function Cart() {
   const { user } = useAuth()
   const t = translations[lang]
   const [promoCode, setPromoCode] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string
+    discountType: string
+    discountValue: number
+    discountAmount: number
+  } | null>(null)
+  const [couponError, setCouponError] = useState('')
+  const [couponLoading, setCouponLoading] = useState(false)
   const [siteSettings, setSiteSettings] = useState<{
     freeShippingThreshold: number
     standardShippingCost: number
@@ -44,7 +52,37 @@ export default function Cart() {
   }
 
   const shippingCost = totalPrice >= settings.freeShippingThreshold ? 0 : settings.standardShippingCost
-  const finalTotal = totalPrice + shippingCost
+  const discountAmount = appliedCoupon?.discountAmount || 0
+  const finalTotal = totalPrice - discountAmount + shippingCost
+
+  const handleApplyCoupon = async () => {
+    if (!promoCode.trim()) return
+    setCouponLoading(true)
+    setCouponError('')
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoCode, orderAmount: totalPrice }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setAppliedCoupon({ ...data.coupon, discountAmount: data.discountAmount })
+        setPromoCode('')
+      } else {
+        setCouponError(data.error || 'Ungültiger Code')
+      }
+    } catch {
+      setCouponError('Fehler beim Prüfen des Codes')
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null)
+    setCouponError('')
+  }
 
   if (items.length === 0) {
     return (
@@ -316,18 +354,38 @@ export default function Cart() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {t.cart.promoCode}
                 </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    placeholder={t.cart.promoPlaceholder}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-                  />
-                  <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                    {t.cart.apply}
-                  </button>
-                </div>
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    <div>
+                      <span className="font-mono font-semibold text-green-800 text-sm">{appliedCoupon.code}</span>
+                      <span className="ml-2 text-green-700 text-sm">
+                        -{appliedCoupon.discountType === 'percentage' ? `${appliedCoupon.discountValue}%` : `€${appliedCoupon.discountValue.toFixed(2)}`}
+                      </span>
+                    </div>
+                    <button onClick={handleRemoveCoupon} className="text-green-700 hover:text-green-900 text-xs underline ml-2">
+                      Entfernen
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => { setPromoCode(e.target.value); setCouponError('') }}
+                      onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
+                      placeholder={t.cart.promoPlaceholder}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-800 focus:border-transparent text-sm uppercase"
+                    />
+                    <button
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !promoCode.trim()}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm disabled:opacity-50"
+                    >
+                      {couponLoading ? '...' : t.cart.apply}
+                    </button>
+                  </div>
+                )}
+                {couponError && <p className="mt-1.5 text-xs text-red-600">{couponError}</p>}
               </div>
 
               {/* Price Breakdown */}
@@ -346,10 +404,16 @@ export default function Cart() {
                     )}
                   </span>
                 </div>
-                 {shippingCost > 0 && (
+                {shippingCost > 0 && (
                   <p className="text-xs text-gray-500">
                     {t.cart.freeShippingNote} {formatPrice(settings.freeShippingThreshold)}
                   </p>
+                )}
+                {appliedCoupon && (
+                  <div className="flex justify-between text-green-700">
+                    <span>Rabatt ({appliedCoupon.code})</span>
+                    <span>-{formatPrice(appliedCoupon.discountAmount)}</span>
+                  </div>
                 )}
                 <div className="border-t border-gray-200 pt-3 space-y-2">
                   <div className="flex justify-between text-lg font-bold text-gray-900">
