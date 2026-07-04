@@ -75,10 +75,22 @@ class PayPalService {
   async createOrder(orderRequest: PayPalOrderRequest): Promise<PayPalOrderResponse> {
     const accessToken = await this.getAccessToken()
 
-    const itemTotalValue = orderRequest.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-    const itemTotal = parseFloat(itemTotalValue.toFixed(2))
+    // PayPal requires exact decimal math — item_total + shipping MUST equal amount exactly
     const totalAmount = parseFloat(orderRequest.amount.toFixed(2))
-    const shippingTotal = Math.max(0, totalAmount - itemTotal)
+    
+    // Recalculate item total from individual items to avoid float drift
+    const itemTotalRaw = orderRequest.items.reduce((sum, item) => {
+      return sum + parseFloat((item.price * item.quantity).toFixed(2))
+    }, 0)
+    const itemTotal = parseFloat(itemTotalRaw.toFixed(2))
+    
+    // Shipping is whatever is left after items — could be 0 if discount made items > total
+    const shippingRaw = totalAmount - itemTotal
+    const shippingTotal = parseFloat(Math.max(0, shippingRaw).toFixed(2))
+    
+    // If items + shipping don't exactly match due to rounding, adjust shipping to compensate
+    const breakdown_total = parseFloat((itemTotal + shippingTotal).toFixed(2))
+    const adjustedShipping = parseFloat((shippingTotal + (totalAmount - breakdown_total)).toFixed(2))
 
     const paypalOrder: any = {
       intent: 'CAPTURE',
@@ -94,16 +106,16 @@ class PayPalService {
             },
             shipping: {
               currency_code: orderRequest.currency,
-              value: shippingTotal.toFixed(2)
+              value: adjustedShipping.toFixed(2)
             }
           }
         },
         items: orderRequest.items.map(item => ({
-          name: item.name,
+          name: item.name.substring(0, 127), // PayPal max 127 chars
           quantity: item.quantity.toString(),
           unit_amount: {
             currency_code: orderRequest.currency,
-            value: item.price.toFixed(2)
+            value: parseFloat(item.price.toFixed(2)).toFixed(2)
           }
         }))
       }],
@@ -149,8 +161,8 @@ class PayPalService {
 
     if (!response.ok) {
       const error = await response.json()
-      console.error('PayPal order creation failed:', error)
-      throw new Error('Failed to create PayPal order')
+      console.error('PayPal order creation failed:', JSON.stringify(error, null, 2))
+      throw new Error(`PayPal error: ${error.message || error.name || JSON.stringify(error)}`)
     }
 
     return await response.json()

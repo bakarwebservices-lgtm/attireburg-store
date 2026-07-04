@@ -354,7 +354,7 @@ function CheckoutPage() {
           window.location.href = paypalResult.approvalUrl
           return
         } else {
-          setErrors({ general: 'Fehler bei der PayPal-Integration' })
+          setErrors({ general: paypalResult.error || 'Fehler bei der PayPal-Integration' })
           return
         }
       } else if (paymentMethod === 'googlepay') {
@@ -575,12 +575,12 @@ function CheckoutPage() {
         window.location.href = paypalResult.approvalUrl
         return
       } else {
-        setErrors({ general: 'Fehler bei der PayPal-Integration' })
+        setErrors({ general: paypalResult.error || 'Fehler bei der PayPal-Integration' })
       }
 
     } catch (error) {
       console.error('PayPal Express Checkout failed:', error)
-      setErrors({ general: 'Ein Fehler ist aufgetreten.' })
+      setErrors({ general: error instanceof Error ? error.message : 'Ein Fehler ist aufgetreten.' })
     } finally {
       setLoading(false)
     }
