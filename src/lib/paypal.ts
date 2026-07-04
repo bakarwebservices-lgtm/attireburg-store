@@ -98,7 +98,7 @@ class PayPalService {
         reference_id: orderRequest.orderId,
         amount: {
           currency_code: orderRequest.currency,
-          value: orderRequest.amount.toFixed(2),
+          value: totalAmount.toFixed(2),
           breakdown: {
             item_total: {
               currency_code: orderRequest.currency,
@@ -111,7 +111,7 @@ class PayPalService {
           }
         },
         items: orderRequest.items.map(item => ({
-          name: item.name.substring(0, 127), // PayPal max 127 chars
+          name: item.name.substring(0, 127),
           quantity: item.quantity.toString(),
           unit_amount: {
             currency_code: orderRequest.currency,
@@ -119,23 +119,20 @@ class PayPalService {
           }
         }))
       }],
-      payment_source: {
-        paypal: {
-          experience_context: {
-            payment_method_preference: 'UNRESTRICTED', // Allows both PayPal and cards
-            brand_name: 'Attireburg',
-            locale: 'de-DE',
-            landing_page: 'LOGIN',
-            shipping_preference: 'GET_FROM_FILE', // Let customer pick/specify address in PayPal Express
-            user_action: 'PAY_NOW',
-            return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success`,
-            cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart?payment_cancelled=true`
-          }
-        }
+      // Standard application_context — simpler and more compatible than payment_source.paypal
+      application_context: {
+        brand_name: 'Attireburg',
+        locale: 'de-DE',
+        landing_page: 'LOGIN',
+        user_action: 'PAY_NOW',
+        return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success`,
+        cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart?payment_cancelled=true`,
+        // If address is provided use it; otherwise let buyer choose in PayPal
+        shipping_preference: orderRequest.shippingAddress ? 'SET_PROVIDED_ADDRESS' : 'GET_FROM_FILE'
       }
     }
 
-    // Include shipping address if provided
+    // Include shipping address only when provided (regular checkout, not Express)
     if (orderRequest.shippingAddress) {
       paypalOrder.purchase_units[0].shipping = {
         name: {
@@ -145,7 +142,7 @@ class PayPalService {
           address_line_1: orderRequest.shippingAddress.street,
           admin_area_2: orderRequest.shippingAddress.city,
           postal_code: orderRequest.shippingAddress.postalCode,
-          country_code: orderRequest.shippingAddress.country === 'Deutschland' ? 'DE' : 'DE'
+          country_code: 'DE'
         }
       }
     }
