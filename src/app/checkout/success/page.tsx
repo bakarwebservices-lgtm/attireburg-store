@@ -26,6 +26,9 @@ function CheckoutSuccessContent() {
 
   const captureInitiated = useRef(false)
 
+  const clearCartRef = useRef(clearCart)
+  useEffect(() => { clearCartRef.current = clearCart }, [clearCart])
+
   useEffect(() => {
     const handlePayPalReturn = async () => {
       const paypalOrderId = searchParams.get('token')
@@ -43,7 +46,7 @@ function CheckoutSuccessContent() {
             totalAmount: 0,
             paymentMethod: 'Demo-Zahlung'
           })
-          clearCart()
+          clearCartRef.current()
         }
         setLoading(false)
         return
@@ -66,6 +69,7 @@ function CheckoutSuccessContent() {
           }
 
           // Capture PayPal payment — works for both auth users and guests
+          const guestEmail = localStorage.getItem('guest_order_email') || ''
           const response = await fetch('/api/payments/paypal/capture-order', {
             method: 'POST',
             headers: {
@@ -74,7 +78,8 @@ function CheckoutSuccessContent() {
             },
             body: JSON.stringify({
               paypalOrderId,
-              orderId: pendingOrderId
+              orderId: pendingOrderId,
+              guestEmail: guestEmail || undefined,
             }),
           })
 
@@ -108,9 +113,10 @@ function CheckoutSuccessContent() {
             })
             
             // Clear cart and cleanup
-            clearCart()
+            clearCartRef.current()
             localStorage.removeItem('pending_order_id')
             localStorage.removeItem('paypal_order_id')
+            localStorage.removeItem('guest_order_email')
           } else {
             setError('Zahlung konnte nicht abgeschlossen werden')
           }
@@ -150,7 +156,7 @@ function CheckoutSuccessContent() {
                       ? 'Kreditkarte'
                       : 'Nachnahme'
                   })
-                  clearCart()
+                  clearCartRef.current()
                   setLoading(false)
                   return
                 }
@@ -178,7 +184,7 @@ function CheckoutSuccessContent() {
             totalAmount: 0,
             paymentMethod: paymentLabel
           })
-          clearCart()
+          clearCartRef.current()
         } else {
           setError('Keine Bestellinformationen gefunden')
         }
@@ -188,7 +194,7 @@ function CheckoutSuccessContent() {
     }
 
     handlePayPalReturn()
-  }, [searchParams, clearCart])
+  }, [searchParams])
 
   if (loading) {
     return (

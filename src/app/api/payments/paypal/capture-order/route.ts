@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const token = authHeader?.replace('Bearer ', '')
     const user = token ? verifyToken(token) : null
 
-    const { paypalOrderId, orderId } = await request.json()
+    const { paypalOrderId, orderId, guestEmail: guestEmailParam } = await request.json()
 
     if (!paypalOrderId || !orderId) {
       return NextResponse.json(
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
         const isGuestUser = updatedOrder.user?.email === 'guest@attireburg.internal'
         const payerEmail = captureResult.payer?.email_address
         const customerEmail = isGuestUser
-          ? (payerEmail || '')
+          ? (guestEmailParam || payerEmail || '')
           : updatedOrder.user.email
 
         const emailData = {

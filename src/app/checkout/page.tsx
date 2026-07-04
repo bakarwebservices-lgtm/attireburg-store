@@ -350,6 +350,9 @@ function CheckoutPage() {
           // Store order ID for later use
           localStorage.setItem('pending_order_id', orderResult.orderId)
           localStorage.setItem('paypal_order_id', paypalResult.paypalOrderId)
+          if (!user) {
+            localStorage.setItem('guest_order_email', shippingAddress.email || '')
+          }
           
           // Redirect to PayPal
           window.location.href = paypalResult.approvalUrl
