@@ -101,12 +101,12 @@ function CheckoutPage() {
       .catch(err => console.error('Failed to fetch settings:', err))
   }, [])
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty — but not while placing an order or after success navigation
   useEffect(() => {
-    if (items.length === 0) {
+    if (items.length === 0 && !loading) {
       router.push('/cart')
     }
-  }, [items, router])
+  }, [items, router, loading])
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -418,8 +418,8 @@ function CheckoutPage() {
           setErrors({ general: 'Google Pay Zahlung wurde abgebrochen' })
         }
       } else if (paymentMethod === 'cod') {
-        // Cash on delivery - order is complete
-        clearCart()
+        // Cash on delivery - navigate to success page
+        // clearCart() is called by the success page after confirming the order
         router.push(`/checkout/success?orderId=${orderResult.orderId}&payment=cod`)
       } else {
         // Default case - should not reach here with current payment options
@@ -672,7 +672,7 @@ function CheckoutPage() {
     )
   }
 
-  if (!user || items.length === 0) {
+  if (!user || (items.length === 0 && !loading)) {
     return null // Will redirect
   }
 
