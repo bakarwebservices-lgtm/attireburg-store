@@ -135,7 +135,15 @@ function CheckoutSuccessContent() {
                     orderNumber: `ATB-${foundOrder.id.slice(-6).toUpperCase()}`,
                     status: foundOrder.status,
                     totalAmount: foundOrder.totalAmount,
-                    paymentMethod: foundOrder.paymentMethod === 'cod' ? 'Nachnahme' : foundOrder.paymentMethod === 'paypal' ? 'PayPal' : 'Google Pay'
+                    paymentMethod: foundOrder.paymentMethod === 'cod'
+                      ? 'Nachnahme'
+                      : foundOrder.paymentMethod === 'paypal'
+                      ? 'PayPal'
+                      : foundOrder.paymentMethod === 'googlepay'
+                      ? 'Google Pay'
+                      : foundOrder.paymentMethod === 'card'
+                      ? 'Kreditkarte'
+                      : 'Nachnahme'
                   })
                   clearCart()
                   setLoading(false)
@@ -147,13 +155,23 @@ function CheckoutSuccessContent() {
             console.error('Failed to fetch dynamic order details in success page:', fetchErr)
           }
 
-          // Fallback to defaults
+          // Fallback when DB fetch fails — use payment param from URL if available
+          const paymentParam = searchParams.get('payment')
+          const paymentLabel = paymentParam === 'cod'
+            ? 'Nachnahme'
+            : paymentParam === 'paypal'
+            ? 'PayPal'
+            : paymentParam === 'googlepay'
+            ? 'Google Pay'
+            : paymentParam === 'card'
+            ? 'Kreditkarte'
+            : 'Nachnahme'
           setOrderDetails({
             orderId,
             orderNumber: `ATB-${orderId.slice(-6).toUpperCase()}`,
             status: 'PENDING',
             totalAmount: 0,
-            paymentMethod: 'Nachnahme'
+            paymentMethod: paymentLabel
           })
           clearCart()
         } else {

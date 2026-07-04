@@ -99,27 +99,41 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Check existing item quantity BEFORE calling setItems
+      // Throwing inside a setState updater causes an unhandled client-side error
+      const currentItems = items
+      const existingItem = currentItems.find(
+        item => item.productId === newItem.productId &&
+                item.size === newItem.size &&
+                item.color === newItem.color &&
+                item.variantId === newItem.variantId &&
+                item.isBackorder === newItem.isBackorder
+      )
+
+      if (existingItem && !newItem.isBackorder) {
+        const newQuantity = existingItem.quantity + newItem.quantity
+        if (newQuantity > newItem.stock) {
+          const remaining = newItem.stock - existingItem.quantity
+          if (remaining <= 0) {
+            throw new Error(`Maximale Menge (${newItem.stock} Stück) bereits im Warenkorb`)
+          }
+          throw new Error(`Nur noch ${remaining} weitere Stück verfügbar`)
+        }
+      }
+
       setItems(prev => {
-        // Check for existing item - include variantId and backorder status in comparison
-        const existingItem = prev.find(
-          item => item.productId === newItem.productId && 
-                  item.size === newItem.size && 
+        const existing = prev.find(
+          item => item.productId === newItem.productId &&
+                  item.size === newItem.size &&
                   item.color === newItem.color &&
                   item.variantId === newItem.variantId &&
                   item.isBackorder === newItem.isBackorder
         )
 
-        if (existingItem) {
-          const newQuantity = existingItem.quantity + newItem.quantity
-          
-          // Check if new quantity exceeds stock (only for regular items)
-          if (!newItem.isBackorder && newQuantity > newItem.stock) {
-            throw new Error(`Nur ${newItem.stock} Stück verfügbar`)
-          }
-          
+        if (existing) {
           return prev.map(item =>
-            item.id === existingItem.id
-              ? { ...item, quantity: newQuantity }
+            item.id === existing.id
+              ? { ...item, quantity: item.quantity + newItem.quantity }
               : item
           )
         }

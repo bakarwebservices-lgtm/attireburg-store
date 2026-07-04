@@ -101,6 +101,7 @@ model Order {
   status          OrderStatus @default(PENDING)
   totalAmount     Float
   currency        String      @default("EUR")
+  paymentMethod   String      @default("cod")
   paypalOrderId   String?
   paypalPayerId   String?
   shippingAddress String

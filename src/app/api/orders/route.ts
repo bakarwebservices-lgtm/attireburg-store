@@ -111,57 +111,114 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Determine initial status based on payment method
-      const initialStatus = paymentMethod === 'cod' ? 'PENDING' : 'PENDING'
-      
-      // Create order in database
-      const order = await prisma.order.create({
-        data: {
-          userId: user.id,
-          status: initialStatus,
-          totalAmount: totalAmount,  // totalAmount from checkout is already the final gross total
-          currency: 'EUR',
-          shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.company ? shippingAddress.company + '\n' : ''}${shippingAddress.street}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.country}`,
-          shippingCity: shippingAddress.city,
-          shippingPostal: shippingAddress.postalCode,
-          items: {
-            create: items.map((item: any) => ({
-              productId: item.productId,
-              variantId: item.variantId || null,
-              quantity: item.quantity,
-              size: item.size || '',
-              color: item.color || null,
-              price: item.salePrice || item.price,
-            }))
-          }
-        },
-        include: {
-          items: {
-            include: {
-              product: true
+      // Pre-check stock availability before touching the database
+      const inventoryItems = items
+        .filter((item: any) => !item.isBackorder)
+        .map((item: any) => ({
+          productId: item.productId,
+          variantId: item.variantId || undefined,
+          quantity: item.quantity
+        }))
+
+      if (inventoryItems.length > 0) {
+        const stockInfo = await inventoryService.checkStock(inventoryItems)
+        const unavailable = stockInfo.filter(s => !s.available)
+        if (unavailable.length > 0) {
+          return NextResponse.json(
+            {
+              error: 'Nicht genügend Lagerbestand verfügbar',
+              outOfStock: true,
+              unavailableItems: unavailable.map(s => ({
+                productId: s.productId,
+                variantId: s.variantId,
+                available: s.currentStock
+              }))
+            },
+            { status: 409 }
+          )
+        }
+      }
+
+      // Atomically create order AND decrement stock in one transaction
+      const order = await prisma.$transaction(async (tx) => {
+        // Re-check and decrement stock atomically for non-backorder items
+        for (const item of inventoryItems) {
+          if (item.variantId) {
+            const variant = await tx.productVariant.findUnique({
+              where: { id: item.variantId },
+              select: { stock: true, isActive: true }
+            })
+            const product = await tx.product.findUnique({
+              where: { id: item.productId },
+              select: { stock: true, isActive: true }
+            })
+            const combinedStock = Math.min(variant?.stock || 0, product?.stock || 0)
+            if (!variant?.isActive || !product?.isActive || combinedStock < item.quantity) {
+              throw new Error(`INSUFFICIENT_STOCK:${item.productId}:${combinedStock}`)
             }
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { decrement: item.quantity } }
+            })
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.quantity } }
+            })
+          } else {
+            const product = await tx.product.findUnique({
+              where: { id: item.productId },
+              select: { stock: true, isActive: true }
+            })
+            if (!product?.isActive || (product?.stock || 0) < item.quantity) {
+              throw new Error(`INSUFFICIENT_STOCK:${item.productId}:${product?.stock || 0}`)
+            }
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.quantity } }
+            })
           }
         }
-      })
 
-      // Check and reserve inventory using the inventory service
-      const inventoryItems = items.map((item: any) => ({
-        productId: item.productId,
-        variantId: item.variantId || undefined,
-        quantity: item.quantity
-      }))
-
-      const inventoryResult = await inventoryService.reserveInventory(inventoryItems)
-      
-      if (!inventoryResult.success) {
-        return NextResponse.json(
-          { 
-            error: 'Nicht genügend Lagerbestand verfügbar',
-            details: inventoryResult.errors
+        // Create order record inside the same transaction
+        return tx.order.create({
+          data: {
+            userId: user.id,
+            status: 'PENDING',
+            totalAmount: totalAmount,
+            currency: 'EUR',
+            paymentMethod: paymentMethod,
+            shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.company ? shippingAddress.company + '\n' : ''}${shippingAddress.street}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.country}`,
+            shippingCity: shippingAddress.city,
+            shippingPostal: shippingAddress.postalCode,
+            items: {
+              create: items.map((item: any) => ({
+                productId: item.productId,
+                variantId: item.variantId || null,
+                quantity: item.quantity,
+                size: item.size || '',
+                color: item.color || null,
+                price: item.salePrice || item.price,
+              }))
+            }
           },
-          { status: 400 }
-        )
-      }
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            }
+          }
+        })
+      }).catch((txError: Error) => {
+        if (txError.message.startsWith('INSUFFICIENT_STOCK:')) {
+          const [, productId, available] = txError.message.split(':')
+          const err = new Error('INSUFFICIENT_STOCK') as any
+          err.productId = productId
+          err.available = parseInt(available)
+          throw err
+        }
+        throw txError
+      })
 
       // Here you would integrate with payment processors
       // For now, we'll simulate successful payment processing
@@ -208,7 +265,17 @@ export async function POST(request: NextRequest) {
         status: 'success',
         message: 'Bestellung erfolgreich aufgegeben'
       })
-    } catch (dbError) {
+    } catch (dbError: any) {
+      if (dbError.message === 'INSUFFICIENT_STOCK') {
+        return NextResponse.json(
+          {
+            error: 'Nicht genügend Lagerbestand verfügbar',
+            outOfStock: true,
+            unavailableItems: [{ productId: dbError.productId, available: dbError.available }]
+          },
+          { status: 409 }
+        )
+      }
       errorLogger.logDatabaseError('create', 'orders', dbError as Error, { 
         userId: user.id,
         itemCount: items.length,

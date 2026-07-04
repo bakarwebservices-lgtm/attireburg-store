@@ -46,6 +46,7 @@ function CheckoutPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [outOfStockError, setOutOfStockError] = useState(false)
   const [paypalToken, setPaypalToken] = useState<string | null>(null)
   const [paypalPayerId, setPaypalPayerId] = useState<string | null>(null)
   const [siteSettings, setSiteSettings] = useState<{
@@ -302,6 +303,11 @@ function CheckoutPage() {
       const orderResult = await orderResponse.json()
 
       if (!orderResponse.ok) {
+        if (orderResult.outOfStock) {
+          setOutOfStockError(true)
+          setLoading(false)
+          return
+        }
         setErrors({ general: orderResult.error || 'Fehler beim Aufgeben der Bestellung' })
         return
       }
@@ -414,7 +420,7 @@ function CheckoutPage() {
       } else if (paymentMethod === 'cod') {
         // Cash on delivery - order is complete
         clearCart()
-        router.push(`/checkout/success?orderId=${orderResult.orderId}`)
+        router.push(`/checkout/success?orderId=${orderResult.orderId}&payment=cod`)
       } else {
         // Default case - should not reach here with current payment options
         setErrors({ general: 'Bitte wählen Sie eine gültige Zahlungsmethode' })
@@ -511,6 +517,11 @@ function CheckoutPage() {
       const orderResult = await orderResponse.json()
 
       if (!orderResponse.ok) {
+        if (orderResult.outOfStock) {
+          setOutOfStockError(true)
+          setLoading(false)
+          return
+        }
         setErrors({ general: orderResult.error || 'Fehler beim Erstellen der Bestellung' })
         setLoading(false)
         return
@@ -684,6 +695,43 @@ function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+
+      {/* Out-of-stock modal */}
+      {outOfStockError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              {lang === 'de' ? 'Leider ausverkauft' : 'Sorry, out of stock'}
+            </h2>
+            <p className="text-gray-600 mb-6">
+              {lang === 'de'
+                ? 'Während du bestellt hast, wurde ein Artikel in deinem Warenkorb von jemand anderem gekauft. Wir benachrichtigen dich, sobald er wieder verfügbar ist.'
+                : 'While you were checking out, an item in your cart was purchased by someone else. We\'ll notify you as soon as it\'s back in stock.'}
+            </p>
+            <div className="flex flex-col gap-3">
+              <Link
+                href="/products"
+                onClick={() => setOutOfStockError(false)}
+                className="w-full bg-brand-800 hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-colors"
+              >
+                {lang === 'de' ? 'Zur Warteliste anmelden' : 'Join the waitlist'}
+              </Link>
+              <button
+                onClick={() => { setOutOfStockError(false) }}
+                className="w-full border border-gray-300 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                {lang === 'de' ? 'Zurück zum Warenkorb' : 'Back to cart'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Header */}
         <div className="mb-6">
