@@ -19,18 +19,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Require authentication
+    // Auth is optional — support both authenticated users and guests
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
-
-    if (!token) {
-      return NextResponse.json({ error: 'Authentifizierung erforderlich' }, { status: 401 })
-    }
-
-    const user = verifyToken(token)
-    if (!user) {
-      return NextResponse.json({ error: 'Ungültiger Token' }, { status: 401 })
-    }
+    const user = token ? verifyToken(token) : null
 
     const { amount, currency = 'EUR', orderId, items, shippingAddress } = await request.json()
 
@@ -38,7 +30,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Fehlende erforderliche Felder' }, { status: 400 })
     }
 
-    // Ownership check: ensure the DB order belongs to this user (or is a guest order) before creating a PayPal session
+    // Ownership check: allow if order belongs to this user OR to the guest account
     const existingOrder = await prisma.order.findUnique({
       where: { id: orderId },
       select: { userId: true, user: { select: { email: true } } }
@@ -47,8 +39,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Bestellung nicht gefunden' }, { status: 404 })
     }
     const isGuestOrder = existingOrder.user?.email === 'guest@attireburg.internal'
-    if (!isGuestOrder && existingOrder.userId !== user.id) {
+    if (!isGuestOrder && user && existingOrder.userId !== user.id) {
       return NextResponse.json({ error: 'Zugriff verweigert' }, { status: 403 })
+    }
+    if (!isGuestOrder && !user) {
+      return NextResponse.json({ error: 'Authentifizierung erforderlich' }, { status: 401 })
     }
 
     // Create PayPal order

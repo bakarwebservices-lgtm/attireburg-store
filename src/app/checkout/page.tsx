@@ -55,6 +55,7 @@ function CheckoutPage() {
     taxRate: number
   } | null>(null)
   const [isProcessingPayPalExpress, setIsProcessingPayPalExpress] = useState(false)
+  const [isAutoRedirecting, setIsAutoRedirecting] = useState(false)
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: user?.firstName || '',
@@ -327,7 +328,7 @@ function CheckoutPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
             amount: finalTotal,
@@ -649,8 +650,10 @@ function CheckoutPage() {
         // Handle direct auto-redirect if ?payment=paypal is passed in URL on first checkout load
         const payment = params.get('payment')
         if (payment === 'paypal') {
-          setTimeout(() => {
-            handlePayPalExpress()
+          setIsAutoRedirecting(true)
+          setTimeout(async () => {
+            await handlePayPalExpress()
+            setIsAutoRedirecting(false)
           }, 300)
         }
       }
@@ -680,8 +683,6 @@ function CheckoutPage() {
     return null // Will redirect to cart
   }
 
-  const isAutoRedirecting = urlPayment === 'paypal' && !urlToken
-
   if (isProcessingPayPalExpress || isAutoRedirecting || (loading && currentStep === 1 && paymentMethod === 'paypal')) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-16">
@@ -689,7 +690,7 @@ function CheckoutPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">
             {isProcessingPayPalExpress || urlToken
-              ? 'Zahlungs- und Versanddetails werden von PayPal geladen...' 
+              ? 'Zahlungs- und Versanddetails werden von PayPal geladen...'
               : 'Sie werden zu PayPal weitergeleitet...'}
           </p>
         </div>
