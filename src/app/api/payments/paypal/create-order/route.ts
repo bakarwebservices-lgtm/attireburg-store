@@ -38,15 +38,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Fehlende erforderliche Felder' }, { status: 400 })
     }
 
-    // Ownership check: ensure the DB order belongs to this user before creating a PayPal session
+    // Ownership check: ensure the DB order belongs to this user (or is a guest order) before creating a PayPal session
     const existingOrder = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { userId: true }
+      select: { userId: true, user: { select: { email: true } } }
     })
     if (!existingOrder) {
       return NextResponse.json({ error: 'Bestellung nicht gefunden' }, { status: 404 })
     }
-    if (existingOrder.userId !== user.id) {
+    const isGuestOrder = existingOrder.user?.email === 'guest@attireburg.internal'
+    if (!isGuestOrder && existingOrder.userId !== user.id) {
       return NextResponse.json({ error: 'Zugriff verweigert' }, { status: 403 })
     }
 

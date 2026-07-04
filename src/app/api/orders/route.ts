@@ -64,24 +64,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get auth token from header
+    // Auth is optional — support both authenticated users and guests
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
-    
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Authentifizierung erforderlich' },
-        { status: 401 }
-      )
-    }
-
-    const user = verifyToken(token)
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Ungültiger Token' },
-        { status: 401 }
-      )
-    }
+    const user = token ? verifyToken(token) : null
 
     const {
       items,
@@ -91,7 +77,10 @@ export async function POST(request: NextRequest) {
       totalAmount,
       shippingCost,
       tax,
-      codFee
+      codFee,
+      couponCode,
+      discountAmount,
+      guestEmail,
     } = await request.json()
 
     // Validate required fields
@@ -109,6 +98,29 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Resolve userId — use authenticated user or fall back to a shared guest account
+    let userId: string
+    if (user) {
+      userId = user.id
+    } else {
+      // Upsert a single shared guest user record for guest orders
+      const guestUser = await prisma.user.upsert({
+        where: { email: 'guest@attireburg.internal' },
+        update: {},
+        create: {
+          email: 'guest@attireburg.internal',
+          name: 'Guest',
+          password: 'GUEST_ACCOUNT_NO_LOGIN',
+          isActive: false, // cannot log in
+        },
+        select: { id: true }
+      })
+      userId = guestUser.id
+    }
+
+    // Contact email: prefer authenticated user's shipping email, else guestEmail param
+    const contactEmail = shippingAddress.email || guestEmail || ''
 
     try {
       // Pre-check stock availability before touching the database
@@ -182,7 +194,7 @@ export async function POST(request: NextRequest) {
         // Create order record inside the same transaction
         return tx.order.create({
           data: {
-            userId: user.id,
+            userId: userId,
             status: 'PENDING',
             totalAmount: totalAmount,
             currency: 'EUR',
@@ -227,7 +239,7 @@ export async function POST(request: NextRequest) {
       const emailData = {
         orderNumber: `ATB-${order.id.slice(-6).toUpperCase()}`,
         customerName: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
-        customerEmail: shippingAddress.email,
+        customerEmail: contactEmail,
         items: items.map((item: any) => ({
           name: item.name,
           quantity: item.quantity,
@@ -277,7 +289,7 @@ export async function POST(request: NextRequest) {
         )
       }
       errorLogger.logDatabaseError('create', 'orders', dbError as Error, { 
-        userId: user.id,
+        userId: userId,
         itemCount: items.length,
         totalAmount 
       })

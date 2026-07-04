@@ -108,13 +108,8 @@ function CheckoutPage() {
     }
   }, [items, router, loading])
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (isLoading) return
-    if (!user) {
-      router.push('/login?redirect=/checkout')
-    }
-  }, [user, isLoading, router])
+  // Redirect if not authenticated — guests are allowed through
+  // (no redirect needed for guest checkout)
 
   // Set initial payment method from query parameters
   useEffect(() => {
@@ -221,18 +216,18 @@ function CheckoutPage() {
   const handlePlaceOrder = async () => {
     setLoading(true)
     try {
-      // Get session token
       const session = localStorage.getItem('attireburg_session')
       const token = session ? JSON.parse(session).token : null
-
-      if (!token) {
-        router.push('/login?redirect=/checkout')
-        return
-      }
+      // guests proceed without a token
 
       // If we already have a paypalToken (meaning the customer returned from PayPal Express checkout),
       // we capture the payment immediately.
       if (paymentMethod === 'paypal' && paypalToken) {
+        if (!token) {
+          setErrors({ general: 'Für PayPal-Zahlung ist ein Konto erforderlich.' })
+          setLoading(false)
+          return
+        }
         const pendingOrderId = localStorage.getItem('pending_order_id')
         
         if (!pendingOrderId) {
@@ -290,6 +285,7 @@ function CheckoutPage() {
         codFee,
         couponCode: appliedCoupon?.code || null,
         discountAmount: appliedCoupon?.discountAmount || 0,
+        guestEmail: !user ? (shippingAddress.email || '') : undefined,
       }
 
       // Create order first
@@ -297,7 +293,7 @@ function CheckoutPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(orderData),
       })
@@ -444,7 +440,9 @@ function CheckoutPage() {
       const token = session ? JSON.parse(session).token : null
 
       if (!token) {
-        router.push('/login?redirect=/checkout')
+        // PayPal Express requires an account for the ownership check on PayPal session creation
+        setErrors({ general: 'Für PayPal Express ist ein Konto erforderlich. Bitte melden Sie sich an oder nutzen Sie den regulären Checkout.' })
+        setLoading(false)
         return
       }
 
@@ -678,8 +676,8 @@ function CheckoutPage() {
     )
   }
 
-  if (!user || (items.length === 0 && !loading)) {
-    return null // Will redirect
+  if (items.length === 0 && !loading) {
+    return null // Will redirect to cart
   }
 
   const isAutoRedirecting = urlPayment === 'paypal' && !urlToken

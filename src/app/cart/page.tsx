@@ -435,14 +435,25 @@ export default function Cart() {
                 ) : (
                   <div className="space-y-2">
                     <Link
-                      href="/login?redirect=/checkout"
+                      href="/checkout"
                       className="w-full bg-brand-800 hover:bg-brand-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors text-center block"
+                    >
+                      {lang === 'de' ? 'Als Gast bestellen' : 'Guest Checkout'}
+                    </Link>
+                    <div className="flex items-center gap-2 my-1">
+                      <hr className="flex-1 border-gray-200" />
+                      <span className="text-xs text-gray-400">{lang === 'de' ? 'oder' : 'or'}</span>
+                      <hr className="flex-1 border-gray-200" />
+                    </div>
+                    <Link
+                      href="/login?redirect=/checkout"
+                      className="w-full border border-brand-800 text-brand-800 hover:bg-brand-50 font-semibold py-3 px-4 rounded-lg transition-colors text-center block"
                     >
                       {t.cart.loginToCheckout}
                     </Link>
                     <Link
                       href="/register?redirect=/checkout"
-                      className="w-full border border-primary-600 text-primary-600 hover:bg-primary-50 font-semibold py-3 px-4 rounded-lg transition-colors text-center block"
+                      className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-3 px-4 rounded-lg transition-colors text-center block"
                     >
                       {t.cart.createAccount}
                     </Link>
@@ -450,7 +461,7 @@ export default function Cart() {
                 )}
                 
                 <Link
-                  href={user ? "/checkout?payment=paypal" : "/login?redirect=/checkout?payment=paypal"}
+                  href={user ? "/checkout?payment=paypal" : "/checkout?payment=paypal"}
                   className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 px-4 rounded-lg transition-colors text-center block"
                 >
                   {t.cart.paypalExpress}
