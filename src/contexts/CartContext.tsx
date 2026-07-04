@@ -20,6 +20,13 @@ export interface CartItem {
   expectedFulfillmentDate?: Date
 }
 
+export interface AppliedCoupon {
+  code: string
+  discountType: 'percentage' | 'fixed'
+  discountValue: number
+  discountAmount: number
+}
+
 interface CartContextType {
   items: CartItem[]
   addItem: (item: Omit<CartItem, 'id'>) => Promise<void>
@@ -29,6 +36,9 @@ interface CartContextType {
   totalItems: number
   totalPrice: number
   isLoading: boolean
+  appliedCoupon: AppliedCoupon | null
+  setAppliedCoupon: (coupon: AppliedCoupon | null) => void
+  discountedTotal: number
 }
 
 const CartContext = createContext<CartContextType>({
@@ -40,15 +50,19 @@ const CartContext = createContext<CartContextType>({
   totalItems: 0,
   totalPrice: 0,
   isLoading: false,
+  appliedCoupon: null,
+  setAppliedCoupon: () => {},
+  discountedTotal: 0,
 })
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [appliedCoupon, setAppliedCouponState] = useState<AppliedCoupon | null>(null)
   const { user } = useAuth()
 
-  // Load cart from localStorage or server
+  // Load cart and coupon from localStorage
   useEffect(() => {
     const savedCart = localStorage.getItem('attireburg_cart')
     if (savedCart) {
@@ -56,6 +70,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems(JSON.parse(savedCart))
       } catch (error) {
         console.error('Error loading cart from localStorage:', error)
+      }
+    }
+    const savedCoupon = localStorage.getItem('attireburg_coupon')
+    if (savedCoupon) {
+      try {
+        setAppliedCouponState(JSON.parse(savedCoupon))
+      } catch {
+        // ignore
       }
     }
     setMounted(true)
@@ -67,6 +89,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('attireburg_cart', JSON.stringify(items))
     }
   }, [items, mounted])
+
+  const setAppliedCoupon = (coupon: AppliedCoupon | null) => {
+    setAppliedCouponState(coupon)
+    if (coupon) {
+      localStorage.setItem('attireburg_coupon', JSON.stringify(coupon))
+    } else {
+      localStorage.removeItem('attireburg_coupon')
+    }
+  }
 
   const addItem = async (newItem: Omit<CartItem, 'id'>) => {
     setIsLoading(true)
@@ -169,6 +200,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     setItems([])
+    setAppliedCoupon(null)
   }
 
   const totalItems = mounted ? items.reduce((sum, item) => sum + item.quantity, 0) : 0
@@ -176,6 +208,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const price = item.salePrice || item.price
     return sum + (price * item.quantity)
   }, 0) : 0
+  const discountedTotal = mounted && appliedCoupon
+    ? Math.max(0, totalPrice - appliedCoupon.discountAmount)
+    : totalPrice
 
   return (
     <CartContext.Provider value={{
@@ -187,6 +222,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       totalItems,
       totalPrice,
       isLoading,
+      appliedCoupon: mounted ? appliedCoupon : null,
+      setAppliedCoupon,
+      discountedTotal,
     }}>
       {children}
     </CartContext.Provider>

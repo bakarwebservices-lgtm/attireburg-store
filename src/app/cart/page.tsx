@@ -9,16 +9,10 @@ import { calculateVATFromGross } from '@/lib/vat'
 
 export default function Cart() {
   const { lang } = useLanguage()
-  const { items, removeItem, updateQuantity, clearCart, totalPrice, totalItems } = useCart()
+  const { items, removeItem, updateQuantity, clearCart, totalPrice, totalItems, appliedCoupon, setAppliedCoupon, discountedTotal } = useCart()
   const { user } = useAuth()
   const t = translations[lang]
   const [promoCode, setPromoCode] = useState('')
-  const [appliedCoupon, setAppliedCoupon] = useState<{
-    code: string
-    discountType: string
-    discountValue: number
-    discountAmount: number
-  } | null>(null)
   const [couponError, setCouponError] = useState('')
   const [couponLoading, setCouponLoading] = useState(false)
   const [siteSettings, setSiteSettings] = useState<{
@@ -51,9 +45,8 @@ export default function Cart() {
     taxRate: 19
   }
 
-  const shippingCost = totalPrice >= settings.freeShippingThreshold ? 0 : settings.standardShippingCost
-  const discountAmount = appliedCoupon?.discountAmount || 0
-  const finalTotal = totalPrice - discountAmount + shippingCost
+  const shippingCost = discountedTotal >= settings.freeShippingThreshold ? 0 : settings.standardShippingCost
+  const finalTotal = discountedTotal + shippingCost
 
   const handleApplyCoupon = async () => {
     if (!promoCode.trim()) return

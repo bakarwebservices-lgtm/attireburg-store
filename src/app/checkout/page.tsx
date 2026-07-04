@@ -38,7 +38,7 @@ function CheckoutPage() {
   const urlPayerId = searchParams.get('PayerID')
 
   const { lang } = useLanguage()
-  const { items, totalPrice, totalItems, clearCart } = useCart()
+  const { items, totalPrice, totalItems, clearCart, appliedCoupon, discountedTotal } = useCart()
   const { user, isLoading } = useAuth()
   const router = useRouter()
   const t = translations[lang]
@@ -288,6 +288,8 @@ function CheckoutPage() {
         shippingCost,
         tax: vatBreakdown.vatAmount,
         codFee,
+        couponCode: appliedCoupon?.code || null,
+        discountAmount: appliedCoupon?.discountAmount || 0,
       }
 
       // Create order first
@@ -479,9 +481,11 @@ function CheckoutPage() {
       // Update local state
       setShippingAddress(dummyAddress)
 
-      const computedShipping = totalPrice >= currentSettings.freeShippingThreshold ? 0 : currentSettings.standardShippingCost
+      const computedDiscount = appliedCoupon?.discountAmount || 0
+      const computedDiscountedSubtotal = Math.max(0, totalPrice - computedDiscount)
+      const computedShipping = computedDiscountedSubtotal >= currentSettings.freeShippingThreshold ? 0 : currentSettings.standardShippingCost
       const computedCodFee = 0 // PayPal Express never has COD fee
-      const computedTotal = totalPrice + computedShipping + computedCodFee
+      const computedTotal = computedDiscountedSubtotal + computedShipping + computedCodFee
       const computedVat = calculateVATFromGross(computedTotal, currentSettings.taxRate)
 
       const orderData = {
@@ -502,6 +506,8 @@ function CheckoutPage() {
         shippingCost: computedShipping,
         tax: computedVat.vatAmount,
         codFee: computedCodFee,
+        couponCode: appliedCoupon?.code || null,
+        discountAmount: computedDiscount,
       }
 
       // Create Prisma order
@@ -659,9 +665,9 @@ function CheckoutPage() {
     taxRate: 19
   }
 
-  const shippingCost = totalPrice >= settings.freeShippingThreshold ? 0 : settings.standardShippingCost
+  const shippingCost = discountedTotal >= settings.freeShippingThreshold ? 0 : settings.standardShippingCost
   const codFee = paymentMethod === 'cod' ? 2.50 : 0
-  const finalTotal = totalPrice + shippingCost + codFee
+  const finalTotal = discountedTotal + shippingCost + codFee
   const vatBreakdown = calculateVATFromGross(finalTotal, settings.taxRate)
 
   if (isLoading) {
@@ -1325,6 +1331,17 @@ function CheckoutPage() {
                   <span>{t.checkout.subtotal} ({totalItems} Artikel)</span>
                   <span>{formatPrice(totalPrice)}</span>
                 </div>
+                {appliedCoupon && (
+                  <div className="flex justify-between text-green-700">
+                    <span>
+                      Rabatt ({appliedCoupon.code})
+                      {appliedCoupon.discountType === 'percentage'
+                        ? ` -${appliedCoupon.discountValue}%`
+                        : ''}
+                    </span>
+                    <span>-{formatPrice(appliedCoupon.discountAmount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-600">
                   <span>{t.checkout.shipping}</span>
                   <span>
