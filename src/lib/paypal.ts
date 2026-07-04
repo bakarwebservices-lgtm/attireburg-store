@@ -75,51 +75,21 @@ class PayPalService {
   async createOrder(orderRequest: PayPalOrderRequest): Promise<PayPalOrderResponse> {
     const accessToken = await this.getAccessToken()
 
-    // PayPal requires exact decimal math — item_total + shipping MUST equal amount exactly
     const totalAmount = parseFloat(orderRequest.amount.toFixed(2))
-    
-    // Recalculate item total from individual items to avoid float drift
-    const itemTotalRaw = orderRequest.items.reduce((sum, item) => {
-      return sum + parseFloat((item.price * item.quantity).toFixed(2))
-    }, 0)
-    const itemTotal = parseFloat(itemTotalRaw.toFixed(2))
-    
-    // Shipping is whatever is left after items — could be 0 if discount made items > total
-    const shippingRaw = totalAmount - itemTotal
-    const shippingTotal = parseFloat(Math.max(0, shippingRaw).toFixed(2))
-    
-    // If items + shipping don't exactly match due to rounding, adjust shipping to compensate
-    const breakdown_total = parseFloat((itemTotal + shippingTotal).toFixed(2))
-    const adjustedShipping = parseFloat((shippingTotal + (totalAmount - breakdown_total)).toFixed(2))
+
+    // Build the purchase unit amount — use simple breakdown without item detail
+    // to avoid mismatch when coupons/discounts are applied
+    const purchaseUnitAmount: any = {
+      currency_code: orderRequest.currency,
+      value: totalAmount.toFixed(2)
+    }
 
     const paypalOrder: any = {
       intent: 'CAPTURE',
       purchase_units: [{
         reference_id: orderRequest.orderId,
-        amount: {
-          currency_code: orderRequest.currency,
-          value: totalAmount.toFixed(2),
-          breakdown: {
-            item_total: {
-              currency_code: orderRequest.currency,
-              value: itemTotal.toFixed(2)
-            },
-            shipping: {
-              currency_code: orderRequest.currency,
-              value: adjustedShipping.toFixed(2)
-            }
-          }
-        },
-        items: orderRequest.items.map(item => ({
-          name: item.name.substring(0, 127),
-          quantity: item.quantity.toString(),
-          unit_amount: {
-            currency_code: orderRequest.currency,
-            value: parseFloat(item.price.toFixed(2)).toFixed(2)
-          }
-        }))
+        amount: purchaseUnitAmount
       }],
-      // Standard application_context — simpler and more compatible than payment_source.paypal
       application_context: {
         brand_name: 'Attireburg',
         locale: 'de-DE',
@@ -127,7 +97,6 @@ class PayPalService {
         user_action: 'PAY_NOW',
         return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success`,
         cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart?payment_cancelled=true`,
-        // If address is provided use it; otherwise let buyer choose in PayPal
         shipping_preference: orderRequest.shippingAddress ? 'SET_PROVIDED_ADDRESS' : 'GET_FROM_FILE'
       }
     }

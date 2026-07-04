@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -41,6 +41,7 @@ function CheckoutPage() {
   const { items, totalPrice, totalItems, clearCart, appliedCoupon, discountedTotal } = useCart()
   const { user, isLoading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const t = translations[lang]
 
   const [currentStep, setCurrentStep] = useState(1)
@@ -104,10 +105,10 @@ function CheckoutPage() {
 
   // Redirect if cart is empty — but not while placing an order or after success navigation
   useEffect(() => {
-    if (items.length === 0 && !loading) {
+    if (items.length === 0 && !loading && pathname === '/checkout') {
       router.push('/cart')
     }
-  }, [items, router, loading])
+  }, [items, router, loading, pathname])
 
   // Redirect if not authenticated — guests are allowed through
   // (no redirect needed for guest checkout)
@@ -679,7 +680,7 @@ function CheckoutPage() {
     )
   }
 
-  if (items.length === 0 && !loading) {
+  if (items.length === 0 && !loading && pathname === '/checkout') {
     return null // Will redirect to cart
   }
 

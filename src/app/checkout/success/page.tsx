@@ -59,17 +59,18 @@ function CheckoutSuccessContent() {
           const token = session ? JSON.parse(session).token : null
           const pendingOrderId = localStorage.getItem('pending_order_id')
           
-          if (!token || !pendingOrderId) {
+          if (!pendingOrderId) {
             setError('Sitzung abgelaufen. Bitte versuchen Sie es erneut.')
+            setLoading(false)
             return
           }
 
-          // Capture PayPal payment
+          // Capture PayPal payment — works for both auth users and guests
           const response = await fetch('/api/payments/paypal/capture-order', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             },
             body: JSON.stringify({
               paypalOrderId,
@@ -82,16 +83,20 @@ function CheckoutSuccessContent() {
           if (response.ok && result.success) {
             // Fetch the updated order to display real totalAmount and details
             let realAmount = 0
-            try {
-              const ordersRes = await fetch('/api/orders', {
-                headers: { 'Authorization': `Bearer ${token}` }
-              })
-              const ordersData = await ordersRes.json()
-              const matchingOrder = ordersData.orders?.find((o: any) => o.id === pendingOrderId)
-              if (matchingOrder) {
-                realAmount = matchingOrder.totalAmount
-              }
-            } catch (err) {}
+            const session = localStorage.getItem('attireburg_session')
+            const token = session ? JSON.parse(session).token : null
+            if (token) {
+              try {
+                const ordersRes = await fetch('/api/orders', {
+                  headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const ordersData = await ordersRes.json()
+                const matchingOrder = ordersData.orders?.find((o: any) => o.id === pendingOrderId)
+                if (matchingOrder) {
+                  realAmount = matchingOrder.totalAmount
+                }
+              } catch (err) {}
+            }
 
             // Payment successful
             setOrderDetails({

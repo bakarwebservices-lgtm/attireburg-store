@@ -20,24 +20,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Get auth token from header
+    // Auth is optional — guests can complete PayPal capture via pending_order_id
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
-    
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Authentifizierung erforderlich' },
-        { status: 401 }
-      )
-    }
-
-    const user = verifyToken(token)
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Ungültiger Token' },
-        { status: 401 }
-      )
-    }
+    const user = token ? verifyToken(token) : null
 
     const { paypalOrderId, orderId } = await request.json()
 
@@ -48,16 +34,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Ownership check: ensure the order belongs to the authenticated user
+    // Ownership check — allow authenticated users owning the order, or guest orders
     const existingOrder = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { userId: true }
+      select: { userId: true, user: { select: { email: true } } }
     })
     if (!existingOrder) {
       return NextResponse.json({ error: 'Bestellung nicht gefunden' }, { status: 404 })
     }
-    if (existingOrder.userId !== user.id) {
+    const isGuestOrder = existingOrder.user?.email === 'guest@attireburg.internal'
+    if (!isGuestOrder && user && existingOrder.userId !== user.id) {
       return NextResponse.json({ error: 'Zugriff verweigert' }, { status: 403 })
+    }
+    if (!isGuestOrder && !user) {
+      return NextResponse.json({ error: 'Authentifizierung erforderlich' }, { status: 401 })
     }
 
 
@@ -115,10 +105,17 @@ export async function POST(request: NextRequest) {
 
       // Send order confirmation email / invoice now that payment is captured and address is updated
       if (updatedOrder) {
+        // For guest orders, get real email from PayPal payer info or shipping address
+        const isGuestUser = updatedOrder.user?.email === 'guest@attireburg.internal'
+        const payerEmail = captureResult.payer?.email_address
+        const customerEmail = isGuestUser
+          ? (payerEmail || '')
+          : updatedOrder.user.email
+
         const emailData = {
           orderNumber: `ATB-${updatedOrder.id.slice(-6).toUpperCase()}`,
           customerName: updatedOrder.shippingAddress.split('\n')[0] || updatedOrder.user.name,
-          customerEmail: updatedOrder.user.email,
+          customerEmail,
           items: updatedOrder.items.map((item: any) => ({
             name: item.product.name,
             quantity: item.quantity,
