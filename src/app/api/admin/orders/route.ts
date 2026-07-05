@@ -94,6 +94,32 @@ export async function PATCH(request: NextRequest) {
         quantity: item.quantity
       }))
       await inventoryService.restoreInventory(inventoryItems)
+    } else if (status !== 'CANCELLED' && existingOrder.status === 'CANCELLED') {
+      const inventoryItems = existingOrder.items.map(item => ({
+        productId: item.productId,
+        variantId: item.variantId || undefined,
+        quantity: item.quantity
+      }))
+
+      await prisma.$transaction(async (tx) => {
+        for (const item of inventoryItems) {
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { decrement: item.quantity } }
+            })
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.quantity } }
+            })
+          } else {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.quantity } }
+            })
+          }
+        }
+      })
     }
 
     const order = await prisma.order.update({
