@@ -582,12 +582,6 @@ export default function ProductDetail() {
                   {product.avgRating.toFixed(1)} ({product.reviewCount} {t.productDetail.reviews})
                 </span>
               </div>
-              <button
-                onClick={() => setShowReviews(!showReviews)}
-                className="text-primary-600 hover:text-primary-700 text-sm"
-              >
-                {t.productDetail.showReviews}
-              </button>
             </div>
 
             {/* Price */}

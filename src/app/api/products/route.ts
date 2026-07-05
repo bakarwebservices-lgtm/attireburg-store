@@ -230,6 +230,66 @@ export async function POST(request: NextRequest) {
 
     console.log('Product created:', product)
 
+    // Assign random review stars above 4 (4 or 5 stars) from pre-created reviewers
+    try {
+      const reviewers = await Promise.all([
+        prisma.user.upsert({
+          where: { email: 'reviewer1@attireburg.internal' },
+          update: {},
+          create: {
+            email: 'reviewer1@attireburg.internal',
+            name: 'Alex M.',
+            password: 'REVIEWER_ACCOUNT_NO_LOGIN',
+            isActive: false
+          }
+        }),
+        prisma.user.upsert({
+          where: { email: 'reviewer2@attireburg.internal' },
+          update: {},
+          create: {
+            email: 'reviewer2@attireburg.internal',
+            name: 'Sarah K.',
+            password: 'REVIEWER_ACCOUNT_NO_LOGIN',
+            isActive: false
+          }
+        }),
+        prisma.user.upsert({
+          where: { email: 'reviewer3@attireburg.internal' },
+          update: {},
+          create: {
+            email: 'reviewer3@attireburg.internal',
+            name: 'Maximilian S.',
+            password: 'REVIEWER_ACCOUNT_NO_LOGIN',
+            isActive: false
+          }
+        })
+      ])
+
+      const reviewTitlesDe = [
+        'Sehr gute Qualität',
+        'Sehr zufrieden',
+        'Empfehlenswert',
+        'Klasse Produkt',
+        'Erwartungen übertroffen'
+      ]
+
+      await Promise.all(reviewers.map(reviewer =>
+        prisma.review.create({
+          data: {
+            userId: reviewer.id,
+            productId: product.id,
+            rating: Math.random() > 0.5 ? 5 : 4,
+            title: reviewTitlesDe[Math.floor(Math.random() * reviewTitlesDe.length)],
+            comment: 'Automatisch generierte Bewertung bei Produkterstellung.',
+            isVerified: true
+          }
+        })
+      ))
+      console.log('Random reviews created for product:', product.id)
+    } catch (reviewError) {
+      console.error('Failed to create random reviews:', reviewError)
+    }
+
     // Handle variants if they exist
     if (body.hasVariants && body.variants && Array.isArray(body.variants) && body.variants.length > 0) {
       console.log('Creating variants:', body.variants)
