@@ -148,6 +148,19 @@ export default function ProductDetail() {
     selectedVariant?.id
   )
 
+  // Get all variant attributes and check if the combination is fully selected
+  const allAttributeNames = Object.keys(
+    product?.variants?.reduce((acc, variant) => ({ ...acc, ...variant.attributes }), {}) || {}
+  )
+  const isFullCombinationSelected = !product?.hasVariants || (
+    product.hasVariants && allAttributeNames.every(name => selectedAttributes[name] !== undefined)
+  )
+  const isSelectedCombinationInStock = product?.hasVariants
+    ? (selectedVariant && selectedVariant.stock > 0 && product.stock > 0)
+    : (product && product.stock > 0)
+  const showOutOfStock = isFullCombinationSelected && !isSelectedCombinationInStock
+  const showAddToCart = !showOutOfStock
+
   useEffect(() => {
     if (params.id) {
       fetchProduct(params.id as string)
@@ -608,7 +621,7 @@ export default function ProductDetail() {
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span className="text-sm text-green-600 font-medium">
-                      {getCurrentStock() > 10 ? 'Auf Lager' : `Nur noch ${getCurrentStock()} verfügbar`}
+                      {lang === 'de' ? 'Auf Lager' : 'In stock'}
                     </span>
                   </div>
                 ) : (
@@ -649,21 +662,15 @@ export default function ProductDetail() {
                     <div className="flex flex-wrap gap-2">
                       {getAvailableAttributeValues(attributeName).map((value) => {
                         const isSelected = selectedAttributes[attributeName] === value
-                        const testAttributes = { ...selectedAttributes, [attributeName]: value }
-                        const testVariant = findVariantByAttributes(testAttributes)
-                        const isAvailable = testVariant && testVariant.isActive && testVariant.stock > 0 && (product?.stock || 0) > 0
                         
                         return (
                           <button
                             key={value}
                             onClick={() => handleAttributeChange(attributeName, value)}
-                            disabled={!isAvailable}
                             className={`px-4 py-2 border text-sm font-medium transition-colors ${
                               isSelected
                                 ? 'border-gray-900 bg-gray-900 text-white'
-                                : isAvailable
-                                ? 'border-gray-300 text-gray-700 hover:border-gray-900'
-                                : 'border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed line-through'
+                                : 'border-gray-300 text-gray-700 hover:border-gray-900'
                             }`}
                           >
                             {value}
@@ -684,9 +691,7 @@ export default function ProductDetail() {
                           <div className={`w-2 h-2 rounded-full ${displayStock > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
                           <span className={`text-sm font-medium ${displayStock > 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {displayStock > 0
-                              ? displayStock <= 5
-                                ? `${lang === 'de' ? 'Nur noch' : 'Only'} ${displayStock} ${lang === 'de' ? 'verfügbar' : 'left'}`
-                                : lang === 'de' ? 'Auf Lager' : 'In stock'
+                              ? lang === 'de' ? 'Auf Lager' : 'In stock'
                               : lang === 'de' ? 'Nicht verfügbar' : 'Out of stock'
                             }
                           </span>
@@ -768,15 +773,12 @@ export default function ProductDetail() {
                 >
                   +
                 </button>
-                <span className="text-sm text-gray-600 ml-4">
-                  {getCurrentStock()} {t.productDetail.inStock}
-                </span>
               </div>
             </div>
 
             {/* Add to Cart or Out of Stock Actions */}
             <div className="space-y-4">
-              {getCurrentStock() > 0 ? (
+              {showAddToCart ? (
                 <>
                   <button
                     onClick={handleAddToCart}
@@ -814,16 +816,21 @@ export default function ProductDetail() {
                   )}
                 </>
               ) : (
-                <OutOfStockActions
-                  productId={product.id}
-                  variantId={selectedVariant?.id}
-                  productName={product.name}
-                  productNameEn={product.nameEn}
-                  currentPrice={getCurrentSalePrice() || getCurrentPrice()}
-                  currency={'EUR'}
-                  expectedRestockDate={restockDate || undefined}
-                  onBackorderClick={handleBackorderClick}
-                />
+                <div className="space-y-3">
+                  <div className="text-red-600 font-semibold text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+                    {lang === 'de' ? 'Diese Kombination ist zurzeit nicht vorrätig.' : 'This combination is currently out of stock.'}
+                  </div>
+                  <OutOfStockActions
+                    productId={product.id}
+                    variantId={selectedVariant?.id}
+                    productName={product.name}
+                    productNameEn={product.nameEn}
+                    currentPrice={getCurrentSalePrice() || getCurrentPrice()}
+                    currency={'EUR'}
+                    expectedRestockDate={restockDate || undefined}
+                    onBackorderClick={handleBackorderClick}
+                  />
+                </div>
               )}
             </div>
 
