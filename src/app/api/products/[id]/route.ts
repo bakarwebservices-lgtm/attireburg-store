@@ -59,8 +59,14 @@ export async function GET(
           ? product.reviews.reduce((sum: number, review: any) => sum + review.rating, 0) / product.reviews.length
           : 0
 
+        // Compute live stock if product has variants
+        const liveStock = product.hasVariants && product.variants && product.variants.length > 0
+          ? product.variants.reduce((sum: number, v: any) => sum + v.stock, 0)
+          : product.stock
+
         product = {
           ...product,
+          stock: liveStock,
           avgRating: Math.round(avgRating * 10) / 10,
           reviewCount: product.reviews.length,
         }
@@ -243,15 +249,30 @@ export async function PUT(
       })
     }
 
-    console.log('Product updated:', updatedProduct)
+    // Sync product stock with variant stock if hasVariants is true
+    let finalUpdatedProduct = updatedProduct
+    if (body.hasVariants && body.variants && Array.isArray(body.variants)) {
+      const allVariants = await prisma.productVariant.findMany({
+        where: { productId: id, isActive: true }
+      })
+      const totalStock = allVariants.reduce((sum, v) => sum + v.stock, 0)
+      
+      // Update parent product stock in DB
+      finalUpdatedProduct = await prisma.product.update({
+        where: { id: id },
+        data: { stock: totalStock }
+      })
+    }
+
+    console.log('Product updated:', finalUpdatedProduct)
 
     // Trigger restock processing in the background if product stock went from 0 to > 0 (only if no variants)
     try {
-      const isProductRestocked = !body.hasVariants && updatedProduct.stock > 0 && existingProduct.stock === 0
+      const isProductRestocked = !body.hasVariants && finalUpdatedProduct.stock > 0 && existingProduct.stock === 0
       
       if (isProductRestocked) {
         const inventoryMonitor = new InventoryMonitor(prisma)
-        inventoryMonitor.triggerRestockProcessing(updatedProduct.id, undefined, updatedProduct.stock)
+        inventoryMonitor.triggerRestockProcessing(finalUpdatedProduct.id, undefined, finalUpdatedProduct.stock)
           .catch(err => console.error('Background restock notification error:', err))
       }
     } catch (restockErr) {
@@ -260,7 +281,7 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      product: updatedProduct,
+      product: finalUpdatedProduct,
       message: 'Produkt erfolgreich aktualisiert'
     })
   } catch (error) {

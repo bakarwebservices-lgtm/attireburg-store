@@ -201,7 +201,6 @@ class VariantAggregationService {
     try {
       const products = await prisma.product.findMany({
         where: {
-          isActive: true,
           hasVariants: true
         },
         include: {
@@ -275,7 +274,6 @@ class VariantAggregationService {
   }>> {
     try {
       const products = await prisma.product.findMany({
-        where: { isActive: true },
         include: {
           variants: {
             select: {

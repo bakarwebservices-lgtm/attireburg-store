@@ -1,6 +1,7 @@
 // Order status management service
 import { prisma } from '@/lib/prisma'
 import { emailService } from '@/lib/email/EmailService'
+import { inventoryService } from '@/lib/inventory'
 
 export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'REFUNDED'
 
@@ -167,29 +168,12 @@ class OrderStatusService {
 
   private async restoreInventory(order: any): Promise<void> {
     try {
-      for (const item of order.items) {
-        if (item.variantId) {
-          // Restore variant inventory
-          await prisma.productVariant.update({
-            where: { id: item.variantId },
-            data: {
-              stock: {
-                increment: item.quantity
-              }
-            }
-          })
-        } else {
-          // Restore product inventory
-          await prisma.product.update({
-            where: { id: item.productId },
-            data: {
-              stock: {
-                increment: item.quantity
-              }
-            }
-          })
-        }
-      }
+      const inventoryItems = order.items.map((item: any) => ({
+        productId: item.productId,
+        variantId: item.variantId || undefined,
+        quantity: item.quantity
+      }))
+      await inventoryService.restoreInventory(inventoryItems)
     } catch (error) {
       console.error('Failed to restore inventory:', error)
     }

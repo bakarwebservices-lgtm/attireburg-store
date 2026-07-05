@@ -73,23 +73,34 @@ export async function GET(request: NextRequest) {
               select: {
                 rating: true,
               }
+            },
+            variants: {
+              where: { isActive: true },
+              select: { stock: true }
             }
           }
         }),
         prisma.product.count({ where })
       ])
 
-      // Calculate average ratings
+      // Calculate average ratings and live stock
       products = dbProducts.map(product => {
         const avgRating = product.reviews.length > 0
           ? product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length
           : 0
         
+        // Compute live stock if product has variants
+        const liveStock = product.hasVariants && product.variants && product.variants.length > 0
+          ? product.variants.reduce((sum: number, v: any) => sum + v.stock, 0)
+          : product.stock
+
         return {
           ...product,
+          stock: liveStock,
           avgRating: Math.round(avgRating * 10) / 10,
           reviewCount: product.reviews.length,
-          reviews: undefined // Remove reviews from response
+          reviews: undefined, // Remove reviews from response
+          variants: undefined // Remove variants from response
         }
       })
 

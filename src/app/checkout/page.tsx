@@ -270,6 +270,7 @@ function CheckoutPage() {
       const orderData = {
         items: items.map(item => ({
           productId: item.productId,
+          variantId: item.variantId || null,
           name: item.name,
           nameEn: item.nameEn,
           price: item.price,
@@ -494,6 +495,7 @@ function CheckoutPage() {
       const orderData = {
         items: items.map(item => ({
           productId: item.productId,
+          variantId: item.variantId || null,
           name: item.name,
           nameEn: item.nameEn,
           price: item.price,

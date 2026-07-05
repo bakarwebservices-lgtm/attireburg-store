@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { inventoryService } from '@/lib/inventory'
 
 export async function GET(request: NextRequest) {
   try {
@@ -76,6 +77,24 @@ export async function PATCH(request: NextRequest) {
 
     const { orderId, status } = await request.json()
     if (!orderId || !status) return NextResponse.json({ error: 'Missing orderId or status' }, { status: 400 })
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true }
+    })
+
+    if (!existingOrder) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    if (status === 'CANCELLED' && existingOrder.status !== 'CANCELLED') {
+      const inventoryItems = existingOrder.items.map(item => ({
+        productId: item.productId,
+        variantId: item.variantId || undefined,
+        quantity: item.quantity
+      }))
+      await inventoryService.restoreInventory(inventoryItems)
+    }
 
     const order = await prisma.order.update({
       where: { id: orderId },
