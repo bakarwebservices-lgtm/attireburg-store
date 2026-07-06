@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
+import { getSession } from '@/lib/session'
 
 interface ImageUploadProps {
   images: string[]
@@ -34,9 +35,19 @@ export default function ImageUpload({
     for (const file of filesToProcess) {
       try {
         // Try Supabase Storage upload first
+        const session = getSession()
+        const headers: Record<string, string> = {}
+        if (session?.token) {
+          headers['Authorization'] = `Bearer ${session.token}`
+        }
+
         const formData = new FormData()
         formData.append('file', file)
-        const response = await fetch('/api/upload', { method: 'POST', body: formData })
+        const response = await fetch('/api/upload', { 
+          method: 'POST', 
+          headers,
+          body: formData 
+        })
         const result = await response.json()
 
         if (response.ok && result.url) {
