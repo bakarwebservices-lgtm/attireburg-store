@@ -202,6 +202,8 @@ export async function POST(request: NextRequest) {
             shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.company ? shippingAddress.company + '\n' : ''}${shippingAddress.street}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.country}`,
             shippingCity: shippingAddress.city,
             shippingPostal: shippingAddress.postalCode,
+            couponCode: couponCode || null,
+            discountAmount: discountAmount || 0,
             items: {
               create: items.map((item: any) => ({
                 productId: item.productId,
@@ -250,7 +252,9 @@ export async function POST(request: NextRequest) {
         totalAmount: totalAmount,  // already the gross final total
         shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.company ? shippingAddress.company + '\n' : ''}${shippingAddress.street}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.country}`,
         paymentMethod: paymentMethod === 'cod' ? 'Nachnahme' : paymentMethod === 'paypal' ? 'PayPal' : 'Google Pay',
-        estimatedDelivery: '2-3 Werktage'
+        estimatedDelivery: '2-3 Werktage',
+        couponCode: order.couponCode,
+        discountAmount: order.discountAmount
       }
 
       if (paymentMethod !== 'paypal') {

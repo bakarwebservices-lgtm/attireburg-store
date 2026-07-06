@@ -126,7 +126,9 @@ export async function POST(request: NextRequest) {
           totalAmount: updatedOrder.totalAmount,
           shippingAddress: updatedOrder.shippingAddress,
           paymentMethod: 'PayPal',
-          estimatedDelivery: '2-3 Werktage'
+          estimatedDelivery: '2-3 Werktage',
+          couponCode: updatedOrder.couponCode,
+          discountAmount: updatedOrder.discountAmount
         }
 
         if (process.env.VERCEL === '1' || process.env.NODE_ENV === 'production') {

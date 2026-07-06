@@ -724,7 +724,7 @@ export const translations = {
         emailPlaceholder: 'your@email.com',
         password: 'Password',
         passwordPlaceholder: 'Your password',
-        rememberMe: 'Remember me',
+        rememberMe: 'Remain signed in',
         forgotPassword: 'Forgot password?',
         loginButton: 'Sign in',
         loggingIn: 'Signing in...',

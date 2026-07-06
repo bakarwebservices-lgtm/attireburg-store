@@ -170,7 +170,7 @@ export default function Login() {
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           {t.auth.login.subtitle}{' '}
-          <Link href="/register" className="font-medium text-primary-600 hover:text-primary-500">
+          <Link href="/register" className="font-bold text-brand-800 underline hover:text-brand-700">
             {t.auth.login.createAccount}
           </Link>
         </p>
@@ -250,7 +250,7 @@ export default function Login() {
                   className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  Angemeldet bleiben
+                  {t.auth.login.rememberMe}
                 </label>
               </div>
 

@@ -37,6 +37,8 @@ interface OrderConfirmationData {
   shippingAddress: string
   paymentMethod: string
   estimatedDelivery?: string
+  couponCode?: string | null
+  discountAmount?: number
 }
 
 interface RestockNotificationData {
@@ -375,8 +377,11 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
       // Prices coming in are GROSS (VAT included)
       const itemsGross = data.items.reduce((s, i) => s + i.price * i.quantity, 0)
       const subtotalNet = itemsGross / divisor
-      // Shipping = totalAmount minus items gross (may include COD fee at 0% VAT)
-      const extraFees = data.totalAmount - itemsGross
+      const discountGross = data.discountAmount || 0
+      const discountNet = discountGross / divisor
+
+      // Shipping = totalAmount minus items gross (with discount applied)
+      const extraFees = data.totalAmount - (itemsGross - discountGross)
       
       const grossTotal = data.totalAmount
       const hasCodFee = data.paymentMethod.toLowerCase().includes('nachnahme') || data.paymentMethod.toLowerCase().includes('cod')
@@ -387,6 +392,31 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
       const taxableAmount = (grossTotal - codFeeVal) / divisor
       const vatAmount = taxableAmount * (vatRate / 100)
 
+      // Address Parsing: skip name line at index 0 to avoid duplicates
+      const rawLines = data.shippingAddress.split('\n').map(l => l.trim()).filter(Boolean)
+      const addressLines = rawLines.slice(1)
+      
+      let street = ''
+      let postalCityLine = ''
+      let country = 'Deutschland'
+
+      if (addressLines.length === 3) {
+        street = addressLines[0]
+        postalCityLine = addressLines[1]
+        country = addressLines[2]
+      } else if (addressLines.length >= 4) {
+        street = `${addressLines[0]}\n${addressLines[1]}`
+        postalCityLine = addressLines[2]
+        country = addressLines[3]
+      } else {
+        street = addressLines[0] || ''
+        postalCityLine = addressLines[1] || ''
+        country = addressLines[2] || 'Deutschland'
+      }
+
+      const postalCode = postalCityLine.split(' ')[0] || ''
+      const city = postalCityLine.split(' ').slice(1).join(' ') || ''
+
       const invoiceData: InvoiceData = {
         invoiceNumber: `AB-${new Date().getFullYear()}-${data.orderNumber.replace('ATB-', '')}`,
         orderNumber: data.orderNumber,
@@ -394,10 +424,10 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
         customer: {
           firstName: data.customerName.split(' ')[0] || data.customerName,
           lastName: data.customerName.split(' ').slice(1).join(' ') || '',
-          street: data.shippingAddress.split('\n')[0] || '',
-          city: data.shippingAddress.split('\n')[1]?.split(' ').slice(1).join(' ') || '',
-          postalCode: data.shippingAddress.split('\n')[1]?.split(' ')[0] || '',
-          country: data.shippingAddress.split('\n')[2] || 'Deutschland',
+          street: street,
+          city: city,
+          postalCode: postalCode,
+          country: country,
           email: data.customerEmail,
         },
         items: data.items.map((item, i) => ({
@@ -409,6 +439,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
           totalNet: (item.price * item.quantity) / divisor,
         })),
         subtotalNet,
+        discount: data.couponCode && data.discountAmount ? { code: data.couponCode, amount: discountNet } : undefined,
         shippingNet: shippingNet > 0 ? shippingNet : 0,
         taxableAmount,
         vatRate,

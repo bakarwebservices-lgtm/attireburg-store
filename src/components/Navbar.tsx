@@ -105,7 +105,7 @@ export default function Navbar() {
               </ClientOnly>
             </Link>
 
-            <div className="relative">
+            <div className="relative transform translate-y-[1.5px] flex items-center">
               {user ? (
                 <>
                   <button onClick={() => setShowUserMenu(!showUserMenu)} className="text-gray-700 hover:text-black transition-colors">

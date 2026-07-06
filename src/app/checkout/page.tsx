@@ -103,6 +103,45 @@ function CheckoutPage() {
       .catch(err => console.error('Failed to fetch settings:', err))
   }, [])
 
+  // Load default address / profile details once user is loaded
+  useEffect(() => {
+    if (user) {
+      // 1. Check if there are saved addresses in localStorage for this user
+      const stored = localStorage.getItem(`addresses_${user.id}`)
+      if (stored) {
+        try {
+          const addresses = JSON.parse(stored)
+          const defaultAddr = addresses.find((a: any) => a.isDefault) || addresses[0]
+          if (defaultAddr) {
+            setShippingAddress({
+              firstName: defaultAddr.firstName || user.firstName || '',
+              lastName: defaultAddr.lastName || user.lastName || '',
+              company: defaultAddr.company || '',
+              street: defaultAddr.street || '',
+              city: defaultAddr.city || '',
+              postalCode: defaultAddr.postalCode || '',
+              country: defaultAddr.country || 'Deutschland',
+              phone: defaultAddr.phone || '',
+              email: user.email || '',
+            })
+            return
+          }
+        } catch (e) {
+          console.error('Failed to parse stored addresses:', e)
+        }
+      }
+
+      // 2. Fallback to basic profile details if no saved addresses exist
+      setShippingAddress(prev => ({
+        ...prev,
+        firstName: prev.firstName || user.firstName || '',
+        lastName: prev.lastName || user.lastName || '',
+        phone: prev.phone || '',
+        email: prev.email || user.email || '',
+      }))
+    }
+  }, [user])
+
   // Redirect if cart is empty — but not while placing an order or after success navigation
   useEffect(() => {
     if (items.length === 0 && !loading && pathname === '/checkout') {
