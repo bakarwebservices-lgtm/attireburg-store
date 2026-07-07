@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/admin/waitlists', label: t.adminExtended.waitlist.title, icon: 'waitlist' },
     { href: '/admin/notifications', label: t.adminExtended.notifications.title, icon: 'notifications' },
     { href: '/admin/users', label: t.admin.users, icon: 'users' },
-    { href: '/admin/media', label: t.adminExtended.media.title, icon: 'media' },
+    // { href: '/admin/media', label: t.adminExtended.media.title, icon: 'media' },
     { href: '/admin/analytics', label: t.admin.analytics, icon: 'analytics' },
     { href: '/admin/coupons', label: lang === 'de' ? 'Gutscheine' : 'Coupons', icon: 'coupons' },
     { href: '/admin/settings', label: t.admin.settings, icon: 'settings' },
