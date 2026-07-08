@@ -156,7 +156,7 @@ export default function ProductDetail() {
     product.hasVariants && allAttributeNames.every(name => selectedAttributes[name] !== undefined)
   )
   const isSelectedCombinationInStock = product?.hasVariants
-    ? (selectedVariant && selectedVariant.stock > 0 && product.stock > 0)
+    ? (selectedVariant && selectedVariant.stock > 0)
     : (product && product.stock > 0)
   const showOutOfStock = isFullCombinationSelected && !isSelectedCombinationInStock
   const showAddToCart = !showOutOfStock
@@ -286,7 +286,7 @@ export default function ProductDetail() {
   // Get current stock
   const getCurrentStock = () => {
     if (selectedVariant) {
-      return Math.min(selectedVariant.stock, product?.stock || 0)
+      return selectedVariant.stock
     }
     return product?.stock || 0
   }
@@ -679,7 +679,7 @@ export default function ProductDetail() {
                 {selectedVariant && (
                   <div className="flex items-center gap-2">
                     {(() => {
-                      const displayStock = Math.min(selectedVariant.stock, product?.stock || 0)
+                      const displayStock = selectedVariant.stock
                       return (
                         <>
                           <div className={`w-2 h-2 rounded-full ${displayStock > 0 ? 'bg-green-500' : 'bg-red-500'}`} />

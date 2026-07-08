@@ -84,7 +84,7 @@ export class BackorderService {
           }
 
           // Verify variant is out of stock (using combined variant and parent product stock)
-          const availableStock = Math.min(variant.stock, product.stock)
+          const availableStock = variant.stock
           if (availableStock >= item.quantity) {
             return {
               success: false,

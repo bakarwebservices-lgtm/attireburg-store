@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
               where: { id: item.productId },
               select: { stock: true, isActive: true }
             })
-            const combinedStock = Math.min(variant?.stock || 0, product?.stock || 0)
+            const combinedStock = variant?.stock || 0
             if (!variant?.isActive || !product?.isActive || combinedStock < item.quantity) {
               throw new Error(`INSUFFICIENT_STOCK:${item.productId}:${combinedStock}`)
             }

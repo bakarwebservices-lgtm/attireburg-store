@@ -48,7 +48,7 @@ class InventoryService {
             })
           ])
 
-          const combinedStock = Math.min(variant?.stock || 0, product?.stock || 0)
+          const combinedStock = variant?.stock || 0
           const isAvailable = (variant?.isActive && product?.isActive && combinedStock >= item.quantity) || false
 
           stockInfo.push({
@@ -243,10 +243,10 @@ class InventoryService {
         }
       }
 
-      // Map variants stock to be the minimum of variant stock and parent product stock
+      // Map variants stock directly from the variant stock
       const mappedVariants = product.variants.map(v => ({
         ...v,
-        stock: Math.min(v.stock, product.stock)
+        stock: v.stock
       }))
 
       const totalVariantStock = mappedVariants.reduce((sum, variant) => sum + variant.stock, 0)
