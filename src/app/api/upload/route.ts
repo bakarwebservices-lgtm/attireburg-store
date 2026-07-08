@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
   const user = verifyToken(token)
   if (!user || !user.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  // Rate limit: 20 uploads per admin per hour
+  // Rate limit: 500 uploads per admin per hour
   const ip = getClientIp(request)
-  const rl = rateLimit(`upload:${ip}`, { windowMs: 60 * 60 * 1000, max: 20 })
+  const rl = rateLimit(`upload:${ip}`, { windowMs: 60 * 60 * 1000, max: 500 })
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Upload limit reached. Please try again later.' },

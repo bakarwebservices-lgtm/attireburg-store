@@ -12,8 +12,12 @@ export async function POST(req: NextRequest) {
 
   if (!coupon) return NextResponse.json({ error: 'Invalid coupon code' }, { status: 404 })
   if (!coupon.isActive) return NextResponse.json({ error: 'Coupon is inactive' }, { status: 400 })
-  if (coupon.expiresAt && new Date() > coupon.expiresAt) {
-    return NextResponse.json({ error: 'Coupon has expired' }, { status: 400 })
+  if (coupon.expiresAt) {
+    const expiryDate = new Date(coupon.expiresAt)
+    expiryDate.setHours(23, 59, 59, 999)
+    if (new Date() > expiryDate) {
+      return NextResponse.json({ error: 'Coupon has expired' }, { status: 400 })
+    }
   }
   if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
     return NextResponse.json({ error: 'Coupon usage limit reached' }, { status: 400 })

@@ -206,8 +206,14 @@ export default function NewProduct() {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Fehler beim Speichern')
+        let errorMessage = 'Fehler beim Speichern'
+        try {
+          const error = await response.json()
+          errorMessage = error.message || error.error || errorMessage
+        } catch (jsonError) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
       }
 
       alert(`Produkt erfolgreich ${isActive ? 'veröffentlicht' : 'als Entwurf gespeichert'}! ${variants.length} Varianten erstellt.`)

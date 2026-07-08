@@ -53,15 +53,14 @@ export default function ImageUpload({
         if (response.ok && result.url) {
           newUrls.push(result.url)
         } else {
-          // Fallback: resize and store as compressed base64
-          console.warn('Upload API failed, using compressed base64:', result.error)
-          const url = await resizeImage(file, 600)
-          newUrls.push(url)
+          const errMsg = result.error || 'Unbekannter Fehler'
+          console.error('Upload API failed:', errMsg)
+          alert(`Fehler beim Hochladen von "${file.name}": ${errMsg}`)
         }
       } catch (err) {
-        console.warn('Upload failed, using compressed base64:', err)
-        const url = await resizeImage(file, 600)
-        newUrls.push(url)
+        console.error('Upload exception:', err)
+        const errMsg = err instanceof Error ? err.message : String(err)
+        alert(`Fehler beim Hochladen von "${file.name}": ${errMsg}`)
       }
     }
 

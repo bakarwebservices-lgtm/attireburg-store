@@ -43,6 +43,7 @@ interface Product {
   onSale: boolean
   hasVariants?: boolean
   variants?: ProductVariant[]
+  attributes?: any
   reviews: Review[]
 }
 
@@ -62,13 +63,19 @@ const renderFormattedDescription = (text: string) => {
   if (!text) return null
 
   const parseInlineStyles = (line: string) => {
-    const parts = line.split(/(\*\*.*?\*\*|\*.*?\*)/g)
+    const parts = line.split(/(\*\*.*?\*\*|\*.*?\*|_.*?_|<u>.*?<\/u>)/g)
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         return <strong key={index} className="font-bold text-gray-900">{part.slice(2, -2)}</strong>
       }
       if (part.startsWith('*') && part.endsWith('*')) {
-        return <strong key={index} className="font-bold text-gray-900">{part.slice(1, -1)}</strong>
+        return <em key={index} className="italic">{part.slice(1, -1)}</em>
+      }
+      if (part.startsWith('_') && part.endsWith('_')) {
+        return <em key={index} className="italic">{part.slice(1, -1)}</em>
+      }
+      if (part.startsWith('<u>') && part.endsWith('</u>')) {
+        return <span key={index} className="underline">{part.slice(3, -4)}</span>
       }
       return part
     })
@@ -313,7 +320,34 @@ export default function ProductDetail() {
         }
       })
     
-    return Array.from(values)
+    const unsortedValues = Array.from(values)
+
+    // Map variant attribute keys ('fit', 'size', 'color') to product attribute config names ('Passform', 'Größe', 'Farbe')
+    const configNameMap: Record<string, string> = {
+      'fit': 'Passform',
+      'size': 'Größe',
+      'color': 'Farbe',
+      'Passform': 'Passform',
+      'Größe': 'Größe',
+      'Farbe': 'Farbe'
+    }
+
+    const configName = configNameMap[attributeName] || attributeName
+
+    if (product.attributes && Array.isArray(product.attributes)) {
+      const attrConfig = product.attributes.find((a: any) => a.name === configName)
+      if (attrConfig && Array.isArray(attrConfig.values)) {
+        return unsortedValues.sort((a, b) => {
+          const indexA = attrConfig.values.indexOf(a)
+          const indexB = attrConfig.values.indexOf(b)
+          const finalA = indexA === -1 ? 9999 : indexA
+          const finalB = indexB === -1 ? 9999 : indexB
+          return finalA - finalB
+        })
+      }
+    }
+    
+    return unsortedValues
   }
 
   const formatPrice = (price: number) => {
