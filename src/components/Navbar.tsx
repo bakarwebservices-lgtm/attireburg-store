@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLanguage } from '@/components/ClientLayout'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/contexts/CartContext'
@@ -17,6 +17,23 @@ export default function Navbar() {
   const [logoUrl, setLogoUrl] = useState('/logo.png')
   const [announcements, setAnnouncements] = useState<string[]>([])
   const t = translations[lang]
+
+  const headerRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false)
+        setMobileOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [])
 
   useEffect(() => {
     fetch('/api/admin/settings')
@@ -35,7 +52,7 @@ export default function Navbar() {
   const marqueeItems = [...announcements, ...announcements]
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+    <header ref={headerRef} className="sticky top-0 z-50 bg-white border-b border-gray-200">
       {/* Announcement bar */}
       <div className="bg-brand-800 text-white text-xs py-2 overflow-hidden">
         <div className="animate-marquee flex">
