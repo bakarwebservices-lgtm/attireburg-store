@@ -101,6 +101,12 @@ function CheckoutPage() {
   const [paypalCardInstance, setPaypalCardInstance] = useState<any>(null)
   const [scriptLoaded, setScriptLoaded] = useState(false)
 
+  const [hasMounted, setHasMounted] = useState(false)
+
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
   // Load site settings
   useEffect(() => {
     fetch('/api/admin/settings')
@@ -318,7 +324,17 @@ function CheckoutPage() {
                   },
                   onError: (err: any) => {
                     console.error('PayPal CardFields error:', err)
-                    setErrors({ general: 'Kartenzahlung fehlgeschlagen. Bitte überprüfen Sie Ihre Daten.' })
+                    const errStr = typeof err === 'string' ? err : (err?.message || JSON.stringify(err) || '')
+                    let errMsg = lang === 'de' 
+                      ? 'Kartenzahlung fehlgeschlagen. Bitte überprüfen Sie Ihre Daten.' 
+                      : 'Card payment failed. Please check your data.'
+                    
+                    if (errStr.includes('VALIDATION_ERROR') || errStr.includes('Invalid card number') || errStr.includes('semantically incorrect') || errStr.includes('UNPROCESSABLE_ENTITY')) {
+                      errMsg = lang === 'de' 
+                        ? 'Ungültige Kartennummer oder Kartendaten. Bitte überprüfen Sie Ihre Eingabe.' 
+                        : 'Invalid card details. Please check your card number, expiry, and CVV.'
+                    }
+                    setErrors({ general: errMsg })
                     setLoading(false)
                   }
                 })
@@ -478,7 +494,17 @@ function CheckoutPage() {
           await paypalCardInstance.submit()
         } catch (err: any) {
           console.error('PayPal CardFields submit failed:', err)
-          setErrors({ general: err.message || 'Kartenzahlung konnte nicht verarbeitet werden.' })
+          const errStr = typeof err === 'string' ? err : (err?.message || JSON.stringify(err) || '')
+          let errMsg = lang === 'de' 
+            ? 'Kartenzahlung konnte nicht verarbeitet werden.' 
+            : 'Card payment could not be processed.'
+          
+          if (errStr.includes('VALIDATION_ERROR') || errStr.includes('Invalid card number') || errStr.includes('semantically incorrect') || errStr.includes('UNPROCESSABLE_ENTITY')) {
+            errMsg = lang === 'de' 
+              ? 'Ungültige Kartennummer oder Kartendaten. Bitte überprüfen Sie Ihre Eingabe.' 
+              : 'Invalid card details. Please check your card number, expiry, and CVV.'
+          }
+          setErrors({ general: errMsg })
           setLoading(false)
         }
         return
@@ -1442,7 +1468,7 @@ function CheckoutPage() {
                     </p>
 
                     {/* Card Fields inputs (will render only if paymentMethod === 'card') */}
-                    {paymentMethod === 'card' && (
+                    {paymentMethod === 'card' && hasMounted && (
                       <div className="mt-4 border-t border-gray-200 pt-4 space-y-4" onClick={(e) => e.stopPropagation()}>
                         <div id="card-fields-container" className="space-y-4">
                           {isDemoMode ? (
