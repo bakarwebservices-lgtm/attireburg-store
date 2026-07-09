@@ -1554,26 +1554,26 @@ function CheckoutPage() {
                                 <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
                                   {lang === 'de' ? 'Name auf der Karte' : 'Cardholder Name'}
                                 </label>
-                                <div id="card-holder-name-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center" />
+                                <div id="card-holder-name-field" className="w-full h-10" />
                               </div>
                               <div>
                                 <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
                                   {lang === 'de' ? 'Kartennummer' : 'Card Number'}
                                 </label>
-                                <div id="card-number-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center" />
+                                <div id="card-number-field" className="w-full h-10" />
                               </div>
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
                                   <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
                                     {lang === 'de' ? 'Ablaufdatum' : 'Expiry Date'}
                                   </label>
-                                  <div id="card-expiry-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center" />
+                                  <div id="card-expiry-field" className="w-full h-10" />
                                 </div>
                                 <div>
                                   <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
                                     CVV
                                   </label>
-                                  <div id="card-cvv-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center" />
+                                  <div id="card-cvv-field" className="w-full h-10" />
                                 </div>
                               </div>
                             </div>
