@@ -43,6 +43,7 @@ function CheckoutPage() {
   const router = useRouter()
   const pathname = usePathname()
   const t = translations[lang]
+  const isDemoMode = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID === 'demo' || !process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
 
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -90,6 +91,15 @@ function CheckoutPage() {
     cvv: '',
     cardholderName: '',
   })
+
+  // Card payment states
+  const [demoCardName, setDemoCardName] = useState('')
+  const [demoCardNumber, setDemoCardNumber] = useState('')
+  const [demoCardExpiry, setDemoCardExpiry] = useState('')
+  const [demoCardCvv, setDemoCardCvv] = useState('')
+  const [sdkError, setSdkError] = useState<string | null>(null)
+  const [paypalCardInstance, setPaypalCardInstance] = useState<any>(null)
+  const [scriptLoaded, setScriptLoaded] = useState(false)
 
   // Load site settings
   useEffect(() => {
@@ -162,6 +172,200 @@ function CheckoutPage() {
       }
     }
   }, [])
+
+  // Load PayPal SDK dynamically for Card Fields when 'card' payment method is selected
+  useEffect(() => {
+    const isDemo = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID === 'demo' || !process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
+    if (paymentMethod !== 'card' || isDemo) return
+
+    let active = true
+
+    const loadScriptAndInitialize = async () => {
+      try {
+        const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || ''
+        
+        // Check if script is already present
+        const scriptId = 'paypal-sdk-card-fields'
+        let script = document.getElementById(scriptId) as HTMLScriptElement | null
+        
+        if (!script) {
+          script = document.createElement('script')
+          script.id = scriptId
+          script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&components=card-fields&currency=EUR`
+          script.async = true
+          document.body.appendChild(script)
+        }
+
+        const onScriptLoad = () => {
+          if (!active) return
+          setScriptLoaded(true)
+          
+          const paypal = (window as any).paypal
+          if (paypal && paypal.CardFields) {
+            try {
+              // Wait for fields to be in DOM
+              setTimeout(() => {
+                if (!active) return
+                
+                const session = localStorage.getItem('attireburg_session')
+                const token = session ? JSON.parse(session).token : null
+
+                const cardFields = paypal.CardFields({
+                  style: {
+                    input: {
+                      'font-size': '14px',
+                      'font-family': 'sans-serif',
+                      'color': '#333333',
+                    },
+                  },
+                  createOrder: async () => {
+                    const orderData = {
+                      items: items.map(item => ({
+                        productId: item.productId,
+                        variantId: item.variantId || null,
+                        name: item.name,
+                        nameEn: item.nameEn,
+                        price: item.price,
+                        salePrice: item.salePrice,
+                        quantity: item.quantity,
+                        size: item.size,
+                        color: item.color,
+                      })),
+                      shippingAddress: sameAsShipping ? shippingAddress : shippingAddress,
+                      billingAddress: sameAsShipping ? shippingAddress : billingAddress,
+                      paymentMethod: 'card',
+                      totalAmount: finalTotal,
+                      shippingCost,
+                      tax: vatBreakdown.vatAmount,
+                      codFee,
+                      couponCode: appliedCoupon?.code || null,
+                      discountAmount: appliedCoupon?.discountAmount || 0,
+                      guestEmail: !user ? (shippingAddress.email || '') : undefined,
+                    }
+
+                    const orderResponse = await fetch('/api/orders', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                      },
+                      body: JSON.stringify(orderData),
+                    })
+                    const orderResult = await orderResponse.json()
+                    if (!orderResponse.ok) {
+                      throw new Error(orderResult.error || 'Failed to create order')
+                    }
+
+                    localStorage.setItem('pending_order_id', orderResult.orderId)
+
+                    // Create PayPal order
+                    const paypalResponse = await fetch('/api/payments/paypal/create-order', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                      },
+                      body: JSON.stringify({
+                        amount: finalTotal,
+                        currency: 'EUR',
+                        orderId: orderResult.orderId,
+                        items: items.map(item => ({
+                          name: item.name,
+                          quantity: item.quantity,
+                          price: item.salePrice || item.price
+                        })),
+                        shippingAddress
+                      }),
+                    })
+                    const paypalResult = await paypalResponse.json()
+                    if (!paypalResponse.ok) {
+                      throw new Error(paypalResult.error || 'Failed to create PayPal order')
+                    }
+
+                    return paypalResult.paypalOrderId
+                  },
+                  onApprove: async (data: any) => {
+                    const pendingOrderId = localStorage.getItem('pending_order_id')
+
+                    try {
+                      const captureResponse = await fetch('/api/payments/paypal/capture-order', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                        },
+                        body: JSON.stringify({
+                          paypalOrderId: data.orderID,
+                          orderId: pendingOrderId,
+                          guestEmail: shippingAddress.email
+                        }),
+                      })
+
+                      const captureResult = await captureResponse.json()
+                      if (captureResponse.ok && captureResult.success) {
+                        clearCart()
+                        localStorage.removeItem('pending_order_id')
+                        router.push(`/checkout/success?orderId=${pendingOrderId}`)
+                      } else {
+                        setErrors({ general: captureResult.error || 'Kartenzahlung konnte nicht erfasst werden.' })
+                        setLoading(false)
+                      }
+                    } catch (captureErr) {
+                      console.error('PayPal Card capture failed:', captureErr)
+                      setErrors({ general: 'Fehler beim Erfassen der Kartenzahlung' })
+                      setLoading(false)
+                    }
+                  },
+                  onError: (err: any) => {
+                    console.error('PayPal CardFields error:', err)
+                    setErrors({ general: 'Kartenzahlung fehlgeschlagen. Bitte überprüfen Sie Ihre Daten.' })
+                    setLoading(false)
+                  }
+                })
+
+                if (cardFields.isEligible()) {
+                  const numberField = cardFields.NumberField()
+                  numberField.render('#card-number-field')
+
+                  const expiryField = cardFields.ExpiryField()
+                  expiryField.render('#card-expiry-field')
+
+                  const cvvField = cardFields.CVVField()
+                  cvvField.render('#card-cvv-field')
+
+                  const nameField = cardFields.NameField()
+                  nameField.render('#card-holder-name-field')
+
+                  setPaypalCardInstance(cardFields)
+                } else {
+                  setSdkError('Kreditkartenzahlung über PayPal ist für dieses Land/Konto derzeit nicht verfügbar.')
+                }
+              }, 500)
+            } catch (err) {
+              console.error('CardFields init error:', err)
+              setSdkError('Fehler beim Initialisieren der Kartenzahlung.')
+            }
+          }
+        }
+
+        if ((window as any).paypal && (window as any).paypal.CardFields) {
+          onScriptLoad()
+        } else {
+          script.addEventListener('load', onScriptLoad)
+        }
+      } catch (err) {
+        console.error('Failed to load PayPal SDK script:', err)
+        setSdkError('Fehler beim Laden des Zahlungs-SDKs.')
+      }
+    }
+
+    loadScriptAndInitialize()
+
+    return () => {
+      active = false
+    }
+  }, [paymentMethod])
+
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('de-DE', {
@@ -260,6 +464,25 @@ function CheckoutPage() {
       const session = localStorage.getItem('attireburg_session')
       const token = session ? JSON.parse(session).token : null
       // guests proceed without a token
+
+      // If card payment is selected in REAL MODE, we trigger CardFields submission.
+      // This will handle creating the order on the backend and capturing payment.
+      if (paymentMethod === 'card' && !isDemoMode) {
+        if (!paypalCardInstance) {
+          setErrors({ general: 'Zahlungs-SDK wird geladen oder ist nicht verfügbar. Bitte laden Sie die Seite neu.' })
+          setLoading(false)
+          return
+        }
+
+        try {
+          await paypalCardInstance.submit()
+        } catch (err: any) {
+          console.error('PayPal CardFields submit failed:', err)
+          setErrors({ general: err.message || 'Kartenzahlung konnte nicht verarbeitet werden.' })
+          setLoading(false)
+        }
+        return
+      }
 
       // If we already have a paypalToken (meaning the customer returned from PayPal Express checkout),
       // we capture the payment immediately.
@@ -464,6 +687,15 @@ function CheckoutPage() {
         // Cash on delivery - navigate to success page
         // clearCart() is called by the success page after confirming the order
         router.push(`/checkout/success?orderId=${orderResult.orderId}&payment=cod`)
+      } else if (paymentMethod === 'card') {
+        // This block is only reached in Demo Mode (because Real Mode returned early)
+        if (!demoCardName.trim() || !demoCardNumber.trim() || !demoCardExpiry.trim() || !demoCardCvv.trim()) {
+          setErrors({ general: 'Bitte füllen Sie alle Kreditkartendaten aus.' })
+          setLoading(false)
+          return
+        }
+        clearCart()
+        router.push(`/checkout/success?orderId=${orderResult.orderId}&demo=true&payment=card`)
       } else {
         // Default case - should not reach here with current payment options
         setErrors({ general: 'Bitte wählen Sie eine gültige Zahlungsmethode' })
@@ -817,7 +1049,7 @@ function CheckoutPage() {
           {/* Main Content */}
           <div className="lg:col-span-2">
             {/* Step 1: Shipping Address */}
-            {currentStep === 1 && (
+            <div className={currentStep === 1 ? '' : 'hidden'}>
               <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">
                   {t.checkout.shippingAddress}
@@ -1148,10 +1380,10 @@ function CheckoutPage() {
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Step 2: Payment Method */}
-            {currentStep === 2 && (
+            <div className={currentStep === 2 ? '' : 'hidden'}>
               <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">
                   {t.checkout.paymentMethod}
@@ -1182,6 +1414,128 @@ function CheckoutPage() {
                         ? 'Zahlen Sie sicher und schnell mit Ihrem PayPal-Konto oder mit Ihrer Kreditkarte.' 
                         : 'Pay safely and quickly with your PayPal account or credit card.'}
                     </p>
+                  </div>
+
+                  {/* Credit / Debit Card via PayPal Hosted Fields */}
+                  <div className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                    paymentMethod === 'card' ? 'border-primary-600 bg-primary-50' : 'border-gray-200'
+                  }`} onClick={() => setPaymentMethod('card')}>
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="card"
+                        checked={paymentMethod === 'card'}
+                        onChange={() => setPaymentMethod('card')}
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500"
+                      />
+                      <label className="ml-3 flex items-center">
+                        <span className="text-sm font-medium text-gray-900">
+                          {lang === 'de' ? 'Kredit- oder Debitkarte' : 'Credit or Debit Card'}
+                        </span>
+                      </label>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2 ml-7">
+                      {lang === 'de' 
+                        ? 'Zahlen Sie direkt und sicher mit Ihrer Visa, Mastercard oder anderen gängigen Karten.' 
+                        : 'Pay directly and securely with your Visa, Mastercard, or other major cards.'}
+                    </p>
+
+                    {/* Card Fields inputs (will render only if paymentMethod === 'card') */}
+                    {paymentMethod === 'card' && (
+                      <div className="mt-4 border-t border-gray-200 pt-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+                        <div id="card-fields-container" className="space-y-4">
+                          {isDemoMode ? (
+                            // Demo Mode card input fields
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                  {lang === 'de' ? 'Name auf der Karte' : 'Cardholder Name'}
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="John Doe"
+                                  value={demoCardName}
+                                  onChange={(e) => setDemoCardName(e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-600 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                  {lang === 'de' ? 'Kartennummer' : 'Card Number'}
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="4111 1111 1111 1111"
+                                  value={demoCardNumber}
+                                  onChange={(e) => setDemoCardNumber(e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-600 text-sm"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                    {lang === 'de' ? 'Ablaufdatum' : 'Expiry Date'}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="12/29"
+                                    value={demoCardExpiry}
+                                    onChange={(e) => setDemoCardExpiry(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-600 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                    CVV
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="123"
+                                    value={demoCardCvv}
+                                    onChange={(e) => setDemoCardCvv(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-600 text-sm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            // Real mode card input fields (containers for PayPal JS SDK iFrames)
+                            <div className="space-y-3">
+                              {sdkError && (
+                                <p className="text-red-500 text-xs mb-2">{sdkError}</p>
+                              )}
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                  {lang === 'de' ? 'Name auf der Karte' : 'Cardholder Name'}
+                                </label>
+                                <div id="card-holder-name-field" className="w-full h-10 border border-gray-300 rounded-lg px-3 py-2 bg-white" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                  {lang === 'de' ? 'Kartennummer' : 'Card Number'}
+                                </label>
+                                <div id="card-number-field" className="w-full h-10 border border-gray-300 rounded-lg px-3 py-2 bg-white" />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                    {lang === 'de' ? 'Ablaufdatum' : 'Expiry Date'}
+                                  </label>
+                                  <div id="card-expiry-field" className="w-full h-10 border border-gray-300 rounded-lg px-3 py-2 bg-white" />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                    CVV
+                                  </label>
+                                  <div id="card-cvv-field" className="w-full h-10 border border-gray-300 rounded-lg px-3 py-2 bg-white" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Cash on Delivery */}
@@ -1220,10 +1574,10 @@ function CheckoutPage() {
                   </div>
                 )}
               </div>
-            )}
+            </div>
 
             {/* Step 3: Review Order */}
-            {currentStep === 3 && (
+            <div className={currentStep === 3 ? '' : 'hidden'}>
               <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">
                   {t.checkout.step3}
@@ -1313,7 +1667,7 @@ function CheckoutPage() {
                   </p>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Error Display */}
             {errors.general && (
