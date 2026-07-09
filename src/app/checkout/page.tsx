@@ -1405,14 +1405,14 @@ function CheckoutPage() {
                       />
                       <label className="ml-3 flex items-center">
                         <span className="text-sm font-medium text-gray-900">
-                          {lang === 'de' ? 'PayPal & Kreditkarten' : 'PayPal & Credit Cards'}
+                          PayPal
                         </span>
                       </label>
                     </div>
                     <p className="text-xs text-gray-600 mt-2 ml-7">
                       {lang === 'de' 
-                        ? 'Zahlen Sie sicher und schnell mit Ihrem PayPal-Konto oder mit Ihrer Kreditkarte.' 
-                        : 'Pay safely and quickly with your PayPal account or credit card.'}
+                        ? 'Zahlen Sie sicher und schnell mit Ihrem PayPal-Konto.' 
+                        : 'Pay safely and quickly with your PayPal account.'}
                     </p>
                   </div>
 
