@@ -340,17 +340,16 @@ function CheckoutPage() {
                 })
 
                 if (cardFields.isEligible()) {
-                  const numberField = cardFields.NumberField()
-                  numberField.render('#card-number-field')
-
-                  const expiryField = cardFields.ExpiryField()
-                  expiryField.render('#card-expiry-field')
-
-                  const cvvField = cardFields.CVVField()
-                  cvvField.render('#card-cvv-field')
-
-                  const nameField = cardFields.NameField()
-                  nameField.render('#card-holder-name-field')
+                  const cardField = cardFields.CardField({
+                    style: {
+                      input: {
+                        'font-size': '14px',
+                        'font-family': 'sans-serif',
+                        'color': '#333333',
+                      }
+                    }
+                  })
+                  cardField.render('#card-field-container')
 
                   setPaypalCardInstance(cardFields)
                 } else {
@@ -1527,46 +1526,21 @@ function CheckoutPage() {
                             </div>
                           ) : (
                             // Real mode card input fields (containers for PayPal JS SDK iFrames)
-                            <div className="space-y-3 relative min-h-[220px]">
+                            <div className="relative min-h-[60px] w-full">
                               {!paypalCardInstance && !sdkError && (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10 rounded-lg">
-                                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-800 mb-2"></div>
-                                  <p className="text-sm text-gray-500 font-medium">
+                                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-800 mb-2"></div>
+                                  <p className="text-xs text-gray-500 font-medium">
                                     {lang === 'de' ? 'Sicheres Zahlungsformular wird geladen...' : 'Loading secure payment form...'}
                                   </p>
                                 </div>
                               )}
                               {sdkError && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10 rounded-lg p-4 text-center">
-                                  <p className="text-red-500 text-sm font-semibold">{sdkError}</p>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10 rounded-lg p-2 text-center">
+                                  <p className="text-red-500 text-xs font-semibold">{sdkError}</p>
                                 </div>
                               )}
-                              <div>
-                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                                  {lang === 'de' ? 'Name auf der Karte' : 'Cardholder Name'}
-                                </label>
-                                <div id="card-holder-name-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center px-3" />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                                  {lang === 'de' ? 'Kartennummer' : 'Card Number'}
-                                </label>
-                                <div id="card-number-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center px-3" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                                    {lang === 'de' ? 'Ablaufdatum' : 'Expiry Date'}
-                                  </label>
-                                  <div id="card-expiry-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center px-3" />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                                    CVV
-                                  </label>
-                                  <div id="card-cvv-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center px-3" />
-                                </div>
-                              </div>
+                              <div id="card-field-container" className="w-full" />
                             </div>
                           )}
                         </div>
