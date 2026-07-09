@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useCart } from '@/contexts/CartContext'
@@ -99,7 +99,9 @@ function CheckoutPage() {
   const [demoCardCvv, setDemoCardCvv] = useState('')
   const [sdkError, setSdkError] = useState<string | null>(null)
   const [paypalCardInstance, setPaypalCardInstance] = useState<any>(null)
+  const [isCardValid, setIsCardValid] = useState(false)
   const [scriptLoaded, setScriptLoaded] = useState(false)
+  const paypalCardInstanceRef = useRef<any>(null)
 
   const [hasMounted, setHasMounted] = useState(false)
   const [isClientDemo, setIsClientDemo] = useState(false)
@@ -186,6 +188,7 @@ function CheckoutPage() {
     if (paymentMethod !== 'card' || isClientDemo || !hasMounted) return
 
     let active = true
+    let timeoutId: NodeJS.Timeout | null = null
 
     const loadScriptAndInitialize = async () => {
       try {
@@ -217,14 +220,19 @@ function CheckoutPage() {
                 const session = localStorage.getItem('attireburg_session')
                 const token = session ? JSON.parse(session).token : null
 
-                const cardFields = paypal.CardFields({
-                  style: {
-                    input: {
-                      'font-size': '14px',
-                      'font-family': 'sans-serif',
-                      'color': '#333333',
-                    },
+                const style = {
+                  input: {
+                    'font-size': '14px',
+                    'font-family': 'Inter, system-ui, -apple-system, sans-serif',
+                    'color': '#111827',
                   },
+                  '.invalid': {
+                    'color': '#ef4444',
+                  }
+                }
+
+                const cardFields = paypal.CardFields({
+                  style,
                   createOrder: async () => {
                     const orderData = {
                       items: items.map(item => ({
@@ -341,27 +349,69 @@ function CheckoutPage() {
                 })
 
                 if (cardFields.isEligible()) {
-                  const style = {
-                    input: {
-                      'font-size': '14px',
-                      'font-family': 'sans-serif',
-                      'color': '#333333',
+                  try {
+                    const numberField = cardFields.NumberField({ style })
+                    numberField.render('#card-number-field')
+
+                    const expiryField = cardFields.ExpiryField({ style })
+                    expiryField.render('#card-expiry-field')
+
+                    const cvvField = cardFields.CVVField({ style })
+                    cvvField.render('#card-cvv-field')
+
+                    const setupFieldEvents = (field: any, containerId: string) => {
+                      const container = document.getElementById(containerId)
+                      if (!container) return
+
+                      field.on('focus', () => {
+                        container.classList.add('ring-2', 'ring-brand-800', 'border-brand-800')
+                        container.classList.remove('border-gray-300', 'border-red-500')
+                      })
+
+                      field.on('blur', () => {
+                        container.classList.remove('ring-2', 'ring-brand-800', 'border-brand-800')
+                        updateValidity()
+                      })
+
+                      const updateValidity = async () => {
+                        try {
+                          const state = await cardFields.getState()
+                          setIsCardValid(state.isFormValid)
+                          
+                          const fieldKey = containerId === 'card-number-field' ? 'number' 
+                                         : containerId === 'card-expiry-field' ? 'expiry' 
+                                         : 'cvv'
+                          const fieldState = state.fields[fieldKey]
+                          if (fieldState && !fieldState.isValid && !fieldState.isPotentiallyValid) {
+                            container.classList.add('border-red-500')
+                            container.classList.remove('border-gray-300')
+                          } else {
+                            container.classList.remove('border-red-500')
+                            container.classList.add('border-gray-300')
+                          }
+                        } catch (e) {
+                          console.error('Failed to update validity:', e)
+                        }
+                      }
+
+                      field.on('validityChange', updateValidity)
                     }
+
+                    setupFieldEvents(numberField, 'card-number-field')
+                    setupFieldEvents(expiryField, 'card-expiry-field')
+                    setupFieldEvents(cvvField, 'card-cvv-field')
+
+                    paypalCardInstanceRef.current = cardFields
+                    setPaypalCardInstance(cardFields)
+                    if (timeoutId) {
+                      clearTimeout(timeoutId)
+                    }
+                  } catch (renderErr) {
+                    console.error('Field render error:', renderErr)
+                    setSdkError(lang === 'de'
+                      ? 'Fehler beim Laden des Zahlungsformulars.'
+                      : 'Error loading secure card fields.')
                   }
-
-                  const nameField = cardFields.NameField({ style })
-                  nameField.render('#card-holder-name-field')
-
-                  const numberField = cardFields.NumberField({ style })
-                  numberField.render('#card-number-field')
-
-                  const expiryField = cardFields.ExpiryField({ style })
-                  expiryField.render('#card-expiry-field')
-
-                  const cvvField = cardFields.CVVField({ style })
-                  cvvField.render('#card-cvv-field')
-
-                  setPaypalCardInstance(cardFields)
                 } else {
                   setSdkError('Kreditkartenzahlung über PayPal ist für dieses Land/Konto derzeit nicht verfügbar.')
                 }
@@ -372,6 +422,15 @@ function CheckoutPage() {
             }
           }
         }
+
+        // Set up load timeout
+        timeoutId = setTimeout(() => {
+          if (active && !paypalCardInstanceRef.current) {
+            setSdkError(lang === 'de'
+              ? 'Ladezeitüberschreitung. Bitte laden Sie die Seite neu.'
+              : 'Payment form loading timed out. Please refresh the page.')
+          }
+        }, 10000)
 
         if ((window as any).paypal && (window as any).paypal.CardFields) {
           onScriptLoad()
@@ -388,6 +447,9 @@ function CheckoutPage() {
 
     return () => {
       active = false
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
     }
   }, [paymentMethod])
 
@@ -463,8 +525,19 @@ function CheckoutPage() {
   }
 
   const validateStep2 = (): boolean => {
-    // No validation needed for PayPal, Google Pay, or COD
-    // PayPal and Google Pay handle their own validation
+    if (paymentMethod === 'card') {
+      if (isClientDemo) {
+        if (!demoCardName.trim()) {
+          setErrors({ general: lang === 'de' ? 'Bitte geben Sie den Namen auf der Karte ein.' : 'Please enter the cardholder name.' })
+          return false
+        }
+      } else {
+        if (!isCardValid) {
+          setErrors({ general: lang === 'de' ? 'Bitte geben Sie eine gültige Kreditkarte ein.' : 'Please enter a valid credit card.' })
+          return false
+        }
+      }
+    }
     setErrors({})
     return true
   }
@@ -724,8 +797,8 @@ function CheckoutPage() {
         router.push(`/checkout/success?orderId=${orderResult.orderId}&payment=cod`)
       } else if (paymentMethod === 'card') {
         // This block is only reached in Demo Mode (because Real Mode returned early)
-        if (!demoCardName.trim() || !demoCardNumber.trim() || !demoCardExpiry.trim() || !demoCardCvv.trim()) {
-          setErrors({ general: 'Bitte füllen Sie alle Kreditkartendaten aus.' })
+        if (!demoCardName.trim()) {
+          setErrors({ general: lang === 'de' ? 'Bitte geben Sie den Namen auf der Karte ein.' : 'Please enter the cardholder name.' })
           setLoading(false)
           return
         }
@@ -1479,103 +1552,70 @@ function CheckoutPage() {
                     {/* Card Fields inputs (will render only if paymentMethod === 'card') */}
                     {paymentMethod === 'card' && hasMounted && (
                       <div className="mt-4 border-t border-gray-200 pt-4 space-y-4" onClick={(e) => e.stopPropagation()}>
-                        <div id="card-fields-container" className="space-y-4">
-                          {isClientDemo ? (
-                            // Demo Mode card input fields
+                        <div id="card-fields-container" className="space-y-4 relative min-h-[180px]">
+                          {!isClientDemo && !paypalCardInstance && !sdkError && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10 rounded-lg">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-800 mb-2"></div>
+                              <p className="text-sm text-gray-500 font-medium">
+                                {lang === 'de' ? 'Sicheres Zahlungsformular wird geladen...' : 'Loading secure payment form...'}
+                              </p>
+                            </div>
+                          )}
+                          {!isClientDemo && sdkError && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10 rounded-lg p-4 text-center">
+                              <p className="text-red-500 text-sm font-semibold">{sdkError}</p>
+                            </div>
+                          )}
+
+                          {/* 1. Cardholder Name: Real Native Input (Always rendered, placed above the hosted-fields group) */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                              {lang === 'de' ? 'Name auf der Karte' : 'Cardholder Name'}
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="John Doe"
+                              value={demoCardName}
+                              onChange={(e) => setDemoCardName(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-600 text-sm"
+                            />
+                          </div>
+
+                          {/* 2. Hosted Fields (Only rendered if NOT in client demo mode) */}
+                          {!isClientDemo ? (
                             <div className="space-y-3">
-                              <div>
-                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                                  {lang === 'de' ? 'Name auf der Karte' : 'Cardholder Name'}
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="John Doe"
-                                  value={demoCardName}
-                                  onChange={(e) => setDemoCardName(e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-600 text-sm"
-                                />
-                              </div>
                               <div>
                                 <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
                                   {lang === 'de' ? 'Kartennummer' : 'Card Number'}
                                 </label>
-                                <input
-                                  type="text"
-                                  placeholder="4111 1111 1111 1111"
-                                  value={demoCardNumber}
-                                  onChange={(e) => setDemoCardNumber(e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-600 text-sm"
-                                />
+                                <div id="card-number-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center px-3 transition-all" />
                               </div>
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
                                   <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
                                     {lang === 'de' ? 'Ablaufdatum' : 'Expiry Date'}
                                   </label>
-                                  <input
-                                    type="text"
-                                    placeholder="12/29"
-                                    value={demoCardExpiry}
-                                    onChange={(e) => setDemoCardExpiry(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-600 text-sm"
-                                  />
+                                  <div id="card-expiry-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center px-3 transition-all" />
                                 </div>
                                 <div>
                                   <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
                                     CVV
                                   </label>
-                                  <input
-                                    type="text"
-                                    placeholder="123"
-                                    value={demoCardCvv}
-                                    onChange={(e) => setDemoCardCvv(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-600 text-sm"
-                                  />
+                                  <div id="card-cvv-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center px-3 transition-all" />
                                 </div>
                               </div>
                             </div>
                           ) : (
-                            // Real mode card input fields (containers for PayPal JS SDK iFrames)
-                            <div className="space-y-3 relative min-h-[220px]">
-                              {!paypalCardInstance && !sdkError && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10 rounded-lg">
-                                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-800 mb-2"></div>
-                                  <p className="text-sm text-gray-500 font-medium">
-                                    {lang === 'de' ? 'Sicheres Zahlungsformular wird geladen...' : 'Loading secure payment form...'}
-                                  </p>
-                                </div>
-                              )}
-                              {sdkError && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10 rounded-lg p-4 text-center">
-                                  <p className="text-red-500 text-sm font-semibold">{sdkError}</p>
-                                </div>
-                              )}
-                              <div>
-                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                                  {lang === 'de' ? 'Name auf der Karte' : 'Cardholder Name'}
-                                </label>
-                                <div id="card-holder-name-field" className="w-full h-10" />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                                  {lang === 'de' ? 'Kartennummer' : 'Card Number'}
-                                </label>
-                                <div id="card-number-field" className="w-full h-10" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                                    {lang === 'de' ? 'Ablaufdatum' : 'Expiry Date'}
-                                  </label>
-                                  <div id="card-expiry-field" className="w-full h-10" />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                                    CVV
-                                  </label>
-                                  <div id="card-cvv-field" className="w-full h-10" />
-                                </div>
-                              </div>
+                            // Demo Mode card info box
+                            <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4 text-sm">
+                              <p className="font-semibold mb-1">
+                                {lang === 'de' ? 'Demo-Modus aktiv' : 'Demo Mode Active'}
+                              </p>
+                              <p>
+                                {lang === 'de'
+                                  ? 'Für die Simulation ist nur der Name auf der Karte erforderlich. Die restlichen Kreditkartendaten werden automatisch simuliert.'
+                                  : 'Only the Cardholder Name is required for the simulation. Other card details will be automatically simulated.'}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -1745,14 +1785,15 @@ function CheckoutPage() {
                 {currentStep < 3 ? (
                   <button
                     onClick={handleNext}
-                    className="w-full sm:w-auto px-6 py-3 bg-brand-800 hover:bg-brand-700 text-white rounded-lg transition-colors font-semibold"
+                    disabled={currentStep === 2 && paymentMethod === 'card' && ((isClientDemo && !demoCardName.trim()) || (!isClientDemo && !isCardValid))}
+                    className="w-full sm:w-auto px-6 py-3 bg-brand-800 hover:bg-brand-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-semibold"
                   >
                     {t.checkout.continue}
                   </button>
                 ) : (
                   <button
                     onClick={handlePlaceOrder}
-                    disabled={loading}
+                    disabled={loading || (paymentMethod === 'card' && !isClientDemo && !isCardValid)}
                     className="w-full sm:w-auto px-6 py-3 bg-brand-800 hover:bg-brand-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-semibold"
                   >
                     {loading ? t.checkout.processing : t.checkout.placeOrder}
