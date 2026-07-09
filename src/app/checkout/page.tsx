@@ -349,69 +349,84 @@ function CheckoutPage() {
                 })
 
                 if (cardFields.isEligible()) {
-                  try {
-                    const numberField = cardFields.NumberField({ style })
-                    numberField.render('#card-number-field')
+                  const renderFields = () => {
+                    const numberEl = document.getElementById('card-number-field')
+                    const expiryEl = document.getElementById('card-expiry-field')
+                    const cvvEl = document.getElementById('card-cvv-field')
 
-                    const expiryField = cardFields.ExpiryField({ style })
-                    expiryField.render('#card-expiry-field')
+                    if (!numberEl || !expiryEl || !cvvEl) {
+                      if (active) {
+                        setTimeout(renderFields, 100)
+                      }
+                      return
+                    }
 
-                    const cvvField = cardFields.CVVField({ style })
-                    cvvField.render('#card-cvv-field')
+                    try {
+                      const numberField = cardFields.NumberField({ style })
+                      numberField.render('#card-number-field')
 
-                    const setupFieldEvents = (field: any, containerId: string) => {
-                      const container = document.getElementById(containerId)
-                      if (!container) return
+                      const expiryField = cardFields.ExpiryField({ style })
+                      expiryField.render('#card-expiry-field')
 
-                      field.on('focus', () => {
-                        container.classList.add('ring-2', 'ring-brand-800', 'border-brand-800')
-                        container.classList.remove('border-gray-300', 'border-red-500')
-                      })
+                      const cvvField = cardFields.CVVField({ style })
+                      cvvField.render('#card-cvv-field')
 
-                      field.on('blur', () => {
-                        container.classList.remove('ring-2', 'ring-brand-800', 'border-brand-800')
-                        updateValidity()
-                      })
+                      const setupFieldEvents = (field: any, containerId: string) => {
+                        const container = document.getElementById(containerId)
+                        if (!container) return
 
-                      const updateValidity = async () => {
-                        try {
-                          const state = await cardFields.getState()
-                          setIsCardValid(state.isFormValid)
-                          
-                          const fieldKey = containerId === 'card-number-field' ? 'number' 
-                                         : containerId === 'card-expiry-field' ? 'expiry' 
-                                         : 'cvv'
-                          const fieldState = state.fields[fieldKey]
-                          if (fieldState && !fieldState.isValid && !fieldState.isPotentiallyValid) {
-                            container.classList.add('border-red-500')
-                            container.classList.remove('border-gray-300')
-                          } else {
-                            container.classList.remove('border-red-500')
-                            container.classList.add('border-gray-300')
+                        field.on('focus', () => {
+                          container.classList.add('ring-2', 'ring-brand-800', 'border-brand-800')
+                          container.classList.remove('border-gray-300', 'border-red-500')
+                        })
+
+                        field.on('blur', () => {
+                          container.classList.remove('ring-2', 'ring-brand-800', 'border-brand-800')
+                          updateValidity()
+                        })
+
+                        const updateValidity = async () => {
+                          try {
+                            const state = await cardFields.getState()
+                            setIsCardValid(state.isFormValid)
+                            
+                            const fieldKey = containerId === 'card-number-field' ? 'number' 
+                                           : containerId === 'card-expiry-field' ? 'expiry' 
+                                           : 'cvv'
+                            const fieldState = state.fields[fieldKey]
+                            if (fieldState && !fieldState.isValid && !fieldState.isPotentiallyValid) {
+                              container.classList.add('border-red-500')
+                              container.classList.remove('border-gray-300')
+                            } else {
+                              container.classList.remove('border-red-500')
+                              container.classList.add('border-gray-300')
+                            }
+                          } catch (e) {
+                            console.error('Failed to update validity:', e)
                           }
-                        } catch (e) {
-                          console.error('Failed to update validity:', e)
                         }
+
+                        field.on('validityChange', updateValidity)
                       }
 
-                      field.on('validityChange', updateValidity)
-                    }
+                      setupFieldEvents(numberField, 'card-number-field')
+                      setupFieldEvents(expiryField, 'card-expiry-field')
+                      setupFieldEvents(cvvField, 'card-cvv-field')
 
-                    setupFieldEvents(numberField, 'card-number-field')
-                    setupFieldEvents(expiryField, 'card-expiry-field')
-                    setupFieldEvents(cvvField, 'card-cvv-field')
-
-                    paypalCardInstanceRef.current = cardFields
-                    setPaypalCardInstance(cardFields)
-                    if (timeoutId) {
-                      clearTimeout(timeoutId)
+                      paypalCardInstanceRef.current = cardFields
+                      setPaypalCardInstance(cardFields)
+                      if (timeoutId) {
+                        clearTimeout(timeoutId)
+                      }
+                    } catch (renderErr) {
+                      console.error('Field render error:', renderErr)
+                      setSdkError(lang === 'de'
+                        ? 'Fehler beim Laden des Zahlungsformulars.'
+                        : 'Error loading secure card fields.')
                     }
-                  } catch (renderErr) {
-                    console.error('Field render error:', renderErr)
-                    setSdkError(lang === 'de'
-                      ? 'Fehler beim Laden des Zahlungsformulars.'
-                      : 'Error loading secure card fields.')
                   }
+
+                  renderFields()
                 } else {
                   setSdkError('Kreditkartenzahlung über PayPal ist für dieses Land/Konto derzeit nicht verfügbar.')
                 }
