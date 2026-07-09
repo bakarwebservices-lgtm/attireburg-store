@@ -102,9 +102,11 @@ function CheckoutPage() {
   const [scriptLoaded, setScriptLoaded] = useState(false)
 
   const [hasMounted, setHasMounted] = useState(false)
+  const [isClientDemo, setIsClientDemo] = useState(false)
 
   useEffect(() => {
     setHasMounted(true)
+    setIsClientDemo(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID === 'demo' || !process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID)
   }, [])
 
   // Load site settings
@@ -181,8 +183,7 @@ function CheckoutPage() {
 
   // Load PayPal SDK dynamically for Card Fields when 'card' payment method is selected
   useEffect(() => {
-    const isDemo = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID === 'demo' || !process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
-    if (paymentMethod !== 'card' || isDemo) return
+    if (paymentMethod !== 'card' || isClientDemo || !hasMounted) return
 
     let active = true
 
@@ -340,16 +341,25 @@ function CheckoutPage() {
                 })
 
                 if (cardFields.isEligible()) {
-                  const cardField = cardFields.CardField({
-                    style: {
-                      input: {
-                        'font-size': '14px',
-                        'font-family': 'sans-serif',
-                        'color': '#333333',
-                      }
+                  const style = {
+                    input: {
+                      'font-size': '14px',
+                      'font-family': 'sans-serif',
+                      'color': '#333333',
                     }
-                  })
-                  cardField.render('#card-field-container')
+                  }
+
+                  const nameField = cardFields.NameField({ style })
+                  nameField.render('#card-holder-name-field')
+
+                  const numberField = cardFields.NumberField({ style })
+                  numberField.render('#card-number-field')
+
+                  const expiryField = cardFields.ExpiryField({ style })
+                  expiryField.render('#card-expiry-field')
+
+                  const cvvField = cardFields.CVVField({ style })
+                  cvvField.render('#card-cvv-field')
 
                   setPaypalCardInstance(cardFields)
                 } else {
@@ -482,7 +492,7 @@ function CheckoutPage() {
 
       // If card payment is selected in REAL MODE, we trigger CardFields submission.
       // This will handle creating the order on the backend and capturing payment.
-      if (paymentMethod === 'card' && !isDemoMode) {
+      if (paymentMethod === 'card' && !isClientDemo) {
         if (!paypalCardInstance) {
           setErrors({ general: 'Zahlungs-SDK wird geladen oder ist nicht verfügbar. Bitte laden Sie die Seite neu.' })
           setLoading(false)
@@ -1470,7 +1480,7 @@ function CheckoutPage() {
                     {paymentMethod === 'card' && hasMounted && (
                       <div className="mt-4 border-t border-gray-200 pt-4 space-y-4" onClick={(e) => e.stopPropagation()}>
                         <div id="card-fields-container" className="space-y-4">
-                          {isDemoMode ? (
+                          {isClientDemo ? (
                             // Demo Mode card input fields
                             <div className="space-y-3">
                               <div>
@@ -1526,21 +1536,46 @@ function CheckoutPage() {
                             </div>
                           ) : (
                             // Real mode card input fields (containers for PayPal JS SDK iFrames)
-                            <div className="relative min-h-[60px] w-full">
+                            <div className="space-y-3 relative min-h-[220px]">
                               {!paypalCardInstance && !sdkError && (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10 rounded-lg">
-                                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-800 mb-2"></div>
-                                  <p className="text-xs text-gray-500 font-medium">
+                                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-800 mb-2"></div>
+                                  <p className="text-sm text-gray-500 font-medium">
                                     {lang === 'de' ? 'Sicheres Zahlungsformular wird geladen...' : 'Loading secure payment form...'}
                                   </p>
                                 </div>
                               )}
                               {sdkError && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10 rounded-lg p-2 text-center">
-                                  <p className="text-red-500 text-xs font-semibold">{sdkError}</p>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10 rounded-lg p-4 text-center">
+                                  <p className="text-red-500 text-sm font-semibold">{sdkError}</p>
                                 </div>
                               )}
-                              <div id="card-field-container" className="w-full" />
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                  {lang === 'de' ? 'Name auf der Karte' : 'Cardholder Name'}
+                                </label>
+                                <div id="card-holder-name-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                  {lang === 'de' ? 'Kartennummer' : 'Card Number'}
+                                </label>
+                                <div id="card-number-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center" />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                    {lang === 'de' ? 'Ablaufdatum' : 'Expiry Date'}
+                                  </label>
+                                  <div id="card-expiry-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center" />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                    CVV
+                                  </label>
+                                  <div id="card-cvv-field" className="w-full h-10 border border-gray-300 rounded-lg bg-white flex items-center" />
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
