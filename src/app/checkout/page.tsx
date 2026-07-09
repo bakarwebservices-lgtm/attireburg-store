@@ -362,56 +362,74 @@ function CheckoutPage() {
                     }
 
                     try {
-                      const numberField = cardFields.NumberField({ style })
-                      numberField.render('#card-number-field')
-
-                      const expiryField = cardFields.ExpiryField({ style })
-                      expiryField.render('#card-expiry-field')
-
-                      const cvvField = cardFields.CVVField({ style })
-                      cvvField.render('#card-cvv-field')
-
-                      const setupFieldEvents = (field: any, containerId: string) => {
-                        const container = document.getElementById(containerId)
-                        if (!container) return
-
-                        field.on('focus', () => {
-                          container.classList.add('ring-2', 'ring-brand-800', 'border-brand-800')
-                          container.classList.remove('border-gray-300', 'border-red-500')
-                        })
-
-                        field.on('blur', () => {
-                          container.classList.remove('ring-2', 'ring-brand-800', 'border-brand-800')
-                          updateValidity()
-                        })
-
-                        const updateValidity = async () => {
-                          try {
-                            const state = await cardFields.getState()
-                            setIsCardValid(state.isFormValid)
-                            
-                            const fieldKey = containerId === 'card-number-field' ? 'number' 
-                                           : containerId === 'card-expiry-field' ? 'expiry' 
-                                           : 'cvv'
-                            const fieldState = state.fields[fieldKey]
-                            if (fieldState && !fieldState.isValid && !fieldState.isPotentiallyValid) {
-                              container.classList.add('border-red-500')
-                              container.classList.remove('border-gray-300')
-                            } else {
-                              container.classList.remove('border-red-500')
-                              container.classList.add('border-gray-300')
+                      const updateValidity = async () => {
+                        try {
+                          const state = await cardFields.getState()
+                          setIsCardValid(state.isFormValid)
+                          
+                          const fields = [
+                            { id: 'card-number-field', key: 'cardNumberField' },
+                            { id: 'card-expiry-field', key: 'cardExpiryField' },
+                            { id: 'card-cvv-field', key: 'cardCvvField' }
+                          ]
+                          
+                          fields.forEach(({ id, key }) => {
+                            const container = document.getElementById(id)
+                            if (container) {
+                              const fieldState = state.fields[key]
+                              if (fieldState && !fieldState.isValid && !fieldState.isPotentiallyValid) {
+                                container.classList.add('border-red-500')
+                                container.classList.remove('border-gray-300')
+                              } else {
+                                container.classList.remove('border-red-500')
+                                container.classList.add('border-gray-300')
+                              }
                             }
-                          } catch (e) {
-                            console.error('Failed to update validity:', e)
-                          }
+                          })
+                        } catch (e) {
+                          console.error('Failed to update validity:', e)
                         }
-
-                        field.on('validityChange', updateValidity)
                       }
 
-                      setupFieldEvents(numberField, 'card-number-field')
-                      setupFieldEvents(expiryField, 'card-expiry-field')
-                      setupFieldEvents(cvvField, 'card-cvv-field')
+                      const setupFieldEvents = (containerId: string) => {
+                        return {
+                          onFocus: () => {
+                            const container = document.getElementById(containerId)
+                            if (container) {
+                              container.classList.add('ring-2', 'ring-brand-800', 'border-brand-800')
+                              container.classList.remove('border-gray-300', 'border-red-500')
+                            }
+                          },
+                          onBlur: () => {
+                            const container = document.getElementById(containerId)
+                            if (container) {
+                              container.classList.remove('ring-2', 'ring-brand-800', 'border-brand-800')
+                            }
+                            updateValidity()
+                          },
+                          onChange: () => {
+                            updateValidity()
+                          }
+                        }
+                      }
+
+                      const numberField = cardFields.NumberField({
+                        style,
+                        inputEvents: setupFieldEvents('card-number-field')
+                      })
+                      numberField.render('#card-number-field')
+
+                      const expiryField = cardFields.ExpiryField({
+                        style,
+                        inputEvents: setupFieldEvents('card-expiry-field')
+                      })
+                      expiryField.render('#card-expiry-field')
+
+                      const cvvField = cardFields.CVVField({
+                        style,
+                        inputEvents: setupFieldEvents('card-cvv-field')
+                      })
+                      cvvField.render('#card-cvv-field')
 
                       paypalCardInstanceRef.current = cardFields
                       setPaypalCardInstance(cardFields)
