@@ -189,186 +189,200 @@ function CheckoutPage() {
     }
   }, [])
 
-  const paypalButtonsRendered = useRef(false)
+  // Keep state ref updated with latest values for PayPal closures
+  const stateRef = useRef({
+    items,
+    shippingAddress,
+    billingAddress,
+    sameAsShipping,
+    paymentMethod,
+    finalTotal,
+    shippingCost,
+    vatBreakdown,
+    codFee,
+    appliedCoupon,
+    user
+  })
+
   useEffect(() => {
-    if (currentStep !== 3 || paymentMethod !== 'card' || isClientDemo || !hasMounted) {
-      paypalButtonsRendered.current = false
-      return
+    stateRef.current = {
+      items,
+      shippingAddress,
+      billingAddress,
+      sameAsShipping,
+      paymentMethod,
+      finalTotal,
+      shippingCost,
+      vatBreakdown,
+      codFee,
+      appliedCoupon,
+      user
     }
+  })
+
+  useEffect(() => {
+    if (!hasMounted || isClientDemo) return
 
     let active = true
     let cardButtonsInstance: any = null
 
     const loadScriptAndInitialize = async () => {
-      try {
-        const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || ''
-        if (!clientId) {
-          console.error('PayPal Client ID is missing')
-          return
-        }
+      const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || ''
+      if (!clientId) return
 
-        const scriptId = 'paypal-sdk-buttons'
-        let script = document.getElementById(scriptId) as HTMLScriptElement | null
+      const scriptId = 'paypal-sdk-buttons'
+      let script = document.getElementById(scriptId) as HTMLScriptElement | null
 
-        if (!script) {
-          script = document.createElement('script')
-          script.id = scriptId
-          script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&components=buttons&currency=EUR&enable-funding=card`
-          script.async = true
-          document.body.appendChild(script)
-        }
+      const renderButtons = () => {
+        if (!active) return
+        const paypal = (window as any).paypal
+        if (paypal && paypal.Buttons) {
+          const cardContainer = document.getElementById('paypal-card-button-container')
+          if (!cardContainer) {
+            // Retry rendering after a small delay if DOM is not ready
+            setTimeout(renderButtons, 50)
+            return
+          }
 
-        const initButtons = () => {
-          if (!active) return
-          const paypal = (window as any).paypal
-          if (paypal && paypal.Buttons) {
-            const cardContainer = document.getElementById('paypal-card-button-container')
+          if (cardContainer.children.length === 0) {
+            try {
+              cardButtonsInstance = paypal.Buttons({
+                fundingSource: paypal.FUNDING.CARD,
+                createOrder: async () => {
+                  const curState = stateRef.current
+                  const session = localStorage.getItem('attireburg_session')
+                  const token = session ? JSON.parse(session).token : null
 
-            if (!cardContainer) {
-              // Retry in 50ms if container is not in DOM yet
-              setTimeout(initButtons, 50)
-              return
-            }
-
-            if (!paypalButtonsRendered.current) {
-              paypalButtonsRendered.current = true
-              cardContainer.innerHTML = ''
-
-              const createOrderHandler = async () => {
-                const session = localStorage.getItem('attireburg_session')
-                const token = session ? JSON.parse(session).token : null
-
-                const orderData = {
-                  items: items.map(item => ({
-                    productId: item.productId,
-                    variantId: item.variantId || null,
-                    name: item.name,
-                    nameEn: item.nameEn,
-                    price: item.price,
-                    salePrice: item.salePrice,
-                    quantity: item.quantity,
-                    size: item.size,
-                    color: item.color,
-                  })),
-                  shippingAddress: shippingAddress,
-                  billingAddress: sameAsShipping ? shippingAddress : billingAddress,
-                  paymentMethod: paymentMethod,
-                  totalAmount: finalTotal,
-                  shippingCost,
-                  tax: vatBreakdown.vatAmount,
-                  codFee,
-                  couponCode: appliedCoupon?.code || null,
-                  discountAmount: appliedCoupon?.discountAmount || 0,
-                  guestEmail: !user ? (shippingAddress.email || '') : undefined,
-                }
-
-                // 1. Create order on database
-                const orderResponse = await fetch('/api/orders', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-                  },
-                  body: JSON.stringify(orderData),
-                })
-                const orderResult = await orderResponse.json()
-                if (!orderResponse.ok) {
-                  throw new Error(orderResult.error || 'Failed to create order')
-                }
-
-                localStorage.setItem('pending_order_id', orderResult.orderId)
-                if (!user) {
-                  localStorage.setItem('guest_order_email', shippingAddress.email || '')
-                }
-
-                // 2. Create PayPal order
-                const paypalResponse = await fetch('/api/payments/paypal/create-order', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-                  },
-                  body: JSON.stringify({
-                    amount: finalTotal,
-                    currency: 'EUR',
-                    orderId: orderResult.orderId,
-                    items: items.map(item => ({
+                  const orderData = {
+                    items: curState.items.map(item => ({
+                      productId: item.productId,
+                      variantId: item.variantId || null,
                       name: item.name,
+                      nameEn: item.nameEn,
+                      price: item.price,
+                      salePrice: item.salePrice,
                       quantity: item.quantity,
-                      price: item.salePrice || item.price
+                      size: item.size,
+                      color: item.color,
                     })),
-                    shippingAddress,
-                    paymentMethod: 'card'
-                  }),
-                })
-                const paypalResult = await paypalResponse.json()
-                if (!paypalResponse.ok) {
-                  throw new Error(paypalResult.error || 'Failed to create PayPal order')
-                }
+                    shippingAddress: curState.shippingAddress,
+                    billingAddress: curState.sameAsShipping ? curState.shippingAddress : curState.billingAddress,
+                    paymentMethod: curState.paymentMethod,
+                    totalAmount: curState.finalTotal,
+                    shippingCost: curState.shippingCost,
+                    tax: curState.vatBreakdown.vatAmount,
+                    codFee: curState.codFee,
+                    couponCode: curState.appliedCoupon?.code || null,
+                    discountAmount: curState.appliedCoupon?.discountAmount || 0,
+                    guestEmail: !curState.user ? (curState.shippingAddress.email || '') : undefined,
+                  }
 
-                return paypalResult.paypalOrderId
-              }
+                  // 1. Create order on database
+                  const orderResponse = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify(orderData),
+                  })
+                  const orderResult = await orderResponse.json()
+                  if (!orderResponse.ok) {
+                    throw new Error(orderResult.error || 'Failed to create order')
+                  }
 
-              const onApproveHandler = async (data: any) => {
-                const session = localStorage.getItem('attireburg_session')
-                const token = session ? JSON.parse(session).token : null
-                const pendingOrderId = localStorage.getItem('pending_order_id')
+                  localStorage.setItem('pending_order_id', orderResult.orderId)
+                  if (!curState.user) {
+                    localStorage.setItem('guest_order_email', curState.shippingAddress.email || '')
+                  }
 
-                try {
-                  const captureResponse = await fetch('/api/payments/paypal/capture-order', {
+                  // 2. Create PayPal order
+                  const paypalResponse = await fetch('/api/payments/paypal/create-order', {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
                       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                     },
                     body: JSON.stringify({
-                      paypalOrderId: data.orderID,
-                      orderId: pendingOrderId,
-                      guestEmail: shippingAddress.email
+                      amount: curState.finalTotal,
+                      currency: 'EUR',
+                      orderId: orderResult.orderId,
+                      items: curState.items.map(item => ({
+                        name: item.name,
+                        quantity: item.quantity,
+                        price: item.salePrice || item.price
+                      })),
+                      shippingAddress: curState.shippingAddress,
+                      paymentMethod: 'card'
                     }),
                   })
-
-                  const captureResult = await captureResponse.json()
-                  if (captureResponse.ok && captureResult.success) {
-                    clearCart()
-                    localStorage.removeItem('pending_order_id')
-                    localStorage.removeItem('paypal_order_id')
-                    router.push(`/checkout/success?orderId=${pendingOrderId}`)
-                  } else {
-                    setErrors({ general: captureResult.error || 'Zahlung konnte nicht erfasst werden.' })
+                  const paypalResult = await paypalResponse.json()
+                  if (!paypalResponse.ok) {
+                    throw new Error(paypalResult.error || 'Failed to create PayPal order')
                   }
-                } catch (captureErr) {
-                  console.error('PayPal capture failed:', captureErr)
-                  setErrors({ general: 'Fehler beim Erfassen der Zahlung.' })
+
+                  return paypalResult.paypalOrderId
+                },
+                onApprove: async (data: any) => {
+                  const curState = stateRef.current
+                  const session = localStorage.getItem('attireburg_session')
+                  const token = session ? JSON.parse(session).token : null
+                  const pendingOrderId = localStorage.getItem('pending_order_id')
+
+                  try {
+                    const captureResponse = await fetch('/api/payments/paypal/capture-order', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                      },
+                      body: JSON.stringify({
+                        paypalOrderId: data.orderID,
+                        orderId: pendingOrderId,
+                        guestEmail: curState.shippingAddress.email
+                      }),
+                    })
+
+                    const captureResult = await captureResponse.json()
+                    if (captureResponse.ok && captureResult.success) {
+                      clearCart()
+                      localStorage.removeItem('pending_order_id')
+                      localStorage.removeItem('paypal_order_id')
+                      router.push(`/checkout/success?orderId=${pendingOrderId}`)
+                    } else {
+                      setErrors({ general: captureResult.error || 'Zahlung konnte nicht erfasst werden.' })
+                    }
+                  } catch (captureErr) {
+                    console.error('PayPal capture failed:', captureErr)
+                    setErrors({ general: 'Fehler beim Erfassen der Zahlung.' })
+                  }
+                },
+                onError: (err: any) => {
+                  console.error('PayPal Card Button error:', err)
+                  setErrors({ general: 'Kartenzahlung fehlgeschlagen.' })
                 }
-              }
-
-              try {
-                // Render Card Button only
-                cardButtonsInstance = paypal.Buttons({
-                  fundingSource: paypal.FUNDING.CARD,
-                  createOrder: createOrderHandler,
-                  onApprove: onApproveHandler,
-                  onError: (err: any) => {
-                    console.error('PayPal Card Button error:', err)
-                    setErrors({ general: 'Kartenzahlung fehlgeschlagen.' })
-                  }
-                })
-                cardButtonsInstance.render('#paypal-card-button-container')
-              } catch (renderErr) {
-                console.error('PayPal Card Button render error:', renderErr)
-              }
+              })
+              cardButtonsInstance.render('#paypal-card-button-container')
+            } catch (err) {
+              console.error('Failed to render card buttons:', err)
             }
           }
         }
+      }
 
-        if ((window as any).paypal && (window as any).paypal.Buttons) {
-          initButtons()
+      if (script) {
+        if ((window as any).paypal) {
+          renderButtons()
         } else {
-          script.addEventListener('load', initButtons)
+          script.addEventListener('load', renderButtons)
         }
-      } catch (err) {
-        console.error('Failed to load PayPal SDK script:', err)
+      } else {
+        script = document.createElement('script')
+        script.id = scriptId
+        script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&components=buttons&currency=EUR&enable-funding=card`
+        script.async = true
+        script.addEventListener('load', renderButtons)
+        document.body.appendChild(script)
       }
     }
 
@@ -376,12 +390,8 @@ function CheckoutPage() {
 
     return () => {
       active = false
-      paypalButtonsRendered.current = false
-      // Clear container to prevent duplicate buttons
-      const cardContainer = document.getElementById('paypal-card-button-container')
-      if (cardContainer) cardContainer.innerHTML = ''
     }
-  }, [currentStep, paymentMethod, items, finalTotal, shippingAddress, billingAddress, sameAsShipping, shippingCost, vatBreakdown, codFee, appliedCoupon, user, hasMounted])
+  }, [hasMounted, isClientDemo])
 
 
   const formatPrice = (price: number) => {
@@ -1582,34 +1592,33 @@ function CheckoutPage() {
                 )}
               </div>
 
-              <div>
-                {currentStep < 3 ? (
-                  <button
-                    onClick={handleNext}
-                    className="w-full sm:w-auto px-6 py-3 bg-brand-800 hover:bg-brand-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-semibold"
-                  >
-                    {t.checkout.continue}
-                  </button>
-                ) : (
-                  paymentMethod === 'card' && !isClientDemo ? (
-                    <div className="w-full sm:w-[280px] relative">
-                      {loading && (
-                        <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-lg">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-800"></div>
-                        </div>
-                      )}
-                      <div id="paypal-card-button-container" className="w-full min-h-[45px]" />
-                    </div>
-                  ) : (
+              <div className="flex flex-col items-end gap-4">
+                {/* Background-loaded PayPal Card container */}
+                <div className={`w-full sm:w-[280px] ${currentStep === 3 && paymentMethod === 'card' && !isClientDemo ? '' : 'hidden'}`}>
+                  <div id="paypal-card-button-container" className="w-full min-h-[45px]" />
+                </div>
+
+                <div>
+                  {currentStep < 3 ? (
                     <button
-                      onClick={handlePlaceOrder}
-                      disabled={loading}
+                      onClick={handleNext}
                       className="w-full sm:w-auto px-6 py-3 bg-brand-800 hover:bg-brand-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-semibold"
                     >
-                      {loading ? t.checkout.processing : t.checkout.placeOrder}
+                      {t.checkout.continue}
                     </button>
-                  )
-                )}
+                  ) : (
+                    /* Only show place order button if we are NOT using the real card button */
+                    (paymentMethod !== 'card' || isClientDemo) && (
+                      <button
+                        onClick={handlePlaceOrder}
+                        disabled={loading}
+                        className="w-full sm:w-auto px-6 py-3 bg-brand-800 hover:bg-brand-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-semibold"
+                      >
+                        {loading ? t.checkout.processing : t.checkout.placeOrder}
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
             </div>
           </div>
