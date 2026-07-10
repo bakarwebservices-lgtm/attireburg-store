@@ -63,6 +63,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const startPreTransaction = Date.now()
+  console.time('[PERF] Pre-transaction steps')
+
   try {
     // Auth is optional — support both authenticated users and guests
     const authHeader = request.headers.get('authorization')
@@ -85,6 +88,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!items || !shippingAddress || !paymentMethod || !totalAmount) {
+      console.timeEnd('[PERF] Pre-transaction steps')
       return NextResponse.json(
         { error: 'Fehlende erforderliche Felder' },
         { status: 400 }
@@ -93,6 +97,7 @@ export async function POST(request: NextRequest) {
 
     // Validate Germany-only delivery
     if (shippingAddress.country !== 'Deutschland') {
+      console.timeEnd('[PERF] Pre-transaction steps')
       return NextResponse.json(
         { error: 'Lieferung nur nach Deutschland möglich' },
         { status: 400 }
@@ -140,6 +145,7 @@ export async function POST(request: NextRequest) {
         console.log(`[PERF] inventoryService.checkStock took: ${Date.now() - startStockCheck}ms`)
         const unavailable = stockInfo.filter(s => !s.available)
         if (unavailable.length > 0) {
+          console.timeEnd('[PERF] Pre-transaction steps')
           return NextResponse.json(
             {
               error: 'Nicht genügend Lagerbestand verfügbar',
@@ -154,6 +160,9 @@ export async function POST(request: NextRequest) {
           )
         }
       }
+
+      console.log(`[PERF] Pre-transaction steps took: ${Date.now() - startPreTransaction}ms`)
+      console.timeEnd('[PERF] Pre-transaction steps')
 
       // Atomically create order AND decrement stock in one transaction
       const startDBTransaction = Date.now()

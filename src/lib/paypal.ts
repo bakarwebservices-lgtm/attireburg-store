@@ -138,6 +138,7 @@ class PayPalService {
     console.log('PayPal create order request payload:', JSON.stringify(paypalOrder, null, 2))
 
     const startV2Orders = Date.now()
+    console.time('[PERF] PayPal /v2/checkout/orders network request')
     const response = await fetch(`${this.baseURL}/v2/checkout/orders`, {
       method: 'POST',
       headers: {
@@ -146,6 +147,7 @@ class PayPalService {
       },
       body: JSON.stringify(paypalOrder)
     })
+    console.timeEnd('[PERF] PayPal /v2/checkout/orders network request')
 
     console.log(`[PERF] PayPal /v2/checkout/orders HTTP call took: ${Date.now() - startV2Orders}ms`)
 
