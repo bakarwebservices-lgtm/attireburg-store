@@ -297,7 +297,8 @@ function CheckoutPage() {
                       quantity: item.quantity,
                       price: item.salePrice || item.price
                     })),
-                    shippingAddress
+                    shippingAddress,
+                    paymentMethod: 'card'
                   }),
                 })
                 const paypalResult = await paypalResponse.json()
@@ -600,7 +601,8 @@ function CheckoutPage() {
               quantity: item.quantity,
               price: item.salePrice || item.price
             })),
-            shippingAddress
+            shippingAddress,
+            paymentMethod: 'paypal'
           }),
         })
 

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const token = authHeader?.replace('Bearer ', '')
     const user = token ? verifyToken(token) : null
 
-    const { amount, currency = 'EUR', orderId, items, shippingAddress } = await request.json()
+    const { amount, currency = 'EUR', orderId, items, shippingAddress, paymentMethod } = await request.json()
 
     if (!amount || !orderId || !items || !shippingAddress) {
       return NextResponse.json({ error: 'Fehlende erforderliche Felder' }, { status: 400 })
@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
       currency,
       orderId,
       items,
-      shippingAddress
+      shippingAddress,
+      paymentMethod
     })
 
     // Save paypalOrderId to the DB order record
