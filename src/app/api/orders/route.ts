@@ -161,43 +161,60 @@ export async function POST(request: NextRequest) {
         // Re-check and decrement stock atomically for non-backorder items
         for (const item of inventoryItems) {
           if (item.variantId) {
+            const startVarFind = Date.now()
             const variant = await tx.productVariant.findUnique({
               where: { id: item.variantId },
               select: { stock: true, isActive: true }
             })
+            console.log(`[PERF] tx.productVariant.findUnique query took: ${Date.now() - startVarFind}ms`)
+
+            const startProdFind = Date.now()
             const product = await tx.product.findUnique({
               where: { id: item.productId },
               select: { stock: true, isActive: true }
             })
+            console.log(`[PERF] tx.product.findUnique query took: ${Date.now() - startProdFind}ms`)
+
             const combinedStock = variant?.stock || 0
             if (!variant?.isActive || !product?.isActive || combinedStock < item.quantity) {
               throw new Error(`INSUFFICIENT_STOCK:${item.productId}:${combinedStock}`)
             }
+            const startVarUpdate = Date.now()
             await tx.productVariant.update({
               where: { id: item.variantId },
               data: { stock: { decrement: item.quantity } }
             })
+            console.log(`[PERF] tx.productVariant.update query took: ${Date.now() - startVarUpdate}ms`)
+
+            const startProdUpdate = Date.now()
             await tx.product.update({
               where: { id: item.productId },
               data: { stock: { decrement: item.quantity } }
             })
+            console.log(`[PERF] tx.product.update query took: ${Date.now() - startProdUpdate}ms`)
           } else {
+            const startProdFind = Date.now()
             const product = await tx.product.findUnique({
               where: { id: item.productId },
               select: { stock: true, isActive: true }
             })
+            console.log(`[PERF] tx.product.findUnique (no-variant) query took: ${Date.now() - startProdFind}ms`)
+
             if (!product?.isActive || (product?.stock || 0) < item.quantity) {
               throw new Error(`INSUFFICIENT_STOCK:${item.productId}:${product?.stock || 0}`)
             }
+            const startProdUpdate = Date.now()
             await tx.product.update({
               where: { id: item.productId },
               data: { stock: { decrement: item.quantity } }
             })
+            console.log(`[PERF] tx.product.update (no-variant) query took: ${Date.now() - startProdUpdate}ms`)
           }
         }
 
         // Create order record inside the same transaction
-        return tx.order.create({
+        const startOrderCreate = Date.now()
+        const orderResult = await tx.order.create({
           data: {
             userId: userId,
             status: 'PENDING',
@@ -228,6 +245,8 @@ export async function POST(request: NextRequest) {
             }
           }
         })
+        console.log(`[PERF] tx.order.create query took: ${Date.now() - startOrderCreate}ms`)
+        return orderResult
       }).catch((txError: Error) => {
         if (txError.message.startsWith('INSUFFICIENT_STOCK:')) {
           const [, productId, available] = txError.message.split(':')

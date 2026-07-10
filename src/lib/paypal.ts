@@ -51,7 +51,16 @@ class PayPalService {
       : 'https://api.sandbox.paypal.com'
   }
 
+  private cachedToken: string | null = null
+  private tokenExpiry: number | null = null
+
   async getAccessToken(): Promise<string> {
+    // Check if we have a valid cached token
+    if (this.cachedToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
+      console.log('[PERF] Reusing cached PayPal access token (0ms)')
+      return this.cachedToken
+    }
+
     const auth = Buffer.from(`${this.config.clientId}:${this.config.clientSecret}`).toString('base64')
     
     const startOAuth = Date.now()
@@ -73,6 +82,12 @@ class PayPalService {
     }
 
     const data = await response.json()
+    
+    // Cache token (data.expires_in is in seconds, subtract 60s buffer)
+    this.cachedToken = data.access_token
+    const expiresIn = data.expires_in || 32400
+    this.tokenExpiry = Date.now() + (expiresIn - 60) * 1000
+
     return data.access_token
   }
 
