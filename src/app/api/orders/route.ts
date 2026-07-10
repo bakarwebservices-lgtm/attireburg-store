@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
         discountAmount: order.discountAmount
       }
 
-      if (paymentMethod !== 'paypal') {
+      if (paymentMethod !== 'paypal' && paymentMethod !== 'card') {
         if (process.env.VERCEL === '1' || process.env.NODE_ENV === 'production') {
           try {
             await emailService.sendOrderConfirmation(emailData)
