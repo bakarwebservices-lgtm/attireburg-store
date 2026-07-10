@@ -235,81 +235,89 @@ function CheckoutPage() {
               cardContainer.innerHTML = ''
 
               const createOrderHandler = async () => {
-                const session = localStorage.getItem('attireburg_session')
-                const token = session ? JSON.parse(session).token : null
+                setLoading(true)
+                try {
+                  const session = localStorage.getItem('attireburg_session')
+                  const token = session ? JSON.parse(session).token : null
 
-                const orderData = {
-                  items: items.map(item => ({
-                    productId: item.productId,
-                    variantId: item.variantId || null,
-                    name: item.name,
-                    nameEn: item.nameEn,
-                    price: item.price,
-                    salePrice: item.salePrice,
-                    quantity: item.quantity,
-                    size: item.size,
-                    color: item.color,
-                  })),
-                  shippingAddress: shippingAddress,
-                  billingAddress: sameAsShipping ? shippingAddress : billingAddress,
-                  paymentMethod: paymentMethod,
-                  totalAmount: finalTotal,
-                  shippingCost,
-                  tax: vatBreakdown.vatAmount,
-                  codFee,
-                  couponCode: appliedCoupon?.code || null,
-                  discountAmount: appliedCoupon?.discountAmount || 0,
-                  guestEmail: !user ? (shippingAddress.email || '') : undefined,
-                }
-
-                // 1. Create order on database
-                const orderResponse = await fetch('/api/orders', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-                  },
-                  body: JSON.stringify(orderData),
-                })
-                const orderResult = await orderResponse.json()
-                if (!orderResponse.ok) {
-                  throw new Error(orderResult.error || 'Failed to create order')
-                }
-
-                localStorage.setItem('pending_order_id', orderResult.orderId)
-                if (!user) {
-                  localStorage.setItem('guest_order_email', shippingAddress.email || '')
-                }
-
-                // 2. Create PayPal order
-                const paypalResponse = await fetch('/api/payments/paypal/create-order', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-                  },
-                  body: JSON.stringify({
-                    amount: finalTotal,
-                    currency: 'EUR',
-                    orderId: orderResult.orderId,
+                  const orderData = {
                     items: items.map(item => ({
+                      productId: item.productId,
+                      variantId: item.variantId || null,
                       name: item.name,
+                      nameEn: item.nameEn,
+                      price: item.price,
+                      salePrice: item.salePrice,
                       quantity: item.quantity,
-                      price: item.salePrice || item.price
+                      size: item.size,
+                      color: item.color,
                     })),
-                    shippingAddress,
-                    paymentMethod: 'card'
-                  }),
-                })
-                const paypalResult = await paypalResponse.json()
-                if (!paypalResponse.ok) {
-                  throw new Error(paypalResult.error || 'Failed to create PayPal order')
-                }
+                    shippingAddress: shippingAddress,
+                    billingAddress: sameAsShipping ? shippingAddress : billingAddress,
+                    paymentMethod: paymentMethod,
+                    totalAmount: finalTotal,
+                    shippingCost,
+                    tax: vatBreakdown.vatAmount,
+                    codFee,
+                    couponCode: appliedCoupon?.code || null,
+                    discountAmount: appliedCoupon?.discountAmount || 0,
+                    guestEmail: !user ? (shippingAddress.email || '') : undefined,
+                  }
 
-                return paypalResult.paypalOrderId
+                  // 1. Create order on database
+                  const orderResponse = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify(orderData),
+                  })
+                  const orderResult = await orderResponse.json()
+                  if (!orderResponse.ok) {
+                    throw new Error(orderResult.error || 'Failed to create order')
+                  }
+
+                  localStorage.setItem('pending_order_id', orderResult.orderId)
+                  if (!user) {
+                    localStorage.setItem('guest_order_email', shippingAddress.email || '')
+                  }
+
+                  // 2. Create PayPal order
+                  const paypalResponse = await fetch('/api/payments/paypal/create-order', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify({
+                      amount: finalTotal,
+                      currency: 'EUR',
+                      orderId: orderResult.orderId,
+                      items: items.map(item => ({
+                        name: item.name,
+                        quantity: item.quantity,
+                        price: item.salePrice || item.price
+                      })),
+                      shippingAddress,
+                      paymentMethod: 'card'
+                    }),
+                  })
+                  const paypalResult = await paypalResponse.json()
+                  if (!paypalResponse.ok) {
+                    throw new Error(paypalResult.error || 'Failed to create PayPal order')
+                  }
+
+                  setLoading(false)
+                  return paypalResult.paypalOrderId
+                } catch (err) {
+                  setLoading(false)
+                  throw err
+                }
               }
 
               const onApproveHandler = async (data: any) => {
+                setLoading(true)
                 const session = localStorage.getItem('attireburg_session')
                 const token = session ? JSON.parse(session).token : null
                 const pendingOrderId = localStorage.getItem('pending_order_id')
@@ -340,6 +348,8 @@ function CheckoutPage() {
                 } catch (captureErr) {
                   console.error('PayPal capture failed:', captureErr)
                   setErrors({ general: 'Fehler beim Erfassen der Zahlung.' })
+                } finally {
+                  setLoading(false)
                 }
               }
 
@@ -1592,7 +1602,12 @@ function CheckoutPage() {
                   </button>
                 ) : (
                   paymentMethod === 'card' && !isClientDemo ? (
-                    <div className="w-full sm:w-[280px]">
+                    <div className="w-full sm:w-[280px] relative">
+                      {loading && (
+                        <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-lg">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-800"></div>
+                        </div>
+                      )}
                       <div id="paypal-card-button-container" className="w-full min-h-[45px]" />
                     </div>
                   ) : (
