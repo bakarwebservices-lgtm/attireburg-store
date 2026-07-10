@@ -97,7 +97,24 @@ function CheckoutPage() {
 
   useEffect(() => {
     setHasMounted(true)
-    setIsClientDemo(process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID === 'demo' || !process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID)
+    const isDemo = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID === 'demo' || !process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
+    setIsClientDemo(isDemo)
+
+    // Preload PayPal SDK script immediately on mount for non-demo environment
+    if (!isDemo) {
+      const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || ''
+      if (clientId) {
+        const scriptId = 'paypal-sdk-buttons'
+        let script = document.getElementById(scriptId) as HTMLScriptElement | null
+        if (!script) {
+          script = document.createElement('script')
+          script.id = scriptId
+          script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&components=buttons&currency=EUR&enable-funding=card`
+          script.async = true
+          document.body.appendChild(script)
+        }
+      }
+    }
   }, [])
 
   // Load site settings
@@ -362,15 +379,6 @@ function CheckoutPage() {
       // Clear container to prevent duplicate buttons
       const cardContainer = document.getElementById('paypal-card-button-container')
       if (cardContainer) cardContainer.innerHTML = ''
-      
-      // Clean up script tag and global instance to ensure a fresh, conflict-free reload
-      const script = document.getElementById('paypal-sdk-buttons')
-      if (script) {
-        script.remove()
-      }
-      if ((window as any).paypal) {
-        delete (window as any).paypal
-      }
     }
   }, [currentStep, paymentMethod, items, finalTotal, shippingAddress, billingAddress, sameAsShipping, shippingCost, vatBreakdown, codFee, appliedCoupon, user, hasMounted])
 
@@ -1582,7 +1590,7 @@ function CheckoutPage() {
                   </button>
                 ) : (
                   paymentMethod === 'card' && !isClientDemo ? (
-                    <div className="w-full max-w-[450px]">
+                    <div className="w-full sm:w-[280px]">
                       <div id="paypal-card-button-container" className="w-full min-h-[45px]" />
                     </div>
                   ) : (
