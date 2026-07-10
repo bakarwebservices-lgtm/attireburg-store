@@ -31,10 +31,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Ownership check: allow if order belongs to this user OR to the guest account
+    const startDBOwnership = Date.now()
     const existingOrder = await prisma.order.findUnique({
       where: { id: orderId },
       select: { userId: true, user: { select: { email: true } } }
     })
+    console.log(`[PERF] DB Ownership check took: ${Date.now() - startDBOwnership}ms`)
+
     if (!existingOrder) {
       return NextResponse.json({ error: 'Bestellung nicht gefunden' }, { status: 404 })
     }
@@ -47,6 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create PayPal order
+    const startPaypalOrderCall = Date.now()
     const paypalOrder = await paypalService.createOrder({
       amount,
       currency,
@@ -55,13 +59,16 @@ export async function POST(request: NextRequest) {
       shippingAddress,
       paymentMethod
     })
+    console.log(`[PERF] paypalService.createOrder overall call took: ${Date.now() - startPaypalOrderCall}ms`)
 
     // Save paypalOrderId to the DB order record
     try {
+      const startDBUpdate = Date.now()
       await prisma.order.update({
         where: { id: orderId },
         data: { paypalOrderId: paypalOrder.id }
       })
+      console.log(`[PERF] DB Save paypalOrderId took: ${Date.now() - startDBUpdate}ms`)
     } catch (dbErr) {
       console.error('Failed to save paypalOrderId in db order:', dbErr)
     }

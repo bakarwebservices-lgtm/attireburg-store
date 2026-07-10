@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
       userId = user.id
     } else {
       // Upsert a single shared guest user record for guest orders
+      const startGuestUpsert = Date.now()
       const guestUser = await prisma.user.upsert({
         where: { email: 'guest@attireburg.internal' },
         update: {},
@@ -116,6 +117,7 @@ export async function POST(request: NextRequest) {
         },
         select: { id: true }
       })
+      console.log(`[PERF] Guest user upsert took: ${Date.now() - startGuestUpsert}ms`)
       userId = guestUser.id
     }
 
@@ -133,7 +135,9 @@ export async function POST(request: NextRequest) {
         }))
 
       if (inventoryItems.length > 0) {
+        const startStockCheck = Date.now()
         const stockInfo = await inventoryService.checkStock(inventoryItems)
+        console.log(`[PERF] inventoryService.checkStock took: ${Date.now() - startStockCheck}ms`)
         const unavailable = stockInfo.filter(s => !s.available)
         if (unavailable.length > 0) {
           return NextResponse.json(
@@ -152,6 +156,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Atomically create order AND decrement stock in one transaction
+      const startDBTransaction = Date.now()
       const order = await prisma.$transaction(async (tx) => {
         // Re-check and decrement stock atomically for non-backorder items
         for (const item of inventoryItems) {
@@ -233,6 +238,7 @@ export async function POST(request: NextRequest) {
         }
         throw txError
       })
+      console.log(`[PERF] Prisma DB transaction overall took: ${Date.now() - startDBTransaction}ms`)
 
       // Here you would integrate with payment processors
       // For now, we'll simulate successful payment processing

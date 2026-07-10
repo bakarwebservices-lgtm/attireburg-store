@@ -220,6 +220,8 @@ function CheckoutPage() {
     }
   })
 
+  const isOutOfStockRef = useRef(false)
+
   useEffect(() => {
     if (!hasMounted || isClientDemo) return
 
@@ -277,7 +279,10 @@ function CheckoutPage() {
                     guestEmail: !curState.user ? (curState.shippingAddress.email || '') : undefined,
                   }
 
+                  isOutOfStockRef.current = false
+
                   // 1. Create order on database
+                  console.time('[PERF] Card Checkout - DB Order Creation')
                   const orderResponse = await fetch('/api/orders', {
                     method: 'POST',
                     headers: {
@@ -287,7 +292,14 @@ function CheckoutPage() {
                     body: JSON.stringify(orderData),
                   })
                   const orderResult = await orderResponse.json()
+                  console.timeEnd('[PERF] Card Checkout - DB Order Creation')
+
                   if (!orderResponse.ok) {
+                    if (orderResult.outOfStock) {
+                      isOutOfStockRef.current = true
+                      setOutOfStockError(true)
+                      throw new Error('OUT_OF_STOCK')
+                    }
                     throw new Error(orderResult.error || 'Failed to create order')
                   }
 
@@ -297,6 +309,7 @@ function CheckoutPage() {
                   }
 
                   // 2. Create PayPal order
+                  console.time('[PERF] Card Checkout - PayPal Create Order API')
                   const paypalResponse = await fetch('/api/payments/paypal/create-order', {
                     method: 'POST',
                     headers: {
@@ -317,6 +330,8 @@ function CheckoutPage() {
                     }),
                   })
                   const paypalResult = await paypalResponse.json()
+                  console.timeEnd('[PERF] Card Checkout - PayPal Create Order API')
+
                   if (!paypalResponse.ok) {
                     throw new Error(paypalResult.error || 'Failed to create PayPal order')
                   }
@@ -359,6 +374,10 @@ function CheckoutPage() {
                 },
                 onError: (err: any) => {
                   console.error('PayPal Card Button error:', err)
+                  if (isOutOfStockRef.current) {
+                    isOutOfStockRef.current = false
+                    return
+                  }
                   setErrors({ general: 'Kartenzahlung fehlgeschlagen.' })
                 }
               })

@@ -54,6 +54,7 @@ class PayPalService {
   async getAccessToken(): Promise<string> {
     const auth = Buffer.from(`${this.config.clientId}:${this.config.clientSecret}`).toString('base64')
     
+    const startOAuth = Date.now()
     const response = await fetch(`${this.baseURL}/v1/oauth2/token`, {
       method: 'POST',
       headers: {
@@ -62,6 +63,8 @@ class PayPalService {
       },
       body: 'grant_type=client_credentials'
     })
+
+    console.log(`[PERF] PayPal OAuth token endpoint HTTP call took: ${Date.now() - startOAuth}ms`)
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -119,6 +122,7 @@ class PayPalService {
 
     console.log('PayPal create order request payload:', JSON.stringify(paypalOrder, null, 2))
 
+    const startV2Orders = Date.now()
     const response = await fetch(`${this.baseURL}/v2/checkout/orders`, {
       method: 'POST',
       headers: {
@@ -127,6 +131,8 @@ class PayPalService {
       },
       body: JSON.stringify(paypalOrder)
     })
+
+    console.log(`[PERF] PayPal /v2/checkout/orders HTTP call took: ${Date.now() - startV2Orders}ms`)
 
     if (!response.ok) {
       const error = await response.json()
