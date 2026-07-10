@@ -196,7 +196,7 @@ function CheckoutPage() {
         if (!script) {
           script = document.createElement('script')
           script.id = scriptId
-          script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&components=buttons&currency=EUR`
+          script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&components=buttons&currency=EUR&enable-funding=card`
           script.async = true
           document.body.appendChild(script)
         }
@@ -204,10 +204,16 @@ function CheckoutPage() {
         const initButtons = () => {
           if (!active) return
           const paypal = (window as any).paypal
-          if (paypal && paypal.Buttons && !paypalButtonsRendered.current) {
+          if (paypal && paypal.Buttons) {
             const cardContainer = document.getElementById('paypal-card-button-container')
 
-            if (cardContainer) {
+            if (!cardContainer) {
+              // Retry in 50ms if container is not in DOM yet
+              setTimeout(initButtons, 50)
+              return
+            }
+
+            if (!paypalButtonsRendered.current) {
               paypalButtonsRendered.current = true
               cardContainer.innerHTML = ''
 
@@ -356,6 +362,15 @@ function CheckoutPage() {
       // Clear container to prevent duplicate buttons
       const cardContainer = document.getElementById('paypal-card-button-container')
       if (cardContainer) cardContainer.innerHTML = ''
+      
+      // Clean up script tag and global instance to ensure a fresh, conflict-free reload
+      const script = document.getElementById('paypal-sdk-buttons')
+      if (script) {
+        script.remove()
+      }
+      if ((window as any).paypal) {
+        delete (window as any).paypal
+      }
     }
   }, [currentStep, paymentMethod, items, finalTotal, shippingAddress, billingAddress, sameAsShipping, shippingCost, vatBreakdown, codFee, appliedCoupon, user, hasMounted])
 
@@ -1567,7 +1582,7 @@ function CheckoutPage() {
                   </button>
                 ) : (
                   paymentMethod === 'card' && !isClientDemo ? (
-                    <div className="w-full sm:w-[280px]">
+                    <div className="w-full max-w-[450px]">
                       <div id="paypal-card-button-container" className="w-full min-h-[45px]" />
                     </div>
                   ) : (
