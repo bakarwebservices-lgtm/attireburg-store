@@ -102,34 +102,6 @@ class PayPalService {
       }
     }
 
-    if (orderRequest.paymentMethod === 'card') {
-      paypalOrder.payment_source = {
-        card: {
-          experience_context: {
-            brand_name: 'Attireburg',
-            locale: 'de-DE',
-            shipping_preference: orderRequest.shippingAddress ? 'SET_PROVIDED_ADDRESS' : 'GET_FROM_FILE',
-            return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success`,
-            cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart?payment_cancelled=true`
-          }
-        }
-      }
-    } else if (orderRequest.paymentMethod === 'paypal') {
-      paypalOrder.payment_source = {
-        paypal: {
-          experience_context: {
-            brand_name: 'Attireburg',
-            locale: 'de-DE',
-            landing_page: 'LOGIN',
-            user_action: 'PAY_NOW',
-            shipping_preference: orderRequest.shippingAddress ? 'SET_PROVIDED_ADDRESS' : 'GET_FROM_FILE',
-            return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success`,
-            cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart?payment_cancelled=true`
-          }
-        }
-      }
-    }
-
     // Include shipping address only when provided (regular checkout, not Express)
     if (orderRequest.shippingAddress) {
       paypalOrder.purchase_units[0].shipping = {
