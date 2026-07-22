@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { getSession } from '@/lib/session'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
 import DashboardLayout from '@/components/DashboardLayout'
@@ -132,8 +133,10 @@ export default function AdminProducts() {
   const handleDeleteProduct = async (productId: string) => {
     if (confirm(t.admin.confirmDelete)) {
       try {
+        const token = getSession()?.token
         const response = await fetch(`/api/products/${productId}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         })
         
         if (response.ok) {
@@ -164,9 +167,13 @@ export default function AdminProducts() {
     if (!product) return
 
     try {
+      const token = getSession()?.token
       const response = await fetch(`/api/products/${productId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ isActive: !product.isActive })
       })
       
@@ -188,9 +195,13 @@ export default function AdminProducts() {
     if (!product) return
 
     try {
+      const token = getSession()?.token
       const response = await fetch(`/api/products/${productId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ featured: !product.featured })
       })
       

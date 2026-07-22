@@ -77,6 +77,7 @@ export default function Home() {
     { label: lang === 'de' ? 'Jacken' : 'Jackets', href: '/products?category=jacken' },
     { label: 'Hoodies', href: '/products?category=hoodies' },
     { label: 'Shirts', href: '/products?category=shirts' },
+    { label: 'Printed Tees', href: '/products?category=printed-tees' },
     { label: 'Sale', href: '/products?onSale=true' },
   ]
 

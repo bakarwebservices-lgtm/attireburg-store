@@ -60,6 +60,7 @@ export default function Products() {
     { value: 'jacken', label: t.products.categories.jacken },
     { value: 'hoodies', label: t.products.categories.hoodies },
     { value: 'shirts', label: t.products.categories.shirts },
+    { value: 'printed-tees', label: t.products.categories.printedTees },
   ]
 
   const SORT_OPTIONS = [

@@ -60,6 +60,7 @@ export const translations = {
         jacken: 'Jacken',
         hoodies: 'Hoodies',
         shirts: 'Shirts',
+        printedTees: 'Printed Tees',
       },
     },
     productDetail: {
@@ -656,6 +657,7 @@ export const translations = {
         jacken: 'Jackets',
         hoodies: 'Hoodies',
         shirts: 'Shirts',
+        printedTees: 'Printed Tees',
       },
     },
     productDetail: {
