@@ -16,7 +16,9 @@ const MIGRATION_DIR = __dirname;
 const EXTRACT_DIR = path.join(MIGRATION_DIR, 'extracted');
 const CSV_PATH = path.join(MIGRATION_DIR, 'wc-product-export-15-7-2026-1784130619607.csv');
 const ZIP_2025 = path.join(MIGRATION_DIR, '2025images.zip');
+const ZIP_2025_07 = path.join(MIGRATION_DIR, '2025(07).zip');
 const ZIP_2026 = path.join(MIGRATION_DIR, '2026images.zip');
+const ZIP_2026_01 = path.join(MIGRATION_DIR, '2026(01)images.zip');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -93,6 +95,18 @@ async function runMigration() {
     }
   }
 
+  if (fs.existsSync(ZIP_2025_07)) {
+    const zip2025_07Path = path.join(EXTRACT_DIR, '2025', '07');
+    if (!fs.existsSync(zip2025_07Path)) {
+      console.log('   Unzipping 2025(07).zip into 2025/07...');
+      const zip = new AdmZip(ZIP_2025_07);
+      zip.extractAllTo(zip2025_07Path, true);
+      console.log('   ✔ 2025(07).zip extracted');
+    } else {
+      console.log('   ✔ 2025(07) already extracted');
+    }
+  }
+
   if (fs.existsSync(ZIP_2026)) {
     const zip2026Path = path.join(EXTRACT_DIR, '2026');
     if (!fs.existsSync(zip2026Path)) {
@@ -102,6 +116,18 @@ async function runMigration() {
       console.log('   ✔ 2026images.zip extracted');
     } else {
       console.log('   ✔ 2026images already extracted');
+    }
+  }
+
+  if (fs.existsSync(ZIP_2026_01)) {
+    const zip2026_01Path = path.join(EXTRACT_DIR, '2026', '01');
+    if (!fs.existsSync(zip2026_01Path)) {
+      console.log('   Unzipping 2026(01)images.zip into 2026/01...');
+      const zip = new AdmZip(ZIP_2026_01);
+      zip.extractAllTo(zip2026_01Path, true);
+      console.log('   ✔ 2026(01)images.zip extracted');
+    } else {
+      console.log('   ✔ 2026(01)images already extracted');
     }
   }
 
@@ -456,24 +482,53 @@ async function runMigration() {
     }
 
     if (!isDryRun) {
-      // Insert Product
-      const { error: pErr } = await supabase.from('Product').insert(productRecord);
-      if (pErr) {
-        console.error(`   ❌ Failed to insert product "${name}":`, pErr.message);
-        continue;
+      // Check if product already exists by Name or SKU
+      const { data: existingProd } = await supabase.from('Product').select('id, images').eq('name', name).maybeSingle();
+
+      let targetProductId = productRecord.id;
+
+      if (existingProd) {
+        targetProductId = existingProd.id;
+        const newImages = parentImageUrls.length > 0 ? parentImageUrls : (existingProd.images || []);
+        const { error: uErr } = await supabase.from('Product').update({
+          images: newImages,
+          category: catSlug,
+          sizes: sizes,
+          colors: colors,
+          stock: totalStock,
+          price: finalPrice,
+          attributes: productRecord.attributes,
+          updatedAt: new Date().toISOString()
+        }).eq('id', targetProductId);
+
+        if (uErr) {
+          console.error(`   ❌ Failed to update product "${name}":`, uErr.message);
+          continue;
+        }
+      } else {
+        // Insert new Product
+        const { error: pErr } = await supabase.from('Product').insert(productRecord);
+        if (pErr) {
+          console.error(`   ❌ Failed to insert product "${name}":`, pErr.message);
+          continue;
+        }
       }
 
-      // Insert Variants in batch
-      if (variantRecordsToInsert.length > 0) {
-        const { error: vErr } = await supabase.from('ProductVariant').insert(variantRecordsToInsert);
+      // Bulk Upsert variants in batches
+      for (let vIdx = 0; vIdx < variantRecordsToInsert.length; vIdx += 50) {
+        const batch = variantRecordsToInsert.slice(vIdx, vIdx + 50).map(vRec => ({
+          ...vRec,
+          productId: targetProductId
+        }));
+        const { error: vErr } = await supabase.from('ProductVariant').upsert(batch, { onConflict: 'sku' });
         if (vErr) {
-          console.error(`   ❌ Failed to insert variants for "${name}":`, vErr.message);
+          console.error(`   ❌ Failed to upsert variants batch for "${name}":`, vErr.message);
         }
       }
 
       productCount++;
       totalVariantCount += variantRecordsToInsert.length;
-      console.log(`   ✔ [${i + 1}/${parents.length}] Inserted: "${name}" (${variantRecordsToInsert.length} variants, Stock: ${totalStock}, Price: €${finalPrice})`);
+      console.log(`   ✔ [${i + 1}/${parents.length}] ${existingProd ? 'Updated' : 'Inserted'}: "${name}" (${variantRecordsToInsert.length} variants, Stock: ${totalStock}, Price: €${finalPrice})`);
     } else {
       productCount++;
       totalVariantCount += variantRecordsToInsert.length;
