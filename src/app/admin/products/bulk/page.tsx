@@ -393,6 +393,7 @@ export default function BulkProductOperations() {
                       <option value="jacken">Jacken</option>
                       <option value="hoodies">Hoodies</option>
                       <option value="shirts">Shirts</option>
+                      <option value="printed-tees">Printed Tees</option>
                     </select>
                   </div>
                 </div>
