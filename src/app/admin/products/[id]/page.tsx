@@ -110,10 +110,21 @@ export default function EditProduct() {
       // The API returns the product directly, not wrapped in a product property
       setProduct(data)
       
-      // Initialize form data with default values for new fields
+      let normalizedAttributes: Array<{ name: string; values: string[]; visible?: boolean; variation?: boolean }> = []
+      if (Array.isArray(data.attributes)) {
+        normalizedAttributes = data.attributes
+      } else if (data.attributes && typeof data.attributes === 'object') {
+        normalizedAttributes = Object.entries(data.attributes).map(([key, val]) => ({
+          name: key.charAt(0).toUpperCase() + key.slice(1),
+          values: Array.isArray(val) ? val : [String(val)],
+          visible: true,
+          variation: true
+        }))
+      }
+
       setFormData({
         ...data,
-        attributes: data.attributes || [],
+        attributes: normalizedAttributes,
         manageStock: data.manageStock !== undefined ? data.manageStock : true,
         lowStockThreshold: data.lowStockThreshold || 5,
         dimensions: data.dimensions || {},
@@ -628,7 +639,7 @@ export default function EditProduct() {
                     <button
                       type="button"
                       onClick={generateVariants}
-                      disabled={generatingVariants || !formData.attributes?.some(attr => attr.variation)}
+                      disabled={generatingVariants || !Array.isArray(formData.attributes) || !formData.attributes.some(attr => attr.variation)}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {generatingVariants ? 'Generiere...' : 'Varianten generieren'}
@@ -762,7 +773,7 @@ export default function EditProduct() {
                     <button
                       type="button"
                       onClick={generateVariants}
-                      disabled={generatingVariants || !formData.attributes?.some(attr => attr.variation)}
+                      disabled={generatingVariants || !Array.isArray(formData.attributes) || !formData.attributes.some(attr => attr.variation)}
                       className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {generatingVariants ? 'Generiere...' : 'Alle Varianten generieren'}
