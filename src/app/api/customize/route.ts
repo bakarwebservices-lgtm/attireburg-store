@@ -34,7 +34,8 @@ export async function POST(request: NextRequest) {
 
       if (supabaseUrl && supabaseKey) {
         try {
-          const supabase = createClient(supabaseUrl, supabaseKey)
+          const cleanUrl = supabaseUrl.replace(/\/$/, '')
+          const supabase = createClient(cleanUrl, supabaseKey)
           const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
           // Place in a dedicated "customization-requests" folder
           const storagePath = `customization-requests/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`

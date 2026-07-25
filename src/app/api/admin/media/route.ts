@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from '@/lib/auth'
 
 function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!.replace(/\/$/, '')
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
   return createClient(url, key)
 }

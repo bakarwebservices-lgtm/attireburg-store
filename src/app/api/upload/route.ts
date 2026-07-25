@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Storage not configured' }, { status: 500 })
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const cleanUrl = supabaseUrl.replace(/\/$/, '')
+    const supabase = createClient(cleanUrl, supabaseKey)
 
     const formData = await request.formData()
     const file = formData.get('file') as File
