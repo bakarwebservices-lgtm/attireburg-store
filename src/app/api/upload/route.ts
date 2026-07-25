@@ -35,15 +35,19 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
     if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json({ error: 'Storage not configured' }, { status: 500 })
+      return NextResponse.json({ error: 'Storage not configured (missing Supabase URL or Key)' }, { status: 500 })
     }
 
-    const cleanUrl = supabaseUrl.replace(/\/$/, '')
-    const supabase = createClient(cleanUrl, supabaseKey)
+    // Clean URL to prevent malformed path issues (remove quotes, spaces, trailing slashes, /rest/v1, /storage/v1)
+    let cleanUrl = supabaseUrl.trim().replace(/^["']|["']$/g, '').replace(/\/$/, '')
+    cleanUrl = cleanUrl.replace(/\/rest\/v1\/?$/i, '').replace(/\/storage\/v1\/?$/i, '')
+
+    const cleanKey = supabaseKey.trim().replace(/^["']|["']$/g, '')
+    const supabase = createClient(cleanUrl, cleanKey)
 
     const formData = await request.formData()
     const file = formData.get('file') as File
@@ -52,10 +56,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Validate MIME type
-    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    // Normalize MIME type (handle image/jpg, uppercase, and params)
+    const rawType = (file.type || '').split(';')[0].trim().toLowerCase()
+    const normalizedType = rawType === 'image/jpg' ? 'image/jpeg' : rawType
+
+    if (!normalizedType || !ALLOWED_MIME_TYPES.has(normalizedType)) {
       return NextResponse.json(
-        { error: `File type not allowed. Allowed types: ${[...ALLOWED_MIME_TYPES].join(', ')}` },
+        { error: `File type not allowed (${file.type || 'unknown'}). Allowed types: JPEG, PNG, WEBP, GIF, AVIF` },
         { status: 400 }
       )
     }
@@ -71,7 +78,7 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // Derive extension from MIME type (never from user-supplied filename)
+    // Derive extension from MIME type
     const mimeToExt: Record<string, string> = {
       'image/jpeg': 'jpg',
       'image/png': 'png',
@@ -79,18 +86,20 @@ export async function POST(request: NextRequest) {
       'image/gif': 'gif',
       'image/avif': 'avif',
     }
-    const ext = mimeToExt[file.type] ?? 'jpg'
+    const ext = mimeToExt[normalizedType] ?? 'jpg'
     const fileName = `products/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+    console.log(`[Upload API] Uploading ${file.name} (${file.size} bytes, ${normalizedType}) -> ${fileName} at ${cleanUrl}`)
 
     const { data, error } = await supabase.storage
       .from('product-images')
       .upload(fileName, buffer, {
-        contentType: file.type,
-        upsert: false, // Never overwrite — prevents cache-poisoning
+        contentType: normalizedType,
+        upsert: true,
       })
 
     if (error) {
-      console.error('Supabase upload error:', error.message)
+      console.error('[Upload API Error]', error)
       return NextResponse.json({ error: `Upload failed: ${error.message}` }, { status: 500 })
     }
 
@@ -102,9 +111,10 @@ export async function POST(request: NextRequest) {
       .from('product-images')
       .getPublicUrl(data.path)
 
+    console.log(`[Upload API Success] ${fileName} -> ${publicUrl}`)
     return NextResponse.json({ url: publicUrl })
   } catch (error) {
-    console.error('Upload exception:', error)
+    console.error('[Upload API Exception]', error)
     const errorMsg = error instanceof Error ? error.message : String(error)
     return NextResponse.json({ error: `Upload failed: ${errorMsg}` }, { status: 500 })
   }
