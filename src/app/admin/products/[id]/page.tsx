@@ -110,12 +110,23 @@ export default function EditProduct() {
       // The API returns the product directly, not wrapped in a product property
       setProduct(data)
       
+      const normalizeAttributeName = (name: string): string => {
+        const nameLower = name.toLowerCase()
+        if (nameLower === 'fits' || nameLower === 'fit' || nameLower === 'passform') return 'Passform'
+        if (nameLower === 'sizes' || nameLower === 'size' || nameLower === 'größe' || nameLower === 'groesse') return 'Größe'
+        if (nameLower === 'colors' || nameLower === 'color' || nameLower === 'farbe') return 'Farbe'
+        return name
+      }
+
       let normalizedAttributes: Array<{ name: string; values: string[]; visible?: boolean; variation?: boolean }> = []
       if (Array.isArray(data.attributes)) {
-        normalizedAttributes = data.attributes
+        normalizedAttributes = data.attributes.map((attr: any) => ({
+          ...attr,
+          name: normalizeAttributeName(attr.name)
+        }))
       } else if (data.attributes && typeof data.attributes === 'object') {
         normalizedAttributes = Object.entries(data.attributes).map(([key, val]) => ({
-          name: key.charAt(0).toUpperCase() + key.slice(1),
+          name: normalizeAttributeName(key),
           values: Array.isArray(val) ? val : [String(val)],
           visible: true,
           variation: true

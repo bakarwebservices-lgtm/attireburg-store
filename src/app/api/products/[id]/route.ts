@@ -33,9 +33,6 @@ export async function GET(
             }
           },
           variants: {
-            where: {
-              isActive: true
-            },
             select: {
               id: true,
               sku: true,
@@ -157,7 +154,7 @@ export async function PUT(
         description: body.description || existingProduct.description,
         descriptionEn: body.descriptionEn || body.description || existingProduct.descriptionEn,
         price: body.price ? parseFloat(body.price) : existingProduct.price,
-        salePrice: body.salePrice ? parseFloat(body.salePrice) : null,
+        salePrice: (body.salePrice && parseFloat(body.salePrice) > 0) ? parseFloat(body.salePrice) : null,
         sku: body.sku || existingProduct.sku,
         stock: body.stock !== undefined ? parseInt(body.stock) : existingProduct.stock,
         category: body.category || existingProduct.category,
@@ -166,7 +163,7 @@ export async function PUT(
         tags: body.tags || existingProduct.tags,
         images: body.images || existingProduct.images,
         featured: body.featured !== undefined ? body.featured : existingProduct.featured,
-        onSale: body.salePrice ? !!body.salePrice : existingProduct.onSale,
+        onSale: (body.salePrice && parseFloat(body.salePrice) > 0) ? true : false,
         weight: body.weight ? parseFloat(body.weight) : existingProduct.weight,
         metaTitle: body.metaTitle !== undefined ? body.metaTitle : existingProduct.metaTitle,
         metaDescription: body.metaDescription !== undefined ? body.metaDescription : existingProduct.metaDescription,
@@ -196,8 +193,8 @@ export async function PUT(
         }
       })
 
-      // Update or create variants
-      for (const variant of body.variants) {
+      // Update or create variants in parallel
+      const variantPromises = body.variants.map(async (variant: any) => {
         const existing = existingVariants.find(ev => ev.sku === variant.sku)
         const variantStock = parseInt(variant.stock) || 0
         
@@ -211,20 +208,31 @@ export async function PUT(
         }
 
         if (existing) {
-          // Update existing variant
-          await prisma.productVariant.update({
-            where: { id: existing.id },
-            data: variantData
-          })
+          // Check if variant has actually changed before performing update
+          const priceChanged = variantData.price !== existing.price
+          const salePriceChanged = variantData.salePrice !== existing.salePrice
+          const stockChanged = variantData.stock !== existing.stock
+          const isActiveChanged = variantData.isActive !== existing.isActive
+          const imagesChanged = JSON.stringify(variantData.images) !== JSON.stringify(existing.images || [])
+          const attributesChanged = JSON.stringify(variantData.attributes) !== JSON.stringify(existing.attributes || {})
 
-          // Trigger restock check if stock went from 0 to > 0
-          if (variantStock > 0 && existing.stock === 0) {
-            const inventoryMonitor = new InventoryMonitor(prisma)
-            inventoryMonitor.triggerRestockProcessing(id, existing.id, variantStock)
-              .catch(err => console.error('Background variant restock notification error:', err))
+          if (priceChanged || salePriceChanged || stockChanged || isActiveChanged || imagesChanged || attributesChanged) {
+            console.log(`Updating modified variant: ${variant.sku}`)
+            await prisma.productVariant.update({
+              where: { id: existing.id },
+              data: variantData
+            })
+
+            // Trigger restock check if stock went from 0 to > 0
+            if (variantStock > 0 && existing.stock === 0) {
+              const inventoryMonitor = new InventoryMonitor(prisma)
+              inventoryMonitor.triggerRestockProcessing(id, existing.id, variantStock)
+                .catch(err => console.error('Background variant restock notification error:', err))
+            }
           }
         } else {
           // Create new variant
+          console.log(`Creating new variant: ${variant.sku}`)
           const createdVar = await prisma.productVariant.create({
             data: {
               productId: id,
@@ -240,7 +248,9 @@ export async function PUT(
               .catch(err => console.error('Background new variant restock notification error:', err))
           }
         }
-      }
+      })
+
+      await Promise.all(variantPromises)
     } else if (body.hasVariants === false) {
       // If variants are disabled, remove all existing variants
       console.log('Removing all variants as hasVariants is false')
