@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Supabase upload error:', error.message)
-      return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+      return NextResponse.json({ error: `Upload failed: ${error.message}` }, { status: 500 })
     }
 
     if (!data?.path) {
@@ -104,7 +104,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: publicUrl })
   } catch (error) {
     console.error('Upload exception:', error)
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: `Upload failed: ${errorMsg}` }, { status: 500 })
   }
 }
 
