@@ -167,7 +167,7 @@ export default function UserWishlist() {
 
               return (
                 <div key={item.id} className="bg-white rounded-lg shadow-sm overflow-hidden group">
-                  <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                  <div className="aspect-[2/3] bg-gray-100 relative overflow-hidden">
                     <Link href={`/products/${item.productId}`}>
                       {item.product.images.length > 0 ? (
                         <img

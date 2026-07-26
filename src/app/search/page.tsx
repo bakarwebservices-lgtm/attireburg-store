@@ -181,7 +181,7 @@ function SearchContent() {
                   href={`/products/${product.id}`}
                   className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
                 >
-                  <div className="aspect-square bg-gray-200 overflow-hidden">
+                  <div className="aspect-[2/3] bg-gray-200 overflow-hidden">
                     {product.images.length > 0 ? (
                       <img
                         src={product.images[0]}

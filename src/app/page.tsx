@@ -166,7 +166,7 @@ export default function Home() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="aspect-[3/4] bg-gray-100 mb-3" />
+                <div className="aspect-[2/3] bg-gray-100 mb-3" />
                 <div className="h-4 bg-gray-100 rounded mb-2 w-3/4" />
                 <div className="h-4 bg-gray-100 rounded w-1/3" />
               </div>
@@ -179,7 +179,7 @@ export default function Home() {
               const pct = product.salePrice ? Math.round((1 - product.salePrice / product.price) * 100) : 0
               return (
                 <Link key={product.id} href={`/products/${product.id}`} className="group">
-                  <div className="relative aspect-[3/4] overflow-hidden bg-gray-100 mb-3">
+                  <div className="relative aspect-[2/3] overflow-hidden bg-gray-100 mb-3">
                     {product.images[0] && (
                       <Image
                         src={product.images[0]}

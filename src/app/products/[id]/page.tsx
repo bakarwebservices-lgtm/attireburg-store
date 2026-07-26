@@ -470,7 +470,7 @@ export default function ProductDetail() {
           <div className="animate-pulse">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
               <div className="space-y-4">
-                <div className="aspect-square bg-gray-200 rounded-lg"></div>
+                <div className="aspect-[2/3] bg-gray-200 rounded-lg"></div>
                 <div className="grid grid-cols-4 gap-2">
                   {[...Array(4)].map((_, i) => (
                     <div key={i} className="aspect-square bg-gray-200 rounded"></div>
@@ -525,7 +525,7 @@ export default function ProductDetail() {
           {/* Product Images */}
           <div className="space-y-4">
             {/* Main image with arrow navigation */}
-            <div className="relative aspect-square bg-white rounded-lg overflow-hidden shadow-sm group">
+            <div className="relative aspect-[2/3] bg-white rounded-lg overflow-hidden shadow-sm group">
               {getCurrentImages().length > 0 ? (
                 <Image
                   src={getCurrentImages()[selectedImage]}
