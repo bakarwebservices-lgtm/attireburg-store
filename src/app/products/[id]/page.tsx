@@ -63,46 +63,87 @@ const renderFormattedDescription = (text: string) => {
   if (!text) return null
 
   const parseInlineStyles = (line: string) => {
-    const parts = line.split(/(\*\*.*?\*\*|\*.*?\*|_.*?_|<u>.*?<\/u>)/g)
+    const regex = /(\*\*.*?\*\*|\*.*?\*|_.*?_|<u>.*?<\/u>|<b>.*?<\/b>|<strong>.*?<\/strong>|<i>.*?<\/i>|<em>.*?<\/em>)/g
+    const parts = line.split(regex)
     return parts.map((part, index) => {
+      if (!part) return null
       if (part.startsWith('**') && part.endsWith('**')) {
         return <strong key={index} className="font-bold text-gray-900">{part.slice(2, -2)}</strong>
       }
-      if (part.startsWith('*') && part.endsWith('*')) {
-        return <em key={index} className="italic">{part.slice(1, -1)}</em>
-      }
-      if (part.startsWith('_') && part.endsWith('_')) {
+      if ((part.startsWith('*') && part.endsWith('*')) || (part.startsWith('_') && part.endsWith('_'))) {
         return <em key={index} className="italic">{part.slice(1, -1)}</em>
       }
       if (part.startsWith('<u>') && part.endsWith('</u>')) {
         return <span key={index} className="underline">{part.slice(3, -4)}</span>
       }
+      if (part.startsWith('<b>') && part.endsWith('</b>')) {
+        return <strong key={index} className="font-bold text-gray-900">{part.slice(3, -4)}</strong>
+      }
+      if (part.startsWith('<strong>') && part.endsWith('</strong>')) {
+        return <strong key={index} className="font-bold text-gray-900">{part.slice(8, -9)}</strong>
+      }
+      if (part.startsWith('<i>') && part.endsWith('</i>')) {
+        return <em key={index} className="italic">{part.slice(3, -4)}</em>
+      }
+      if (part.startsWith('<em>') && part.endsWith('</em>')) {
+        return <em key={index} className="italic">{part.slice(4, -5)}</em>
+      }
       return part
     })
   }
 
-  const normalizedText = text.replace(/\r\n/g, '\n')
+  // Normalize HTML tags, literal escaped '\n', literal '/n', and newlines
+  const normalizedText = text
+    .replace(/\\n/g, '\n')
+    .replace(/\/n/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<p[^>]*>/gi, '')
+    .replace(/<li>/gi, '\n- ')
+    .replace(/<\/li>/gi, '')
+    .replace(/<\/?(ul|ol)[^>]*>/gi, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+
   const lines = normalizedText.split('\n')
   const blocks: React.ReactNode[] = []
-  let currentList: React.ReactNode[] = []
+  let currentBulletList: React.ReactNode[] = []
+  let currentNumberedList: React.ReactNode[] = []
 
   const pushCurrentList = (key: string | number) => {
-    if (currentList.length > 0) {
+    if (currentBulletList.length > 0) {
       blocks.push(
-        <ul key={`list-${key}`} className="list-disc pl-5 mb-4 space-y-1 text-gray-700">
-          {currentList}
+        <ul key={`ul-${key}`} className="list-disc pl-5 mb-4 space-y-1 text-gray-700">
+          {currentBulletList}
         </ul>
       )
-      currentList = []
+      currentBulletList = []
+    }
+    if (currentNumberedList.length > 0) {
+      blocks.push(
+        <ol key={`ol-${key}`} className="list-decimal pl-5 mb-4 space-y-1 text-gray-700">
+          {currentNumberedList}
+        </ol>
+      )
+      currentNumberedList = []
     }
   }
 
   lines.forEach((line, index) => {
     const trimmedLine = line.trim()
-    
+
     if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+      if (currentNumberedList.length > 0) pushCurrentList(`num-before-bullet-${index}`)
       const content = trimmedLine.substring(2)
-      currentList.push(
+      currentBulletList.push(
+        <li key={`li-${index}`} className="text-gray-700">
+          {parseInlineStyles(content)}
+        </li>
+      )
+    } else if (/^\d+[\.\)]\s/.test(trimmedLine)) {
+      if (currentBulletList.length > 0) pushCurrentList(`bullet-before-num-${index}`)
+      const content = trimmedLine.replace(/^\d+[\.\)]\s/, '')
+      currentNumberedList.push(
         <li key={`li-${index}`} className="text-gray-700">
           {parseInlineStyles(content)}
         </li>
