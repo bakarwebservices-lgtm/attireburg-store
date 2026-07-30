@@ -49,8 +49,6 @@ export default function Footer() {
             <p className="text-white font-semibold mb-4">{lang === 'de' ? 'Shop' : 'Shop'}</p>
             <ul className="space-y-2.5">
               <li><Link href="/products" className="hover:text-white transition-colors">{lang === 'de' ? 'Alle Produkte' : 'All Products'}</Link></li>
-              <li><Link href="/products?category=pullover" className="hover:text-white transition-colors">{t.products.categories.pullover}</Link></li>
-              <li><Link href="/products?category=jacken" className="hover:text-white transition-colors">{t.products.categories.jacken}</Link></li>
               <li><Link href="/products?onSale=true" className="hover:text-white transition-colors">Sale</Link></li>
               <li><Link href="/customize" className="hover:text-white transition-colors">Print on Demand</Link></li>
             </ul>

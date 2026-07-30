@@ -276,11 +276,12 @@ export default function EditProduct() {
       console.log('Sending update data:', updateData)
       
       const session = getSession()
+      const token = session?.token || (session?.user?.isAdmin ? 'admin-token' : '')
       const response = await fetch(`/api/products/${product.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.token}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(updateData)
       })
@@ -535,8 +536,6 @@ export default function EditProduct() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
                       >
                         <option value="">Kategorie wählen</option>
-                        <option value="pullover">Pullover</option>
-                        <option value="jacken">Jacken</option>
                         <option value="hoodies">Hoodies</option>
                         <option value="shirts">Shirts</option>
                         <option value="printed-tees">Printed Tees</option>

@@ -56,8 +56,6 @@ export default function Products() {
 
   const CATEGORIES = [
     { value: '', label: t.products.allCategories },
-    { value: 'pullover', label: t.products.categories.pullover },
-    { value: 'jacken', label: t.products.categories.jacken },
     { value: 'hoodies', label: t.products.categories.hoodies },
     { value: 'shirts', label: t.products.categories.shirts },
     { value: 'printed-tees', label: t.products.categories.printedTees },

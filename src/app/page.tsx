@@ -73,8 +73,6 @@ export default function Home() {
 
   const categories = [
     { label: lang === 'de' ? 'Alle' : 'All', href: '/products' },
-    { label: lang === 'de' ? 'Pullover' : 'Sweaters', href: '/products?category=pullover' },
-    { label: lang === 'de' ? 'Jacken' : 'Jackets', href: '/products?category=jacken' },
     { label: 'Hoodies', href: '/products?category=hoodies' },
     { label: 'Shirts', href: '/products?category=shirts' },
     { label: 'Printed Tees', href: '/products?category=printed-tees' },

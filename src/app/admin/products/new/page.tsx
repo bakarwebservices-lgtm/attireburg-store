@@ -362,8 +362,6 @@ export default function NewProduct() {
                       <select value={formData.category} onChange={e => handleInputChange('category', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600">
                         <option value="">Kategorie wählen</option>
-                        <option value="pullover">Pullover</option>
-                        <option value="jacken">Jacken</option>
                         <option value="hoodies">Hoodies</option>
                         <option value="shirts">Shirts</option>
                         <option value="printed-tees">Printed Tees</option>
