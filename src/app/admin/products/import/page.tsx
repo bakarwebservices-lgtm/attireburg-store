@@ -122,34 +122,19 @@ Winterjacke Alpine,Alpine Winter Jacket,ATB-JACK-001,249.99,199.99,jacken,8,publ
     window.URL.revokeObjectURL(url)
   }
 
-  const exportProducts = async () => {
-    try {
-      const response = await fetch('/api/products?limit=500&includeInactive=true')
-      const data = await response.json()
-      const liveProducts = data.products || []
+  const exportProducts = () => {
+    // Simulate product export
+    const csvContent = `name,nameEn,sku,price,salePrice,category,stock,status,featured,description,descriptionEn
+Premium Wollpullover Classic,Premium Wool Sweater Classic,ATB-PULL-001,129.99,,pullover,15,published,true,"Klassischer Wollpullover aus hochwertigen Materialien","Classic wool sweater made from high-quality materials"
+Winterjacke Alpine Pro,Alpine Pro Winter Jacket,ATB-JACK-001,249.99,199.99,jacken,8,published,false,"Professionelle Winterjacke für extreme Bedingungen","Professional winter jacket for extreme conditions"`
 
-      let csvContent = 'id,name,nameEn,sku,price,salePrice,category,stock,status,featured,description,descriptionEn\n'
-      liveProducts.forEach((p: any) => {
-        const safeName = `"${(p.name || '').replace(/"/g, '""')}"`
-        const safeNameEn = `"${(p.nameEn || '').replace(/"/g, '""')}"`
-        const safeDesc = `"${(p.description || '').replace(/"/g, '""')}"`
-        const safeDescEn = `"${(p.descriptionEn || '').replace(/"/g, '""')}"`
-        const status = p.isActive ? 'published' : 'draft'
-        
-        csvContent += `${p.id},${safeName},${safeNameEn},${p.sku || ''},${p.price || 0},${p.salePrice || ''},${p.category || ''},${p.stock || 0},${status},${p.featured || false},${safeDesc},${safeDescEn}\n`
-      })
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `products-export-${new Date().toISOString().split('T')[0]}.csv`
-      a.click()
-      window.URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Error exporting products:', error)
-      alert('Fehler beim Exportieren der Produkte')
-    }
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `products-export-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
   }
 
   if (!user || !user.isAdmin) {
