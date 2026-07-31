@@ -601,6 +601,21 @@ export default function EditProduct() {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Lagerverwaltung</h3>
                 
+                {formData.hasVariants && variants.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-sm text-blue-800 flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold">Variantenprodukt:</span> Dieses Produkt verwendet {variants.length} Varianten. Der Gesamtlagerbestand ergibt sich aus der Summe aller Variantenbestände.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('variants')}
+                      className="ml-4 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium whitespace-nowrap"
+                    >
+                      Zu den Varianten →
+                    </button>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -615,12 +630,19 @@ export default function EditProduct() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Lagerbestand
+                      Lagerbestand {formData.hasVariants && variants.length > 0 ? '(Gesamt / Auf Varianten verteilt)' : ''}
                     </label>
                     <input
                       type="number"
-                      value={formData.stock || ''}
-                      onChange={(e) => handleInputChange('stock', parseInt(e.target.value) || 0)}
+                      value={formData.hasVariants && variants.length > 0 ? variants.reduce((sum, v) => sum + (v.stock || 0), 0) : (formData.stock || 0)}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0
+                        handleInputChange('stock', val)
+                        if (formData.hasVariants && variants.length > 0) {
+                          const perVariant = Math.max(0, Math.floor(val / variants.length))
+                          setVariants(prev => prev.map(v => ({ ...v, stock: perVariant })))
+                        }
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
                     />
                   </div>

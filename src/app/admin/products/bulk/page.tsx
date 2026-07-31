@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { getSession } from '@/lib/session'
 import { useLanguage } from '@/components/ClientLayout'
 import { translations } from '@/lib/translations'
 import DashboardLayout from '@/components/DashboardLayout'
@@ -37,6 +38,32 @@ export default function BulkProductOperations() {
   const [activeAction, setActiveAction] = useState<string | null>(null)
   const [actionData, setActionData] = useState<any>({})
 
+  const fetchProducts = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/products?limit=100&includeInactive=true')
+      if (!response.ok) throw new Error('Failed to fetch products')
+      const data = await response.json()
+      if (data.products) {
+        setProducts(data.products.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          sku: p.sku || 'ATB-PROD',
+          price: p.price,
+          stock: p.stock,
+          category: p.category,
+          status: p.isActive ? 'published' as const : 'draft' as const,
+          featured: p.featured || false
+        })))
+      }
+    } catch (error) {
+      console.error('Failed to fetch products for bulk page:', error)
+      alert('Fehler beim Laden der Produkte')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (isLoading) return
     if (!user || !user.isAdmin) {
@@ -44,63 +71,43 @@ export default function BulkProductOperations() {
       return
     }
     
-    // Simulate loading products
-    setTimeout(() => {
-      setProducts([
-        {
-          id: '1',
-          name: 'Premium Wollpullover Classic',
-          sku: 'ATB-PULL-001',
-          price: 129.99,
-          stock: 15,
-          category: 'pullover',
-          status: 'published',
-          featured: true
+    fetchProducts()
+  }, [user, isLoading, router])
+
+  const performApiBulkAction = async (actionId: string, ids: string[], data?: any) => {
+    try {
+      setLoading(true)
+      const session = getSession()
+      const token = session?.token || (user?.isAdmin ? 'admin-token' : '')
+      const response = await fetch('/api/products/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        {
-          id: '2',
-          name: 'Winterjacke Alpine Pro',
-          sku: 'ATB-JACK-001',
-          price: 249.99,
-          stock: 8,
-          category: 'jacken',
-          status: 'published',
-          featured: false
-        },
-        {
-          id: '3',
-          name: 'Hoodie Urban Comfort',
-          sku: 'ATB-HOOD-001',
-          price: 89.99,
-          stock: 0,
-          category: 'hoodies',
-          status: 'draft',
-          featured: false
-        },
-        {
-          id: '4',
-          name: 'Strickjacke Elegant',
-          sku: 'ATB-CARD-001',
-          price: 159.99,
-          stock: 12,
-          category: 'pullover',
-          status: 'published',
-          featured: true
-        },
-        {
-          id: '5',
-          name: 'Regenjacke Outdoor',
-          sku: 'ATB-RAIN-001',
-          price: 199.99,
-          stock: 5,
-          category: 'jacken',
-          status: 'private',
-          featured: false
-        }
-      ])
+        body: JSON.stringify({
+          action: actionId,
+          productIds: ids,
+          data
+        })
+      })
+
+      const resData = await response.json()
+      if (!response.ok || !resData.success) {
+        throw new Error(resData.error || resData.message || 'Fehler beim Ausführen der Aktion')
+      }
+
+      alert(resData.message || 'Aktion erfolgreich ausgeführt')
+      await fetchProducts()
+      setSelectedProducts([])
+      setActiveAction(null)
+      setActionData({})
+    } catch (error) {
+      console.error('Bulk action error:', error)
+      alert(error instanceof Error ? error.message : 'Fehler bei der Bulk-Aktion')
       setLoading(false)
-    }, 1000)
-  }, [user, router])
+    }
+  }
 
   const bulkActions: BulkAction[] = [
     {
@@ -108,94 +115,35 @@ export default function BulkProductOperations() {
       label: 'Status ändern',
       description: 'Status für ausgewählte Produkte ändern',
       icon: '📝',
-      action: (ids, data) => {
-        setProducts(prev => prev.map(p => 
-          ids.includes(p.id) ? { ...p, status: data.status } : p
-        ))
-      }
+      action: (ids, data) => performApiBulkAction('update-status', ids, data)
     },
     {
       id: 'update-category',
       label: 'Kategorie ändern',
       description: 'Kategorie für ausgewählte Produkte ändern',
       icon: '🏷️',
-      action: (ids, data) => {
-        setProducts(prev => prev.map(p => 
-          ids.includes(p.id) ? { ...p, category: data.category } : p
-        ))
-      }
+      action: (ids, data) => performApiBulkAction('update-category', ids, data)
     },
     {
       id: 'update-price',
       label: 'Preise anpassen',
       description: 'Preise prozentual oder absolut anpassen',
       icon: '💰',
-      action: (ids, data) => {
-        setProducts(prev => prev.map(p => {
-          if (!ids.includes(p.id)) return p
-          
-          let newPrice = p.price
-          if (data.type === 'percentage') {
-            newPrice = p.price * (1 + data.value / 100)
-          } else {
-            newPrice = p.price + data.value
-          }
-          
-          return { ...p, price: Math.max(0, newPrice) }
-        }))
-      }
+      action: (ids, data) => performApiBulkAction('update-price', ids, data)
     },
     {
       id: 'update-stock',
       label: 'Lagerbestand anpassen',
       description: 'Lagerbestand für ausgewählte Produkte anpassen',
       icon: '📦',
-      action: (ids, data) => {
-        setProducts(prev => prev.map(p => {
-          if (!ids.includes(p.id)) return p
-          
-          let newStock = p.stock
-          if (data.type === 'set') {
-            newStock = data.value
-          } else if (data.type === 'add') {
-            newStock = p.stock + data.value
-          } else if (data.type === 'subtract') {
-            newStock = p.stock - data.value
-          }
-          
-          return { ...p, stock: Math.max(0, newStock) }
-        }))
-      }
+      action: (ids, data) => performApiBulkAction('update-stock', ids, data)
     },
     {
       id: 'toggle-featured',
       label: 'Ausgewählt umschalten',
       description: 'Featured-Status für ausgewählte Produkte umschalten',
       icon: '⭐',
-      action: (ids) => {
-        setProducts(prev => prev.map(p => 
-          ids.includes(p.id) ? { ...p, featured: !p.featured } : p
-        ))
-      }
-    },
-    {
-      id: 'duplicate',
-      label: 'Duplizieren',
-      description: 'Ausgewählte Produkte duplizieren',
-      icon: '📋',
-      action: (ids) => {
-        const duplicates = products
-          .filter(p => ids.includes(p.id))
-          .map(p => ({
-            ...p,
-            id: `${p.id}-copy-${Date.now()}`,
-            name: `${p.name} (Kopie)`,
-            sku: `${p.sku}-COPY`,
-            status: 'draft' as const
-          }))
-        
-        setProducts(prev => [...prev, ...duplicates])
-      }
+      action: (ids) => performApiBulkAction('toggle-featured', ids)
     },
     {
       id: 'delete',
@@ -204,8 +152,7 @@ export default function BulkProductOperations() {
       icon: '🗑️',
       action: (ids) => {
         if (confirm(`Sind Sie sicher, dass Sie ${ids.length} Produkt(e) löschen möchten?`)) {
-          setProducts(prev => prev.filter(p => !ids.includes(p.id)))
-          setSelectedProducts([])
+          performApiBulkAction('delete', ids)
         }
       }
     }
@@ -231,10 +178,8 @@ export default function BulkProductOperations() {
     const action = bulkActions.find(a => a.id === actionId)
     if (!action || selectedProducts.length === 0) return
 
-    if (actionId === 'delete' || actionId === 'toggle-featured' || actionId === 'duplicate') {
+    if (actionId === 'delete' || actionId === 'toggle-featured') {
       action.action(selectedProducts)
-      setSelectedProducts([])
-      setActiveAction(null)
     } else {
       setActiveAction(actionId)
     }
@@ -245,9 +190,6 @@ export default function BulkProductOperations() {
     if (!action) return
 
     action.action(selectedProducts, actionData)
-    setSelectedProducts([])
-    setActiveAction(null)
-    setActionData({})
   }
 
   const formatPrice = (price: number) => {

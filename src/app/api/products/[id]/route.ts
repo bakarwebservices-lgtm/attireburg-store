@@ -183,24 +183,33 @@ export async function PUT(
         where: { productId: id }
       })
 
-      const skusInBody = body.variants.map((v: any) => v.sku)
+      const idsInBody = body.variants.map((v: any) => v.id).filter(Boolean)
+      const skusInBody = body.variants.map((v: any) => v.sku).filter(Boolean)
 
-      // Delete variants that are no longer in the body
+      // Delete variants that are no longer in the body (by ID if present, otherwise by SKU)
       await prisma.productVariant.deleteMany({
         where: {
           productId: id,
-          sku: { notIn: skusInBody }
+          AND: [
+            idsInBody.length > 0 ? { id: { notIn: idsInBody } } : {},
+            skusInBody.length > 0 ? { sku: { notIn: skusInBody } } : {}
+          ]
         }
       })
 
       // Update or create variants in parallel
       const variantPromises = body.variants.map(async (variant: any) => {
-        const existing = existingVariants.find(ev => ev.sku === variant.sku)
-        const variantStock = parseInt(variant.stock) || 0
+        // Match existing variant by ID first, then by SKU
+        const existing = (variant.id ? existingVariants.find(ev => ev.id === variant.id) : null) ||
+                         existingVariants.find(ev => ev.sku === variant.sku)
+        const variantStock = parseInt(variant.stock) !== undefined && !isNaN(parseInt(variant.stock)) 
+          ? parseInt(variant.stock) 
+          : 0
         
         const variantData = {
-          price: variant.price ? parseFloat(variant.price) : null,
-          salePrice: variant.salePrice ? parseFloat(variant.salePrice) : null,
+          sku: variant.sku,
+          price: variant.price !== undefined && variant.price !== null && variant.price !== '' ? parseFloat(variant.price) : null,
+          salePrice: variant.salePrice !== undefined && variant.salePrice !== null && variant.salePrice !== '' ? parseFloat(variant.salePrice) : null,
           stock: variantStock,
           images: variant.images || [],
           attributes: variant.attributes || {},
@@ -209,6 +218,7 @@ export async function PUT(
 
         if (existing) {
           // Check if variant has actually changed before performing update
+          const skuChanged = variantData.sku !== existing.sku
           const priceChanged = variantData.price !== existing.price
           const salePriceChanged = variantData.salePrice !== existing.salePrice
           const stockChanged = variantData.stock !== existing.stock
@@ -216,8 +226,8 @@ export async function PUT(
           const imagesChanged = JSON.stringify(variantData.images) !== JSON.stringify(existing.images || [])
           const attributesChanged = JSON.stringify(variantData.attributes) !== JSON.stringify(existing.attributes || {})
 
-          if (priceChanged || salePriceChanged || stockChanged || isActiveChanged || imagesChanged || attributesChanged) {
-            console.log(`Updating modified variant: ${variant.sku}`)
+          if (skuChanged || priceChanged || salePriceChanged || stockChanged || isActiveChanged || imagesChanged || attributesChanged) {
+            console.log(`Updating modified variant: ${variant.sku} (ID: ${existing.id})`)
             await prisma.productVariant.update({
               where: { id: existing.id },
               data: variantData
@@ -236,7 +246,6 @@ export async function PUT(
           const createdVar = await prisma.productVariant.create({
             data: {
               productId: id,
-              sku: variant.sku,
               ...variantData
             }
           })
@@ -261,17 +270,20 @@ export async function PUT(
 
     // Sync product stock with variant stock if hasVariants is true
     let finalUpdatedProduct = updatedProduct
-    if (body.hasVariants && body.variants && Array.isArray(body.variants)) {
+    if (body.hasVariants) {
       const allVariants = await prisma.productVariant.findMany({
         where: { productId: id, isActive: true }
       })
-      const totalStock = allVariants.reduce((sum, v) => sum + v.stock, 0)
       
-      // Update parent product stock in DB
-      finalUpdatedProduct = await prisma.product.update({
-        where: { id: id },
-        data: { stock: totalStock }
-      })
+      if (allVariants.length > 0) {
+        const totalStock = allVariants.reduce((sum, v) => sum + v.stock, 0)
+        
+        // Update parent product stock in DB
+        finalUpdatedProduct = await prisma.product.update({
+          where: { id: id },
+          data: { stock: totalStock }
+        })
+      }
     }
 
     console.log('Product updated:', finalUpdatedProduct)
