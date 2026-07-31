@@ -120,21 +120,27 @@ class InventoryService {
                 }
               }
             })
-            // Also update parent product stock
+            // Also update parent product stock and sticker stock
             await tx.product.update({
               where: { id: item.productId },
               data: {
                 stock: {
                   decrement: item.quantity
+                },
+                stickerStock: {
+                  decrement: item.quantity
                 }
               }
             })
           } else {
-            // Update product stock
+            // Update product stock and sticker stock
             await tx.product.update({
               where: { id: item.productId },
               data: {
                 stock: {
+                  decrement: item.quantity
+                },
+                stickerStock: {
                   decrement: item.quantity
                 }
               }
@@ -154,7 +160,7 @@ class InventoryService {
   }
 
   /**
-   * Restore inventory for items (increase stock) - used for cancellations
+   * Restore inventory for items (increase stock) - used for cancellations and returns
    */
   async restoreInventory(items: InventoryItem[]): Promise<InventoryResult> {
     const result: InventoryResult = {
@@ -176,21 +182,27 @@ class InventoryService {
                 }
               }
             })
-            // Also restore parent product stock
+            // Also restore parent product stock and sticker stock
             await tx.product.update({
               where: { id: item.productId },
               data: {
                 stock: {
                   increment: item.quantity
+                },
+                stickerStock: {
+                  increment: item.quantity
                 }
               }
             })
           } else {
-            // Restore product stock
+            // Restore product stock and sticker stock
             await tx.product.update({
               where: { id: item.productId },
               data: {
                 stock: {
+                  increment: item.quantity
+                },
+                stickerStock: {
                   increment: item.quantity
                 }
               }

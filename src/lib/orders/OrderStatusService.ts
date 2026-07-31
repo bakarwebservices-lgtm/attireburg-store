@@ -154,7 +154,8 @@ class OrderStatusService {
   private async handleStatusActions(order: any, status: OrderStatus): Promise<void> {
     switch (status) {
       case 'CANCELLED':
-        // Restore inventory
+      case 'REFUNDED':
+        // Restore inventory (clothing stock & sticker stock)
         await this.restoreInventory(order)
         break
       case 'SHIPPED':

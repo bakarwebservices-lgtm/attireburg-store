@@ -21,6 +21,7 @@ model Product {
   sizes       String[]
   colors      String[]
   stock       Int      @default(0)
+  stickerStock Int     @default(0)
   featured    Boolean  @default(false)
   onSale      Boolean  @default(false)
   salePrice   Float?
@@ -158,6 +159,7 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+  REFUNDED
 }
 
 model Cart {

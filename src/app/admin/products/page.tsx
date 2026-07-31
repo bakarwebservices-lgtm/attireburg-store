@@ -16,6 +16,7 @@ interface Product {
   salePrice?: number
   category: string
   stock: number
+  stickerStock?: number
   featured: boolean
   onSale: boolean
   isActive: boolean
@@ -476,6 +477,11 @@ export default function AdminProducts() {
                               {product.stock}
                             </span>
                           )}
+                          <div className="mt-1">
+                            <span className="inline-flex items-center text-xs text-primary-800 bg-primary-50 px-2 py-0.5 rounded border border-primary-200 font-medium">
+                              🏷️ {product.stickerStock !== undefined ? product.stickerStock : 0} Stickers
+                            </span>
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

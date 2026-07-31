@@ -24,6 +24,7 @@ interface ProductFormData {
   salePrice?: number
   sku: string
   stock: number // default stock per variant
+  stickerStock: number // physical print stickers for this design
   category: string
   tags: string[]
   images: string[] // fallback/main images
@@ -60,6 +61,7 @@ export default function NewProduct() {
     price: 0,
     sku: `ATB-${Date.now()}`,
     stock: 10,
+    stickerStock: 0,
     category: '',
     tags: [],
     images: [],
@@ -175,6 +177,7 @@ export default function NewProduct() {
         salePrice: formData.salePrice,
         sku: formData.sku,
         stock: formData.stock * variants.length,
+        stickerStock: formData.stickerStock,
         category: formData.category || 'Uncategorized',
         sizes: formData.sizes,
         colors: formData.colors.map(c => c.color),
@@ -329,7 +332,7 @@ export default function NewProduct() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Preis (€) *</label>
                       <input type="number" step="0.01" min="0"
@@ -348,6 +351,13 @@ export default function NewProduct() {
                         value={formData.stock || ''}
                         onChange={e => handleInputChange('stock', parseInt(e.target.value) || 0)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600" placeholder="10" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Stickers / Aufkleber 🏷️</label>
+                      <input type="number" min="0"
+                        value={formData.stickerStock || 0}
+                        onChange={e => handleInputChange('stickerStock', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-primary-300 bg-primary-50/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600" placeholder="50" />
                     </div>
                   </div>
 

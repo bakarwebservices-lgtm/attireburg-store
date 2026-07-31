@@ -30,6 +30,7 @@ interface Product {
   salePrice?: number
   sku: string
   stock: number
+  stickerStock?: number
   category: string
   sizes: string[]
   colors: string[]
@@ -601,7 +602,7 @@ export default function EditProduct() {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Lagerverwaltung</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       SKU *
@@ -626,6 +627,17 @@ export default function EditProduct() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Stickers / Aufkleber 🏷️
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.stickerStock !== undefined ? formData.stickerStock : 0}
+                      onChange={(e) => handleInputChange('stickerStock', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-primary-400 bg-primary-50/20 font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Gewicht (kg)
                     </label>
                     <input
@@ -635,6 +647,16 @@ export default function EditProduct() {
                       onChange={(e) => handleInputChange('weight', e.target.value ? parseFloat(e.target.value) : undefined)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
                     />
+                  </div>
+                </div>
+
+                <div className="bg-primary-50/40 border border-primary-200 rounded-lg p-4 flex items-start space-x-3">
+                  <span className="text-xl">🏷️</span>
+                  <div>
+                    <h4 className="text-sm font-semibold text-primary-900">Unabhängige Aufkleber-Verwaltung</h4>
+                    <p className="text-xs text-primary-700 mt-0.5">
+                      Der Aufkleber-Bestand wird automatisch bei jeder Bestellung dieses Produkts (unabhängig von Variante, Größe oder Farbe) um die gekaufte Menge reduziert und bei Stornierung/Rückgabe wieder gutgeschrieben.
+                    </p>
                   </div>
                 </div>
               </div>

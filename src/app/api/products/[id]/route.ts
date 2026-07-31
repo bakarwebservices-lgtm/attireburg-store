@@ -157,6 +157,7 @@ export async function PUT(
         salePrice: (body.salePrice && parseFloat(body.salePrice) > 0) ? parseFloat(body.salePrice) : null,
         sku: body.sku || existingProduct.sku,
         stock: body.stock !== undefined ? parseInt(body.stock) : existingProduct.stock,
+        stickerStock: body.stickerStock !== undefined ? parseInt(body.stickerStock) : (existingProduct.stickerStock || 0),
         category: body.category || existingProduct.category,
         sizes: body.sizes || existingProduct.sizes,
         colors: body.colors || existingProduct.colors,

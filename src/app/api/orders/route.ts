@@ -198,7 +198,10 @@ export async function POST(request: NextRequest) {
             const startProdUpdate = Date.now()
             await tx.product.update({
               where: { id: item.productId },
-              data: { stock: { decrement: item.quantity } }
+              data: {
+                stock: { decrement: item.quantity },
+                stickerStock: { decrement: item.quantity }
+              }
             })
             console.log(`[PERF] tx.product.update query took: ${Date.now() - startProdUpdate}ms`)
           } else {
@@ -215,7 +218,10 @@ export async function POST(request: NextRequest) {
             const startProdUpdate = Date.now()
             await tx.product.update({
               where: { id: item.productId },
-              data: { stock: { decrement: item.quantity } }
+              data: {
+                stock: { decrement: item.quantity },
+                stickerStock: { decrement: item.quantity }
+              }
             })
             console.log(`[PERF] tx.product.update (no-variant) query took: ${Date.now() - startProdUpdate}ms`)
           }

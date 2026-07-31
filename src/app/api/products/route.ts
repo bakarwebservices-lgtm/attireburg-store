@@ -212,6 +212,7 @@ export async function POST(request: NextRequest) {
         salePrice: body.salePrice ? parseFloat(body.salePrice) : null,
         sku: body.sku,
         stock: parseInt(body.stock) || 0,
+        stickerStock: parseInt(body.stickerStock) || 0,
         category: body.category || 'Uncategorized',
         sizes: body.sizes || [],
         colors: body.colors || [],
