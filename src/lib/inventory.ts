@@ -28,19 +28,18 @@ class InventoryService {
     this.inventoryMonitor = new InventoryMonitor(prisma)
   }
   /**
-   * Check stock availability for multiple items
+   * Check stock availability for multiple items (supporting optional checkoutId to ignore customer's own hold)
    */
-  async checkStock(items: InventoryItem[]): Promise<StockInfo[]> {
+  async checkStock(items: InventoryItem[], checkoutId?: string): Promise<StockInfo[]> {
     const stockInfo: StockInfo[] = []
 
     for (const item of items) {
       try {
         if (item.variantId) {
-          // Check variant and product stock
           const [variant, product] = await Promise.all([
             prisma.productVariant.findUnique({
               where: { id: item.variantId },
-              select: { stock: true, isActive: true }
+              select: { stock: true, isActive: true, blankGarmentId: true }
             }),
             prisma.product.findUnique({
               where: { id: item.productId },
@@ -48,17 +47,44 @@ class InventoryService {
             })
           ])
 
-          const combinedStock = variant?.stock || 0
-          const isAvailable = (variant?.isActive && product?.isActive && combinedStock >= item.quantity) || false
+          if (variant?.blankGarmentId) {
+            const pool = await prisma.blankGarment.findUnique({
+              where: { id: variant.blankGarmentId },
+              select: { stock: true, isActive: true }
+            })
 
-          stockInfo.push({
-            productId: item.productId,
-            variantId: item.variantId,
-            currentStock: combinedStock,
-            available: isAvailable
-          })
+            const activeReservations = await prisma.poolReservation.aggregate({
+              where: {
+                blankGarmentId: variant.blankGarmentId,
+                expiresAt: { gt: new Date() },
+                ...(checkoutId ? { checkoutId: { not: checkoutId } } : {})
+              },
+              _sum: { quantity: true }
+            })
+
+            const poolStock = pool?.stock || 0
+            const reserved = activeReservations._sum.quantity || 0
+            const availableStock = Math.max(0, poolStock - reserved)
+            const isAvailable = (variant?.isActive && product?.isActive && pool?.isActive && availableStock >= item.quantity) || false
+
+            stockInfo.push({
+              productId: item.productId,
+              variantId: item.variantId,
+              currentStock: availableStock,
+              available: isAvailable
+            })
+          } else {
+            const combinedStock = variant?.stock || 0
+            const isAvailable = (variant?.isActive && product?.isActive && combinedStock >= item.quantity) || false
+
+            stockInfo.push({
+              productId: item.productId,
+              variantId: item.variantId,
+              currentStock: combinedStock,
+              available: isAvailable
+            })
+          }
         } else {
-          // Check product stock
           const product = await prisma.product.findUnique({
             where: { id: item.productId },
             select: { stock: true, isActive: true }
@@ -85,17 +111,16 @@ class InventoryService {
   }
 
   /**
-   * Reserve inventory for items (decrease stock)
+   * Reserve inventory for items (decrease stock) - supports checkoutId for clearing reservations
    */
-  async reserveInventory(items: InventoryItem[]): Promise<InventoryResult> {
+  async reserveInventory(items: InventoryItem[], checkoutId?: string): Promise<InventoryResult> {
     const result: InventoryResult = {
       success: true,
       errors: [],
       updatedItems: []
     }
 
-    // First, check if all items are available
-    const stockInfo = await this.checkStock(items)
+    const stockInfo = await this.checkStock(items, checkoutId)
     const unavailableItems = stockInfo.filter(info => !info.available)
 
     if (unavailableItems.length > 0) {
@@ -106,43 +131,53 @@ class InventoryService {
       return result
     }
 
-    // Use transaction to ensure atomicity
     try {
       await prisma.$transaction(async (tx) => {
         for (const item of items) {
           if (item.variantId) {
-            // Update variant stock
-            await tx.productVariant.update({
+            const variant = await tx.productVariant.findUnique({
               where: { id: item.variantId },
-              data: {
-                stock: {
-                  decrement: item.quantity
-                }
-              }
+              select: { blankGarmentId: true }
             })
-            // Also update parent product stock and sticker stock
-            await tx.product.update({
-              where: { id: item.productId },
-              data: {
-                stock: {
-                  decrement: item.quantity
-                },
-                stickerStock: {
-                  decrement: item.quantity
-                }
+
+            if (variant?.blankGarmentId) {
+              await tx.blankGarment.update({
+                where: { id: variant.blankGarmentId },
+                data: { stock: { decrement: item.quantity } }
+              })
+
+              if (checkoutId) {
+                await tx.poolReservation.deleteMany({
+                  where: { checkoutId, blankGarmentId: variant.blankGarmentId }
+                })
               }
-            })
+
+              await tx.product.update({
+                where: { id: item.productId },
+                data: {
+                  stock: { decrement: item.quantity },
+                  stickerStock: { decrement: item.quantity }
+                }
+              })
+            } else {
+              await tx.productVariant.update({
+                where: { id: item.variantId },
+                data: { stock: { decrement: item.quantity } }
+              })
+              await tx.product.update({
+                where: { id: item.productId },
+                data: {
+                  stock: { decrement: item.quantity },
+                  stickerStock: { decrement: item.quantity }
+                }
+              })
+            }
           } else {
-            // Update product stock and sticker stock
             await tx.product.update({
               where: { id: item.productId },
               data: {
-                stock: {
-                  decrement: item.quantity
-                },
-                stickerStock: {
-                  decrement: item.quantity
-                }
+                stock: { decrement: item.quantity },
+                stickerStock: { decrement: item.quantity }
               }
             })
           }
@@ -173,38 +208,42 @@ class InventoryService {
       await prisma.$transaction(async (tx) => {
         for (const item of items) {
           if (item.variantId) {
-            // Restore variant stock
-            await tx.productVariant.update({
+            const variant = await tx.productVariant.findUnique({
               where: { id: item.variantId },
-              data: {
-                stock: {
-                  increment: item.quantity
-                }
-              }
+              select: { blankGarmentId: true }
             })
-            // Also restore parent product stock and sticker stock
-            await tx.product.update({
-              where: { id: item.productId },
-              data: {
-                stock: {
-                  increment: item.quantity
-                },
-                stickerStock: {
-                  increment: item.quantity
+
+            if (variant?.blankGarmentId) {
+              await tx.blankGarment.update({
+                where: { id: variant.blankGarmentId },
+                data: { stock: { increment: item.quantity } }
+              })
+              await tx.product.update({
+                where: { id: item.productId },
+                data: {
+                  stock: { increment: item.quantity },
+                  stickerStock: { increment: item.quantity }
                 }
-              }
-            })
+              })
+            } else {
+              await tx.productVariant.update({
+                where: { id: item.variantId },
+                data: { stock: { increment: item.quantity } }
+              })
+              await tx.product.update({
+                where: { id: item.productId },
+                data: {
+                  stock: { increment: item.quantity },
+                  stickerStock: { increment: item.quantity }
+                }
+              })
+            }
           } else {
-            // Restore product stock and sticker stock
             await tx.product.update({
               where: { id: item.productId },
               data: {
-                stock: {
-                  increment: item.quantity
-                },
-                stickerStock: {
-                  increment: item.quantity
-                }
+                stock: { increment: item.quantity },
+                stickerStock: { increment: item.quantity }
               }
             })
           }
@@ -226,7 +265,7 @@ class InventoryService {
    */
   async getProductStock(productId: string): Promise<{
     productStock: number
-    variants: Array<{ id: string; sku: string; stock: number; attributes: any }>
+    variants: Array<{ id: string; sku: string; stock: number; attributes: any; blankGarmentId?: string | null }>
     totalVariantStock: number
   }> {
     try {
@@ -240,7 +279,11 @@ class InventoryService {
               sku: true,
               stock: true,
               attributes: true,
-              isActive: true
+              isActive: true,
+              blankGarmentId: true,
+              blankGarment: {
+                select: { stock: true }
+              }
             },
             where: { isActive: true }
           }
@@ -255,10 +298,12 @@ class InventoryService {
         }
       }
 
-      // Map variants stock directly from the variant stock
       const mappedVariants = product.variants.map(v => ({
-        ...v,
-        stock: v.stock
+        id: v.id,
+        sku: v.sku,
+        attributes: v.attributes,
+        blankGarmentId: v.blankGarmentId,
+        stock: v.blankGarmentId && v.blankGarment ? v.blankGarment.stock : v.stock
       }))
 
       const totalVariantStock = mappedVariants.reduce((sum, variant) => sum + variant.stock, 0)
@@ -279,30 +324,26 @@ class InventoryService {
   }
 
   /**
-   * Get low stock alerts (products/variants with stock below threshold)
+   * Get low stock alerts (products, unlinked variants, low-stock pools, and orphaned pools)
    */
   async getLowStockAlerts(threshold: number = 5): Promise<{
     products: Array<{ id: string; name: string; stock: number }>
     variants: Array<{ id: string; productId: string; sku: string; stock: number; attributes: any }>
+    pools: Array<{ id: string; name: string; garmentType: string; stock: number }>
+    orphanedPools: Array<{ id: string; name: string; garmentType: string; stock: number }>
   }> {
     try {
-      const [lowStockProducts, lowStockVariants] = await Promise.all([
-        // Products with low stock
+      const [lowStockProducts, lowStockVariants, lowStockPools, orphanedPools] = await Promise.all([
         prisma.product.findMany({
           where: {
             stock: { lte: threshold },
             isActive: true
           },
-          select: {
-            id: true,
-            name: true,
-            stock: true
-          }
+          select: { id: true, name: true, stock: true }
         }),
-        
-        // Variants with low stock
         prisma.productVariant.findMany({
           where: {
+            blankGarmentId: null,
             stock: { lte: threshold },
             isActive: true
           },
@@ -313,18 +354,39 @@ class InventoryService {
             stock: true,
             attributes: true
           }
+        }),
+        prisma.blankGarment.findMany({
+          where: {
+            stock: { lte: threshold },
+            isActive: true
+          },
+          select: { id: true, name: true, garmentType: true, stock: true }
+        }),
+        prisma.blankGarment.findMany({
+          where: {
+            stock: { gt: 0 },
+            isActive: true,
+            linkedVariants: {
+              none: { isActive: true }
+            }
+          },
+          select: { id: true, name: true, garmentType: true, stock: true }
         })
       ])
 
       return {
         products: lowStockProducts,
-        variants: lowStockVariants
+        variants: lowStockVariants,
+        pools: lowStockPools,
+        orphanedPools
       }
     } catch (error) {
       console.error('Error getting low stock alerts:', error)
       return {
         products: [],
-        variants: []
+        variants: [],
+        pools: [],
+        orphanedPools: []
       }
     }
   }

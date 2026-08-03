@@ -29,6 +29,55 @@ export class InventoryMonitor {
   }
 
   /**
+   * Process restock for a shared Garment Pool and fan out notifications to all linked designs
+   */
+  async processPoolRestock(blankGarmentId: string, newStock: number, previousStock: number = 0): Promise<{
+    success: boolean
+    backordersFulfilled: number
+    notificationsSent: number
+    message: string
+  }> {
+    try {
+      const linkedVariants = await this.prisma.productVariant.findMany({
+        where: { blankGarmentId, isActive: true },
+        select: { id: true, productId: true }
+      })
+
+      let totalFulfilled = 0
+      let totalNotifications = 0
+
+      for (const variant of linkedVariants) {
+        const result = await this.processInventoryUpdate({
+          productId: variant.productId,
+          variantId: variant.id,
+          previousStock,
+          newStock,
+          updateType: 'restock'
+        })
+        if (result.success) {
+          totalFulfilled += result.backordersFulfilled
+          totalNotifications += result.notificationsSent
+        }
+      }
+
+      return {
+        success: true,
+        backordersFulfilled: totalFulfilled,
+        notificationsSent: totalNotifications,
+        message: `Pool restock processed for ${linkedVariants.length} designs: ${totalFulfilled} backorders fulfilled, ${totalNotifications} notifications sent`
+      }
+    } catch (error) {
+      console.error('Error processing pool restock:', error)
+      return {
+        success: false,
+        backordersFulfilled: 0,
+        notificationsSent: 0,
+        message: 'Failed to process pool restock: ' + (error instanceof Error ? error.message : 'Unknown error')
+      }
+    }
+  }
+
+  /**
    * Process inventory update and trigger automatic fulfillment
    */
   async processInventoryUpdate(event: InventoryUpdateEvent): Promise<{

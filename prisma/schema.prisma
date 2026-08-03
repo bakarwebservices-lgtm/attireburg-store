@@ -66,10 +66,49 @@ model ProductVariant {
   waitlistSubscriptions WaitlistSubscription[]
   restockSchedules RestockSchedule[]
 
+  blankGarmentId String?
+  blankGarment   BlankGarment? @relation(fields: [blankGarmentId], references: [id])
+
   @@index([productId])
   @@index([sku])
   @@index([isActive])
+  @@index([blankGarmentId])
 }
+
+model BlankGarment {
+  id           String   @id @default(cuid())
+  name         String
+  garmentType  String
+  attributes   Json
+  canonicalKey String   @unique
+  stock        Int      @default(0)
+  notes        String?  @db.Text
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  linkedVariants   ProductVariant[]
+  poolReservations PoolReservation[]
+
+  @@index([garmentType])
+  @@index([isActive])
+}
+
+model PoolReservation {
+  id             String       @id @default(cuid())
+  blankGarmentId String
+  blankGarment   BlankGarment @relation(fields: [blankGarmentId], references: [id], onDelete: Cascade)
+  quantity       Int
+  checkoutId     String
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+
+  @@unique([checkoutId, blankGarmentId])
+  @@index([blankGarmentId])
+  @@index([expiresAt])
+  @@index([checkoutId])
+}
+
 
 model User {
   id        String   @id @default(cuid())

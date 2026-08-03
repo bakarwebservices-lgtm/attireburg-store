@@ -42,6 +42,12 @@ export async function GET(
               images: true,
               attributes: true,
               isActive: true,
+              blankGarmentId: true,
+              blankGarment: {
+                select: {
+                  stock: true
+                }
+              }
             },
             orderBy: {
               createdAt: 'asc'
@@ -56,13 +62,33 @@ export async function GET(
           ? product.reviews.reduce((sum: number, review: any) => sum + review.rating, 0) / product.reviews.length
           : 0
 
-        // Compute live stock if product has variants
-        const liveStock = product.hasVariants && product.variants && product.variants.length > 0
-          ? product.variants.reduce((sum: number, v: any) => sum + v.stock, 0)
-          : product.stock
+        // Map variants with effective pool stock if linked
+        const mappedVariants = (product.variants || []).map((v: any) => ({
+          ...v,
+          stock: v.blankGarmentId && v.blankGarment ? v.blankGarment.stock : v.stock
+        }))
+
+        // Compute live stock (deduping pools to avoid double-counting)
+        const poolIdsSeen = new Set<string>()
+        let liveStock = 0
+        if (product.hasVariants && mappedVariants.length > 0) {
+          for (const v of mappedVariants) {
+            if (v.blankGarmentId) {
+              if (!poolIdsSeen.has(v.blankGarmentId)) {
+                poolIdsSeen.add(v.blankGarmentId)
+                liveStock += v.stock
+              }
+            } else {
+              liveStock += v.stock
+            }
+          }
+        } else {
+          liveStock = product.stock
+        }
 
         product = {
           ...product,
+          variants: mappedVariants,
           stock: liveStock,
           avgRating: Math.round(avgRating * 10) / 10,
           reviewCount: product.reviews.length,

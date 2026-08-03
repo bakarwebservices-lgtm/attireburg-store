@@ -101,25 +101,10 @@ export async function PATCH(request: NextRequest) {
         quantity: item.quantity
       }))
 
-      await prisma.$transaction(async (tx) => {
-        for (const item of inventoryItems) {
-          if (item.variantId) {
-            await tx.productVariant.update({
-              where: { id: item.variantId },
-              data: { stock: { decrement: item.quantity } }
-            })
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { decrement: item.quantity } }
-            })
-          } else {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { decrement: item.quantity } }
-            })
-          }
-        }
-      })
+      const reserveResult = await inventoryService.reserveInventory(inventoryItems)
+      if (!reserveResult.success) {
+        return NextResponse.json({ error: reserveResult.errors.join(', ') || 'Failed to re-reserve inventory' }, { status: 400 })
+      }
     }
 
     const order = await prisma.order.update({

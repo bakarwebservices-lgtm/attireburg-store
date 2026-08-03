@@ -78,7 +78,11 @@ class VariantAggregationService {
               attributes: true,
               price: true,
               stock: true,
-              isActive: true
+              isActive: true,
+              blankGarmentId: true,
+              blankGarment: {
+                select: { stock: true }
+              }
             }
           }
         }
@@ -91,6 +95,7 @@ class VariantAggregationService {
       const defaultPrice = product.price
       const variants = product.variants.map(v => ({
         ...v,
+        stock: v.blankGarmentId && v.blankGarment ? v.blankGarment.stock : v.stock,
         price: v.price !== null && v.price !== undefined ? v.price : defaultPrice
       }))
       
@@ -99,7 +104,20 @@ class VariantAggregationService {
       const outOfStockVariants = variants.filter(v => v.stock === 0)
       const lowStockVariants = variants.filter(v => v.stock > 0 && v.stock <= 5)
 
-      const totalInventory = variants.reduce((sum, v) => sum + v.stock, 0)
+      // Calculate unique pool stocks + unlinked variant stocks to avoid double-counting
+      const poolIdsSeen = new Set<string>()
+      let totalInventory = 0
+      for (const v of variants) {
+        if (v.blankGarmentId) {
+          if (!poolIdsSeen.has(v.blankGarmentId)) {
+            poolIdsSeen.add(v.blankGarmentId)
+            totalInventory += v.stock
+          }
+        } else {
+          totalInventory += v.stock
+        }
+      }
+
       const prices = variants.map(v => v.price)
       const averagePrice = prices.length > 0 ? prices.reduce((sum, p) => sum + p, 0) / prices.length : 0
       const minPrice = prices.length > 0 ? Math.min(...prices) : 0
@@ -117,7 +135,14 @@ class VariantAggregationService {
         maxPrice,
         outOfStockVariants: outOfStockVariants.length,
         lowStockVariants: lowStockVariants.length,
-        variantDetails: variants
+        variantDetails: variants.map(v => ({
+          id: v.id,
+          sku: v.sku,
+          attributes: v.attributes,
+          price: v.price,
+          stock: v.stock,
+          isActive: v.isActive
+        }))
       }
     } catch (error) {
       console.error('Error getting product variant summary:', error)
@@ -130,7 +155,7 @@ class VariantAggregationService {
    */
   async getVariantPerformanceMetrics(): Promise<VariantPerformanceMetrics> {
     try {
-      const [products, variants] = await Promise.all([
+      const [products, variants, pools] = await Promise.all([
         prisma.product.findMany({
           where: { isActive: true },
           select: { id: true }
@@ -140,8 +165,15 @@ class VariantAggregationService {
           include: {
             product: {
               select: { name: true, price: true }
+            },
+            blankGarment: {
+              select: { stock: true }
             }
           }
+        }),
+        prisma.blankGarment.findMany({
+          where: { isActive: true },
+          select: { id: true, stock: true }
         })
       ])
 
@@ -151,14 +183,27 @@ class VariantAggregationService {
 
       const mappedVariants = variants.map(v => ({
         ...v,
+        stock: v.blankGarmentId && v.blankGarment ? v.blankGarment.stock : v.stock,
         price: v.price !== null && v.price !== undefined ? v.price : v.product.price
       }))
 
-      const totalInventoryValue = mappedVariants.reduce((sum, v) => sum + (v.price * v.stock), 0)
+      // Inventory value = unique pool stock value + unlinked variants inventory value
+      let totalInventoryValue = 0
+      const poolsCounted = new Set<string>()
+      for (const v of mappedVariants) {
+        if (v.blankGarmentId) {
+          if (!poolsCounted.has(v.blankGarmentId)) {
+            poolsCounted.add(v.blankGarmentId)
+            totalInventoryValue += (v.price * v.stock)
+          }
+        } else {
+          totalInventoryValue += (v.price * v.stock)
+        }
+      }
+
       const outOfStockCount = mappedVariants.filter(v => v.stock === 0).length
       const lowStockCount = mappedVariants.filter(v => v.stock > 0 && v.stock <= 5).length
 
-      // Get top performing variants (by stock level as a proxy for sales)
       const topPerformingVariants = mappedVariants
         .sort((a, b) => b.stock - a.stock)
         .slice(0, 10)
@@ -210,17 +255,30 @@ class VariantAggregationService {
               id: true,
               sku: true,
               attributes: true,
-              stock: true
+              stock: true,
+              blankGarmentId: true,
+              blankGarment: {
+                select: { stock: true }
+              }
             }
           }
         }
       })
 
+      // Fetch all active pool reservations grouped by pool
+      const activeReservations = await prisma.poolReservation.groupBy({
+        by: ['blankGarmentId'],
+        where: { expiresAt: { gt: new Date() } },
+        _sum: { quantity: true }
+      })
+      const reservationMap = Object.fromEntries(activeReservations.map(r => [r.blankGarmentId, r._sum.quantity || 0]))
+
       return products.map(product => {
         const variants = product.variants.map(variant => {
-          const reservedStock = 0 // TODO: Calculate from pending orders
-          const availableStock = Math.max(0, variant.stock - reservedStock)
-          const reorderLevel = 5 // Default reorder level
+          const rawStock = variant.blankGarmentId && variant.blankGarment ? variant.blankGarment.stock : variant.stock
+          const reservedStock = variant.blankGarmentId ? (reservationMap[variant.blankGarmentId] || 0) : 0
+          const availableStock = Math.max(0, rawStock - reservedStock)
+          const reorderLevel = 5
           
           let status: 'in_stock' | 'low_stock' | 'out_of_stock'
           if (availableStock === 0) {
@@ -235,7 +293,7 @@ class VariantAggregationService {
             id: variant.id,
             sku: variant.sku,
             attributes: variant.attributes,
-            stock: variant.stock,
+            stock: rawStock,
             reservedStock,
             availableStock,
             reorderLevel,
@@ -298,21 +356,38 @@ class VariantAggregationService {
   }
 
   /**
-   * Calculate total inventory across all variants for a product
+   * Calculate total inventory across all variants for a product (deduped per pool)
    */
   async calculateTotalInventory(productId: string): Promise<number> {
     try {
-      const result = await prisma.productVariant.aggregate({
+      const variants = await prisma.productVariant.findMany({
         where: {
           productId,
           isActive: true
         },
-        _sum: {
-          stock: true
+        select: {
+          stock: true,
+          blankGarmentId: true,
+          blankGarment: {
+            select: { stock: true }
+          }
         }
       })
 
-      return result._sum.stock || 0
+      const poolsSeen = new Set<string>()
+      let total = 0
+      for (const v of variants) {
+        if (v.blankGarmentId) {
+          if (!poolsSeen.has(v.blankGarmentId)) {
+            poolsSeen.add(v.blankGarmentId)
+            total += (v.blankGarment?.stock || 0)
+          }
+        } else {
+          total += v.stock
+        }
+      }
+
+      return total
     } catch (error) {
       console.error('Error calculating total inventory:', error)
       return 0
@@ -320,7 +395,7 @@ class VariantAggregationService {
   }
 
   /**
-   * Get low stock alerts for variants
+   * Get low stock alerts for variants (checking pool stock if linked)
    */
   async getLowStockVariants(threshold: number = 5): Promise<Array<{
     id: string
@@ -334,11 +409,7 @@ class VariantAggregationService {
     try {
       const variants = await prisma.productVariant.findMany({
         where: {
-          isActive: true,
-          stock: {
-            lte: threshold,
-            gt: 0
-          }
+          isActive: true
         },
         include: {
           product: {
@@ -346,19 +417,30 @@ class VariantAggregationService {
               id: true,
               name: true
             }
+          },
+          blankGarment: {
+            select: { stock: true }
           }
         }
       })
 
-      return variants.map(variant => ({
-        id: variant.id,
-        sku: variant.sku,
-        productId: variant.product.id,
-        productName: variant.product.name,
-        attributes: variant.attributes,
-        stock: variant.stock,
-        threshold
-      }))
+      const lowStockVariants = []
+      for (const variant of variants) {
+        const stock = variant.blankGarmentId && variant.blankGarment ? variant.blankGarment.stock : variant.stock
+        if (stock > 0 && stock <= threshold) {
+          lowStockVariants.push({
+            id: variant.id,
+            sku: variant.sku,
+            productId: variant.product.id,
+            productName: variant.product.name,
+            attributes: variant.attributes,
+            stock,
+            threshold
+          })
+        }
+      }
+
+      return lowStockVariants
     } catch (error) {
       console.error('Error getting low stock variants:', error)
       return []

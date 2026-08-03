@@ -76,23 +76,42 @@ export async function GET(request: NextRequest) {
             },
             variants: {
               where: { isActive: true },
-              select: { stock: true }
+              select: {
+                stock: true,
+                blankGarmentId: true,
+                blankGarment: {
+                  select: { stock: true }
+                }
+              }
             }
           }
         }),
         prisma.product.count({ where })
       ])
 
-      // Calculate average ratings and live stock
+      // Calculate average ratings and live stock (deduped per pool)
       products = dbProducts.map(product => {
         const avgRating = product.reviews.length > 0
           ? product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length
           : 0
         
-        // Compute live stock if product has variants
-        const liveStock = product.hasVariants && product.variants && product.variants.length > 0
-          ? product.variants.reduce((sum: number, v: any) => sum + v.stock, 0)
-          : product.stock
+        let liveStock = 0
+        if (product.hasVariants && product.variants && product.variants.length > 0) {
+          const poolsSeen = new Set<string>()
+          for (const v of product.variants as any[]) {
+            const effectiveStock = v.blankGarmentId && v.blankGarment ? v.blankGarment.stock : v.stock
+            if (v.blankGarmentId) {
+              if (!poolsSeen.has(v.blankGarmentId)) {
+                poolsSeen.add(v.blankGarmentId)
+                liveStock += effectiveStock
+              }
+            } else {
+              liveStock += effectiveStock
+            }
+          }
+        } else {
+          liveStock = product.stock
+        }
 
         return {
           ...product,

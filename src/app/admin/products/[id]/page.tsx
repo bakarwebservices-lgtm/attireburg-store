@@ -945,20 +945,31 @@ export default function EditProduct() {
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 🏪 Lagerbestand *
                               </label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={variant.stock}
-                                onChange={(e) => updateVariant(index, 'stock', parseInt(e.target.value) || 0)}
-                                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent ${
-                                  variant.stock <= 5 ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                                }`}
-                                placeholder="Anzahl verfügbar"
-                              />
-                              {variant.stock <= 5 && (
-                                <p className="text-xs text-red-600 mt-1">
-                                  ⚠️ Niedriger Lagerbestand
-                                </p>
+                              {(variant as any).blankGarmentId ? (
+                                <div className="space-y-1">
+                                  <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs font-semibold text-blue-900 flex items-center justify-between">
+                                    <span>🔗 Geteilter Pool ({variant.stock} Stk)</span>
+                                  </div>
+                                  <p className="text-xs text-blue-600">Lager wird über den Garment Pool verwaltet.</p>
+                                </div>
+                              ) : (
+                                <>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={variant.stock}
+                                    onChange={(e) => updateVariant(index, 'stock', parseInt(e.target.value) || 0)}
+                                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent ${
+                                      variant.stock <= 5 ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                    }`}
+                                    placeholder="Anzahl verfügbar"
+                                  />
+                                  {variant.stock <= 5 && (
+                                    <p className="text-xs text-red-600 mt-1">
+                                      ⚠️ Niedriger Lagerbestand
+                                    </p>
+                                  )}
+                                </>
                               )}
                             </div>
                           </div>

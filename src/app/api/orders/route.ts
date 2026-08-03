@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       couponCode,
       discountAmount,
       guestEmail,
+      checkoutId,
     } = await request.json()
 
     // Validate required fields
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
 
       if (inventoryItems.length > 0) {
         const startStockCheck = Date.now()
-        const stockInfo = await inventoryService.checkStock(inventoryItems)
+        const stockInfo = await inventoryService.checkStock(inventoryItems, checkoutId)
         console.log(`[PERF] inventoryService.checkStock took: ${Date.now() - startStockCheck}ms`)
         const unavailable = stockInfo.filter(s => !s.available)
         if (unavailable.length > 0) {
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
             const startVarFind = Date.now()
             const variant = await tx.productVariant.findUnique({
               where: { id: item.variantId },
-              select: { stock: true, isActive: true }
+              select: { stock: true, isActive: true, blankGarmentId: true }
             })
             console.log(`[PERF] tx.productVariant.findUnique query took: ${Date.now() - startVarFind}ms`)
 
@@ -184,26 +185,61 @@ export async function POST(request: NextRequest) {
             })
             console.log(`[PERF] tx.product.findUnique query took: ${Date.now() - startProdFind}ms`)
 
-            const combinedStock = variant?.stock || 0
-            if (!variant?.isActive || !product?.isActive || combinedStock < item.quantity) {
-              throw new Error(`INSUFFICIENT_STOCK:${item.productId}:${combinedStock}`)
-            }
-            const startVarUpdate = Date.now()
-            await tx.productVariant.update({
-              where: { id: item.variantId },
-              data: { stock: { decrement: item.quantity } }
-            })
-            console.log(`[PERF] tx.productVariant.update query took: ${Date.now() - startVarUpdate}ms`)
+            if (variant?.blankGarmentId) {
+              const pool = await tx.blankGarment.findUnique({
+                where: { id: variant.blankGarmentId },
+                select: { stock: true, isActive: true }
+              })
+              const activeReservations = await tx.poolReservation.aggregate({
+                where: {
+                  blankGarmentId: variant.blankGarmentId,
+                  expiresAt: { gt: new Date() },
+                  ...(checkoutId ? { checkoutId: { not: checkoutId } } : {})
+                },
+                _sum: { quantity: true }
+              })
+              const availableStock = (pool?.stock || 0) - (activeReservations._sum.quantity || 0)
 
-            const startProdUpdate = Date.now()
-            await tx.product.update({
-              where: { id: item.productId },
-              data: {
-                stock: { decrement: item.quantity },
-                stickerStock: { decrement: item.quantity }
+              if (!variant?.isActive || !product?.isActive || !pool?.isActive || availableStock < item.quantity) {
+                throw new Error(`INSUFFICIENT_STOCK:${item.productId}:${availableStock}`)
               }
-            })
-            console.log(`[PERF] tx.product.update query took: ${Date.now() - startProdUpdate}ms`)
+
+              await tx.blankGarment.update({
+                where: { id: variant.blankGarmentId },
+                data: { stock: { decrement: item.quantity } }
+              })
+
+              if (checkoutId) {
+                await tx.poolReservation.deleteMany({
+                  where: { checkoutId, blankGarmentId: variant.blankGarmentId }
+                })
+              }
+
+              await tx.product.update({
+                where: { id: item.productId },
+                data: {
+                  stock: { decrement: item.quantity },
+                  stickerStock: { decrement: item.quantity }
+                }
+              })
+            } else {
+              const combinedStock = variant?.stock || 0
+              if (!variant?.isActive || !product?.isActive || combinedStock < item.quantity) {
+                throw new Error(`INSUFFICIENT_STOCK:${item.productId}:${combinedStock}`)
+              }
+              await tx.productVariant.update({
+                where: { id: item.variantId },
+                data: { stock: { decrement: item.quantity } }
+              })
+
+              await tx.product.update({
+                where: { id: item.productId },
+                data: {
+                  stock: { decrement: item.quantity },
+                  stickerStock: { decrement: item.quantity }
+                }
+              })
+            }
           } else {
             const startProdFind = Date.now()
             const product = await tx.product.findUnique({

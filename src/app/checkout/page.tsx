@@ -94,6 +94,7 @@ function CheckoutPage() {
 
   const [hasMounted, setHasMounted] = useState(false)
   const [isClientDemo, setIsClientDemo] = useState(false)
+  const [checkoutId, setCheckoutId] = useState<string>('')
 
   useEffect(() => {
     setHasMounted(true)
@@ -116,6 +117,35 @@ function CheckoutPage() {
       }
     }
   }, [])
+
+  // Manage stable checkoutId for guest/auth pool reservations
+  useEffect(() => {
+    if (!hasMounted) return
+    let id = user?.id
+    if (!id) {
+      id = localStorage.getItem('attireburg_checkout_id') || ''
+      if (!id) {
+        id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+        localStorage.setItem('attireburg_checkout_id', id)
+      }
+    }
+    setCheckoutId(id)
+
+    if (items && items.length > 0 && id) {
+      fetch('/api/pool-reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          checkoutId: id,
+          items: items.map(item => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity
+          }))
+        })
+      }).catch(err => console.error('Failed to register pool reservation:', err))
+    }
+  }, [hasMounted, user, items])
 
   // Load site settings
   useEffect(() => {
@@ -277,6 +307,7 @@ function CheckoutPage() {
                     couponCode: curState.appliedCoupon?.code || null,
                     discountAmount: curState.appliedCoupon?.discountAmount || 0,
                     guestEmail: !curState.user ? (curState.shippingAddress.email || '') : undefined,
+                    checkoutId: checkoutId || localStorage.getItem('attireburg_checkout_id') || undefined,
                   }
 
                   isOutOfStockRef.current = false
@@ -578,6 +609,7 @@ function CheckoutPage() {
         couponCode: appliedCoupon?.code || null,
         discountAmount: appliedCoupon?.discountAmount || 0,
         guestEmail: !user ? (shippingAddress.email || '') : undefined,
+        checkoutId: checkoutId || localStorage.getItem('attireburg_checkout_id') || undefined,
       }
 
       // Create order first
