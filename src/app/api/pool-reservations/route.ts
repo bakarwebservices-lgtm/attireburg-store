@@ -12,6 +12,11 @@ export async function POST(request: NextRequest) {
     const reservations = []
     const errors: string[] = []
 
+    // Lazy cleanup expired holds
+    prisma.poolReservation.deleteMany({
+      where: { expiresAt: { lt: new Date() } }
+    }).catch(() => {})
+
     for (const item of items) {
       if (!item.variantId || !item.quantity) continue
 
