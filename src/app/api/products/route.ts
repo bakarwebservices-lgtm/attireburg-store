@@ -322,7 +322,8 @@ export async function POST(request: NextRequest) {
         stock: parseInt(variant.stock) || 0,
         images: variant.images || [],
         attributes: variant.attributes || {},
-        isActive: variant.isActive !== undefined ? variant.isActive : true
+        isActive: variant.isActive !== undefined ? variant.isActive : true,
+        blankGarmentId: variant.blankGarmentId || null
       }))
       
       await prisma.productVariant.createMany({

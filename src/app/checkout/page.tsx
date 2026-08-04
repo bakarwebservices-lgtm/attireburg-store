@@ -95,6 +95,7 @@ function CheckoutPage() {
   const [hasMounted, setHasMounted] = useState(false)
   const [isClientDemo, setIsClientDemo] = useState(false)
   const [checkoutId, setCheckoutId] = useState<string>('')
+  const orderSubmittedRef = useRef(false)
 
   useEffect(() => {
     setHasMounted(true)
@@ -118,7 +119,7 @@ function CheckoutPage() {
     }
   }, [])
 
-  // Manage stable checkoutId for guest/auth pool reservations
+  // Manage stable checkoutId for guest/auth pool reservations & release hold on leave/abandon
   useEffect(() => {
     if (!hasMounted) return
     let id = user?.id
@@ -144,6 +145,29 @@ function CheckoutPage() {
           }))
         })
       }).catch(err => console.error('Failed to register pool reservation:', err))
+    }
+
+    const handleReleaseReservation = () => {
+      if (!orderSubmittedRef.current && id) {
+        if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+          const blob = new Blob([JSON.stringify({ checkoutId: id })], { type: 'application/json' })
+          navigator.sendBeacon('/api/pool-reservations', blob)
+        }
+      }
+    }
+
+    window.addEventListener('pagehide', handleReleaseReservation)
+
+    return () => {
+      window.removeEventListener('pagehide', handleReleaseReservation)
+      if (!orderSubmittedRef.current && id) {
+        fetch('/api/pool-reservations', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checkoutId: id }),
+          keepalive: true
+        }).catch(() => {})
+      }
     }
   }, [hasMounted, user, items])
 
@@ -391,6 +415,7 @@ function CheckoutPage() {
 
                     const captureResult = await captureResponse.json()
                     if (captureResponse.ok && captureResult.success) {
+                      orderSubmittedRef.current = true
                       clearCart()
                       localStorage.removeItem('pending_order_id')
                       localStorage.removeItem('paypal_order_id')
@@ -633,6 +658,9 @@ function CheckoutPage() {
         setErrors({ general: orderResult.error || 'Fehler beim Aufgeben der Bestellung' })
         return
       }
+
+      // Mark order as submitted so cleanup doesn't release hold on navigate away
+      orderSubmittedRef.current = true
 
       // Handle different payment methods
       if (paymentMethod === 'paypal') {

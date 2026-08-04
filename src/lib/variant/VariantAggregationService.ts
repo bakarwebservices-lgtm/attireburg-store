@@ -301,9 +301,25 @@ class VariantAggregationService {
           }
         })
 
-        const totalStock = variants.reduce((sum, v) => sum + v.stock, 0)
-        const totalReserved = variants.reduce((sum, v) => sum + v.reservedStock, 0)
-        const totalAvailable = variants.reduce((sum, v) => sum + v.availableStock, 0)
+        const poolsSeen = new Set<string>()
+        let totalStock = 0
+        let totalReserved = 0
+        let totalAvailable = 0
+        for (const variant of product.variants) {
+          const rawStock = variant.blankGarmentId && variant.blankGarment ? variant.blankGarment.stock : variant.stock
+          const resStock = variant.blankGarmentId ? (reservationMap[variant.blankGarmentId] || 0) : 0
+          if (variant.blankGarmentId) {
+            if (!poolsSeen.has(variant.blankGarmentId)) {
+              poolsSeen.add(variant.blankGarmentId)
+              totalStock += rawStock
+              totalReserved += resStock
+              totalAvailable += Math.max(0, rawStock - resStock)
+            }
+          } else {
+            totalStock += rawStock
+            totalAvailable += rawStock
+          }
+        }
 
         return {
           productId: product.id,

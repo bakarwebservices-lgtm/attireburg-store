@@ -18,6 +18,18 @@ interface LinkedVariant {
   }
 }
 
+interface UnlinkedVariant {
+  id: string
+  sku: string
+  stock: number
+  attributes: Record<string, string>
+  product: {
+    id: string
+    name: string
+    images: string[]
+  }
+}
+
 interface PoolDetail {
   id: string
   name: string
@@ -49,6 +61,13 @@ export default function PoolDetailPage() {
   const [notes, setNotes] = useState('')
   const [reason, setReason] = useState('')
 
+  // Modal for linking unlinked variants
+  const [showLinkModal, setShowLinkModal] = useState(false)
+  const [unlinkedVariants, setUnlinkedVariants] = useState<UnlinkedVariant[]>([])
+  const [variantSearch, setVariantSearch] = useState('')
+  const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([])
+  const [linkingLoading, setLinkingLoading] = useState(false)
+
   useEffect(() => {
     if (isLoading) return
     if (!user || !user.isAdmin) {
@@ -79,6 +98,53 @@ export default function PoolDetailPage() {
       router.push('/admin/pools')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchUnlinkedVariants = async () => {
+    try {
+      const session = getSession()
+      const res = await fetch('/api/admin/pools/unlinked', {
+        headers: { 'Authorization': `Bearer ${session?.token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setUnlinkedVariants(data.variants || [])
+      }
+    } catch (err) {
+      console.error('Error fetching unlinked variants:', err)
+    }
+  }
+
+  const handleOpenLinkModal = () => {
+    setSelectedVariantIds([])
+    setVariantSearch('')
+    fetchUnlinkedVariants()
+    setShowLinkModal(true)
+  }
+
+  const handleLinkSelectedVariants = async () => {
+    if (selectedVariantIds.length === 0) return
+    setLinkingLoading(true)
+    try {
+      const session = getSession()
+      const res = await fetch(`/api/admin/pools/${poolId}/link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.token}`
+        },
+        body: JSON.stringify({ variantIds: selectedVariantIds })
+      })
+
+      if (!res.ok) throw new Error('Fehler beim Verknüpfen')
+      alert(`${selectedVariantIds.length} Variante(n) erfolgreich mit diesem Pool verknüpft!`)
+      setShowLinkModal(false)
+      fetchPoolDetail()
+    } catch (err) {
+      alert(`Fehler: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`)
+    } finally {
+      setLinkingLoading(false)
     }
   }
 
@@ -164,6 +230,12 @@ export default function PoolDetailPage() {
       alert(`Fehler: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`)
     }
   }
+
+  const filteredUnlinked = unlinkedVariants.filter(v =>
+    v.product.name.toLowerCase().includes(variantSearch.toLowerCase()) ||
+    v.sku.toLowerCase().includes(variantSearch.toLowerCase()) ||
+    Object.values(v.attributes || {}).some(val => val.toLowerCase().includes(variantSearch.toLowerCase()))
+  )
 
   if (!user || !user.isAdmin) return null
   if (loading) {
@@ -289,17 +361,25 @@ export default function PoolDetailPage() {
           {/* Right Column: Linked Designs */}
           <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-900">
-                Verknüpfte Druck-Designs ({pool.linkedVariants.length})
-              </h2>
-              <span className="text-xs text-gray-500">
-                Alle folgenden Produkte teilen sich diesen physischen Bestand.
-              </span>
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">
+                  Verknüpfte Druck-Designs ({pool.linkedVariants.length})
+                </h2>
+                <span className="text-xs text-gray-500">
+                  Alle folgenden Produkte teilen sich diesen physischen Bestand.
+                </span>
+              </div>
+              <button
+                onClick={handleOpenLinkModal}
+                className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-medium hover:bg-gray-800 transition-colors flex items-center gap-1"
+              >
+                <span>➕</span> Varianten verknüpfen
+              </button>
             </div>
 
             {pool.linkedVariants.length === 0 ? (
               <div className="p-6 text-center text-gray-500 border rounded-lg bg-gray-50 text-sm">
-                Keine Varianten mit diesem Pool verknüpft. Verknüpfen Sie Varianten beim Erstellen oder Bearbeiten eines Produkts.
+                Keine Varianten mit diesem Pool verknüpft. Klicken Sie oben auf <strong>"➕ Varianten verknüpfen"</strong>, um vorhandene Produkt-Varianten zuzuweisen.
               </div>
             ) : (
               <div className="overflow-x-auto border rounded-lg">
@@ -339,6 +419,87 @@ export default function PoolDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Link Variants Modal */}
+      {showLinkModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-xl w-full p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">Unverknüpfte Varianten zu diesem Pool hinzufügen</h3>
+              <button onClick={() => setShowLinkModal(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+            </div>
+
+            <input
+              type="text"
+              placeholder="Variante oder Produkt suchen (Name, SKU, Farbe, Größe)..."
+              value={variantSearch}
+              onChange={e => setVariantSearch(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+
+            <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-200">
+              {filteredUnlinked.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 text-sm">
+                  Keine unverknüpften Varianten gefunden.
+                </div>
+              ) : (
+                filteredUnlinked.map(v => {
+                  const isSelected = selectedVariantIds.includes(v.id)
+                  return (
+                    <div
+                      key={v.id}
+                      onClick={() => {
+                        setSelectedVariantIds(prev =>
+                          isSelected ? prev.filter(id => id !== v.id) : [...prev, v.id]
+                        )
+                      }}
+                      className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${
+                        isSelected ? 'bg-blue-50 border-l-4 border-blue-600' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-medium text-sm text-gray-900">{v.product.name}</div>
+                        <div className="text-xs text-gray-500">
+                          SKU: <span className="font-mono">{v.sku}</span> • {Object.entries(v.attributes || {}).map(([k, val]) => `${k}: ${val}`).join(' • ')}
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}} // handled by parent div
+                        className="h-4 w-4 text-gray-900 rounded focus:ring-gray-900"
+                      />
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs text-gray-500">
+                {selectedVariantIds.length} Variante(n) ausgewählt
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLinkModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLinkSelectedVariants}
+                  disabled={selectedVariantIds.length === 0 || linkingLoading}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {linkingLoading ? 'Verknüpfe...' : 'Ausgewählte Verknüpfen'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 }

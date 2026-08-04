@@ -231,7 +231,8 @@ export async function PUT(
           stock: variantStock,
           images: variant.images || [],
           attributes: variant.attributes || {},
-          isActive: variant.isActive !== undefined ? variant.isActive : true
+          isActive: variant.isActive !== undefined ? variant.isActive : true,
+          blankGarmentId: variant.blankGarmentId || null
         }
 
         if (existing) {
@@ -242,8 +243,9 @@ export async function PUT(
           const isActiveChanged = variantData.isActive !== existing.isActive
           const imagesChanged = JSON.stringify(variantData.images) !== JSON.stringify(existing.images || [])
           const attributesChanged = JSON.stringify(variantData.attributes) !== JSON.stringify(existing.attributes || {})
+          const blankGarmentIdChanged = (variantData.blankGarmentId || null) !== (existing.blankGarmentId || null)
 
-          if (priceChanged || salePriceChanged || stockChanged || isActiveChanged || imagesChanged || attributesChanged) {
+          if (priceChanged || salePriceChanged || stockChanged || isActiveChanged || imagesChanged || attributesChanged || blankGarmentIdChanged) {
             console.log(`Updating modified variant: ${variant.sku}`)
             await prisma.productVariant.update({
               where: { id: existing.id },

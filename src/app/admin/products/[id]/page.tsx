@@ -74,6 +74,48 @@ export default function EditProduct() {
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [generatingVariants, setGeneratingVariants] = useState(false)
 
+  // Garment Pool Modal state
+  const [pools, setPools] = useState<any[]>([])
+  const [showPoolModal, setShowPoolModal] = useState(false)
+  const [targetVariantIndex, setTargetVariantIndex] = useState<number | null>(null)
+  const [poolSearch, setPoolSearch] = useState('')
+
+  const fetchPoolsList = async () => {
+    try {
+      const session = getSession()
+      const res = await fetch('/api/admin/pools', {
+        headers: { 'Authorization': `Bearer ${session?.token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setPools(data.pools || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch pools:', err)
+    }
+  }
+
+  const handleOpenPoolModalForVariant = (index: number) => {
+    setTargetVariantIndex(index)
+    fetchPoolsList()
+    setShowPoolModal(true)
+  }
+
+  const handleSelectPoolForVariant = (poolId: string | null) => {
+    if (targetVariantIndex === null) return
+    const pool = pools.find(p => p.id === poolId)
+    setVariants(prev => prev.map((v, idx) => {
+      if (idx !== targetVariantIndex) return v
+      return {
+        ...v,
+        blankGarmentId: poolId || undefined,
+        stock: poolId && pool ? pool.stock : v.stock
+      } as any
+    }))
+    setShowPoolModal(false)
+    setTargetVariantIndex(null)
+  }
+
   useEffect(() => {
     if (isLoading) return
     if (!user || !user.isAdmin) {
@@ -360,26 +402,26 @@ export default function EditProduct() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
               Produkt bearbeiten
             </h1>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-600 mt-1 text-sm">
               {product.name}
             </p>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => router.push('/admin/products')}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
             >
               Abbrechen
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              className="flex-1 sm:flex-none px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 text-sm font-medium"
             >
               {saving ? 'Speichern...' : 'Änderungen speichern'}
             </button>
@@ -387,9 +429,9 @@ export default function EditProduct() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm">
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
+            <nav className="flex space-x-2 sm:space-x-8 px-4 sm:px-6 overflow-x-auto scrollbar-none">
               {[
                 { id: 'general', label: 'Allgemein', icon: '📝' },
                 { id: 'images', label: 'Bilder', icon: '🖼️' },
@@ -401,20 +443,20 @@ export default function EditProduct() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  className={`py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap shrink-0 flex items-center ${
                     activeTab === tab.id
                       ? 'border-primary-500 text-primary-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  <span className="mr-2">{tab.icon}</span>
+                  <span className="mr-1.5">{tab.icon}</span>
                   {tab.label}
                 </button>
               ))}
             </nav>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {/* General Tab */}
             {activeTab === 'general' && (
               <div className="space-y-6">
@@ -943,17 +985,24 @@ export default function EditProduct() {
                             
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
-                                🏪 Lagerbestand *
+                                🏪 Lagerbestand & Pool *
                               </label>
                               {(variant as any).blankGarmentId ? (
                                 <div className="space-y-1">
                                   <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs font-semibold text-blue-900 flex items-center justify-between">
                                     <span>🔗 Geteilter Pool ({variant.stock} Stk)</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenPoolModalForVariant(index)}
+                                      className="text-xs text-blue-700 hover:underline font-bold"
+                                    >
+                                      Ändern
+                                    </button>
                                   </div>
                                   <p className="text-xs text-blue-600">Lager wird über den Garment Pool verwaltet.</p>
                                 </div>
                               ) : (
-                                <>
+                                <div className="space-y-2">
                                   <input
                                     type="number"
                                     min="0"
@@ -964,23 +1013,25 @@ export default function EditProduct() {
                                     }`}
                                     placeholder="Anzahl verfügbar"
                                   />
-                                  {variant.stock <= 5 && (
-                                    <p className="text-xs text-red-600 mt-1">
-                                      ⚠️ Niedriger Lagerbestand
-                                    </p>
-                                  )}
-                                </>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPoolModalForVariant(index)}
+                                    className="w-full text-xs py-1.5 px-2 bg-gray-100 border border-gray-300 hover:bg-gray-200 text-gray-800 rounded font-medium flex items-center justify-center gap-1"
+                                  >
+                                    <span>🔗</span> Garment Pool Verknüpfen
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
 
                           {/* Inventory Summary */}
                           <div className="bg-gray-50 rounded-lg p-3">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs sm:text-sm">
+                              <span className="text-gray-600 font-medium">
                                 Variante: {Object.entries(variant.attributes).map(([k, v]) => `${k}: ${v}`).join(' • ')}
                               </span>
-                              <div className="flex items-center space-x-4">
+                              <div className="flex items-center gap-3 flex-wrap">
                                 <span className={`font-medium ${variant.stock > 10 ? 'text-green-600' : variant.stock > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
                                   {variant.stock > 10 ? '✅ Gut verfügbar' : variant.stock > 0 ? '⚠️ Wenig verfügbar' : '❌ Nicht verfügbar'}
                                 </span>
@@ -1063,6 +1114,71 @@ export default function EditProduct() {
             )}
           </div>
         </div>
+
+        {/* Pool Selection Modal */}
+        {showPoolModal && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Garment Pool Auswählen</h3>
+                <button onClick={() => setShowPoolModal(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+              </div>
+
+              <input
+                type="text"
+                placeholder="Pool suchen (z. B. T-Shirt Schwarz S)..."
+                value={poolSearch}
+                onChange={e => setPoolSearch(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+
+              <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-200">
+                <div
+                  onClick={() => handleSelectPoolForVariant(null)}
+                  className="p-3 hover:bg-gray-50 cursor-pointer flex items-center justify-between text-sm"
+                >
+                  <span className="font-semibold text-gray-700">❌ Kein Pool (Eigener Bestand)</span>
+                  <span className="text-xs text-gray-500">Separater Bestand</span>
+                </div>
+
+                {pools
+                  .filter(p =>
+                    p.name.toLowerCase().includes(poolSearch.toLowerCase()) ||
+                    p.garmentType.toLowerCase().includes(poolSearch.toLowerCase()) ||
+                    Object.values(p.attributes || {}).some(val => String(val).toLowerCase().includes(poolSearch.toLowerCase()))
+                  )
+                  .map(p => (
+                    <div
+                      key={p.id}
+                      onClick={() => handleSelectPoolForVariant(p.id)}
+                      className="p-3 hover:bg-blue-50 cursor-pointer flex items-center justify-between transition-colors"
+                    >
+                      <div>
+                        <div className="font-semibold text-sm text-gray-900">{p.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {Object.entries(p.attributes || {}).map(([k, v]) => `${k}: ${v}`).join(' • ')}
+                        </div>
+                      </div>
+                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded font-bold text-xs">
+                        {p.stock} Stk
+                      </span>
+                    </div>
+                  ))
+                }
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowPoolModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Schließen
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )
