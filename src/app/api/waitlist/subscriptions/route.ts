@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client'
 import { WaitlistService } from '@/lib/backorder'
 import { verifyToken } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 const prisma = new PrismaClient()
 const waitlistService = new WaitlistService(prisma)
 

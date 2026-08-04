@@ -4,6 +4,8 @@ import { sampleProducts, sampleReviews } from '@/lib/sampleData'
 import { verifyToken } from '@/lib/auth'
 import { InventoryMonitor } from '@/lib/backorder'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

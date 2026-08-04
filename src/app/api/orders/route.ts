@@ -5,6 +5,8 @@ import { inventoryService } from '@/lib/inventory'
 import { emailService } from '@/lib/email/EmailService'
 import { errorLogger } from '@/lib/logging/ErrorLogger'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     // Get auth token from header

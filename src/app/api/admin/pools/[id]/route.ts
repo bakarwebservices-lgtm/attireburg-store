@@ -4,6 +4,8 @@ import { verifyToken } from '@/lib/auth'
 import { computeCanonicalKey } from '@/lib/poolUtils'
 import { InventoryMonitor } from '@/lib/backorder'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

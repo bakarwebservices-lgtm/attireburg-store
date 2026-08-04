@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { WaitlistService } from '@/lib/backorder'
 
+export const dynamic = 'force-dynamic'
+
 const prisma = new PrismaClient()
 const waitlistService = new WaitlistService(prisma)
 

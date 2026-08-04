@@ -3,6 +3,8 @@ import { verifyToken } from '@/lib/auth'
 import { environmentService } from '@/lib/config/environment'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 interface ProductionCheck {
   name: string
   status: 'pass' | 'fail' | 'warning'
