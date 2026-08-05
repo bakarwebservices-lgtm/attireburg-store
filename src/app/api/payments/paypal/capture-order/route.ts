@@ -137,9 +137,19 @@ export async function POST(request: NextRequest) {
           } catch (emailError) {
             console.error('Failed to send order confirmation email:', emailError)
           }
+
+          try {
+            await emailService.sendAdminOrderAlert(emailData)
+          } catch (adminEmailError) {
+            console.error('Failed to send admin order alert email:', adminEmailError)
+          }
         } else {
           emailService.sendOrderConfirmation(emailData).catch((emailError) => {
             console.error('Failed to send order confirmation email in background:', emailError)
+          })
+
+          emailService.sendAdminOrderAlert(emailData).catch((adminEmailError) => {
+            console.error('Failed to send admin order alert email in background:', adminEmailError)
           })
         }
       }

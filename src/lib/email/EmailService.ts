@@ -468,6 +468,230 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
     })
   }
 
+  private generateAdminOrderAlertTemplate(data: OrderConfirmationData): EmailTemplate {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://attireburg.de'
+    const adminOrdersUrl = `${appUrl}/admin/orders`
+    
+    const itemsHtml = data.items.map(item => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #eee;">
+          <strong>${item.name}</strong>
+          ${item.size ? `<br><small>Größe: ${item.size}</small>` : ''}
+          ${item.color ? `<br><small>Farbe: ${item.color}</small>` : ''}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
+          ${new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(item.price * item.quantity)}
+        </td>
+      </tr>
+    `).join('')
+
+    const formattedTotal = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(data.totalAmount)
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>[NEUE BESTELLUNG] ${data.orderNumber}</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #111827; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .badge { background: #059669; color: white; padding: 4px 12px; border-radius: 9999px; font-size: 0.85em; font-weight: bold; text-transform: uppercase; display: inline-block; }
+          .content { padding: 20px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+          .order-card { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; border: 1px solid #e5e7eb; }
+          table { width: 100%; border-collapse: collapse; }
+          th { background: #f3f4f6; padding: 12px; text-align: left; font-size: 0.85em; text-transform: uppercase; color: #4b5563; }
+          .total { font-weight: bold; font-size: 1.2em; color: #111827; }
+          .cta-button { display: inline-block; background: #47131e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 15px; }
+          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 0.85em; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin: 0; font-size: 22px;">🛒 Neue Bestellung Eingegangen!</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Bestellnr: ${data.orderNumber}</p>
+          </div>
+          
+          <div class="content">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <span class="badge">Neue Bestellung</span>
+            </div>
+
+            <div class="order-card">
+              <h3 style="margin-top: 0; color: #111827;">Kundeninformationen</h3>
+              <p style="margin: 4px 0;"><strong>Name:</strong> ${data.customerName}</p>
+              <p style="margin: 4px 0;"><strong>E-Mail:</strong> <a href="mailto:${data.customerEmail}">${data.customerEmail}</a></p>
+              <p style="margin: 4px 0;"><strong>Zahlungsmethode:</strong> ${data.paymentMethod}</p>
+              
+              <h3 style="margin-top: 20px; color: #111827;">Lieferadresse</h3>
+              <p style="white-space: pre-line; margin: 4px 0; background: #f9fafb; padding: 10px; border-radius: 6px; border: 1px solid #f3f4f6;">${data.shippingAddress}</p>
+
+              <h3 style="margin-top: 20px; color: #111827;">Bestellte Artikel</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Artikel</th>
+                    <th style="text-align: center;">Menge</th>
+                    <th style="text-align: right;">Preis</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${itemsHtml}
+                  <tr class="total">
+                    <td colspan="2" style="padding: 12px; text-align: right;">Gesamtsumme:</td>
+                    <td style="padding: 12px; text-align: right; color: #47131e;">
+                      ${formattedTotal}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div style="text-align: center; margin-top: 25px;">
+                <a href="${adminOrdersUrl}" class="cta-button">Im Admin-Dashboard öffnen</a>
+              </div>
+            </div>
+
+            <p style="font-size: 0.85em; color: #6b7280; text-align: center; margin-top: 20px;">
+              Hinweis: Für den Zugriff auf das Admin-Dashboard ist eine Anmeldung als Administrator erforderlich.
+            </p>
+          </div>
+          
+          <div class="footer">
+            <p>Attireburg Store Administration System</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+
+    const text = `
+[NEUE BESTELLUNG EINGEGANGEN]
+
+Bestellnummer: ${data.orderNumber}
+Kunde: ${data.customerName} (${data.customerEmail})
+Zahlungsmethode: ${data.paymentMethod}
+Gesamtsumme: ${formattedTotal}
+
+Bestellte Artikel:
+${data.items.map(item => `- ${item.name} ${item.size ? `(${item.size})` : ''} x${item.quantity} - ${new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(item.price * item.quantity)}`).join('\n')}
+
+Lieferadresse:
+${data.shippingAddress}
+
+Bestellung im Admin-Dashboard verwalten:
+${adminOrdersUrl}
+    `
+
+    return {
+      subject: `🛒 [NEUE BESTELLUNG] ${data.orderNumber} - ${formattedTotal} (${data.paymentMethod})`,
+      html,
+      text,
+    }
+  }
+
+  async sendAdminOrderAlert(data: OrderConfirmationData): Promise<boolean> {
+    const ownerEmail = process.env.OWNER_EMAIL || 'tehami.k719@gmail.com'
+    const template = this.generateAdminOrderAlertTemplate(data)
+
+    // Generate invoice PDF attachment for admin copy
+    let pdfBuffer: Buffer | undefined
+    try {
+      let dbSettings = null
+      try {
+        dbSettings = await prisma.siteSettings.findUnique({ where: { id: 'default' } })
+      } catch (err) {
+        console.error('Failed to load settings in EmailService for admin alert:', err)
+      }
+
+      const settings = dbSettings || {
+        freeShippingThreshold: 50,
+        standardShippingCost: 4.99,
+        taxRate: 19
+      }
+
+      const vatRate = settings.taxRate
+      const divisor = 1 + (vatRate / 100)
+
+      const itemsGross = data.items.reduce((s, i) => s + i.price * i.quantity, 0)
+      const subtotalNet = itemsGross / divisor
+      const discountGross = data.discountAmount || 0
+      const discountNet = discountGross / divisor
+
+      const extraFees = data.totalAmount - (itemsGross - discountGross)
+      const grossTotal = data.totalAmount
+      const hasCodFee = data.paymentMethod.toLowerCase().includes('nachnahme') || data.paymentMethod.toLowerCase().includes('cod')
+      const codFeeVal = hasCodFee ? 2.50 : 0
+      const shippingGross = Math.max(0, extraFees - codFeeVal)
+      const shippingNet = shippingGross / divisor
+      
+      const taxableAmount = (grossTotal - codFeeVal) / divisor
+      const vatAmount = taxableAmount * (vatRate / 100)
+
+      const rawLines = data.shippingAddress.split('\n').map(l => l.trim()).filter(Boolean)
+      const addressLines = rawLines.slice(1)
+      
+      let street = addressLines[0] || ''
+      let postalCityLine = addressLines[1] || ''
+      let country = addressLines[2] || 'Deutschland'
+      if (addressLines.length >= 4) {
+        street = `${addressLines[0]}\n${addressLines[1]}`
+        postalCityLine = addressLines[2]
+        country = addressLines[3]
+      }
+
+      const postalCode = postalCityLine.split(' ')[0] || ''
+      const city = postalCityLine.split(' ').slice(1).join(' ') || ''
+
+      const invoiceData: InvoiceData = {
+        invoiceNumber: `AB-${new Date().getFullYear()}-${data.orderNumber.replace('ATB-', '')}`,
+        orderNumber: data.orderNumber,
+        invoiceDate: new Intl.DateTimeFormat('de-DE').format(new Date()),
+        customer: {
+          firstName: data.customerName.split(' ')[0] || data.customerName,
+          lastName: data.customerName.split(' ').slice(1).join(' ') || '',
+          street,
+          city,
+          postalCode,
+          country,
+          email: data.customerEmail,
+        },
+        items: data.items.map((item, i) => ({
+          pos: i + 1,
+          artikelNr: `100${String(1000000 + i).slice(1)}`,
+          description: `${item.name}${item.size ? ` [${item.size}]` : ''}${item.color ? ` [${item.color}]` : ''}`,
+          quantity: item.quantity,
+          unitPriceNet: item.price / divisor,
+          totalNet: (item.price * item.quantity) / divisor,
+        })),
+        subtotalNet,
+        discount: data.couponCode && data.discountAmount ? { code: data.couponCode, amount: discountNet } : undefined,
+        shippingNet: shippingNet > 0 ? shippingNet : 0,
+        taxableAmount,
+        vatRate,
+        vatAmount,
+        grossTotal,
+        paymentMethod: data.paymentMethod,
+        paymentDate: new Intl.DateTimeFormat('de-DE').format(new Date()),
+      }
+
+      const pdfElement = await createInvoicePDF(invoiceData)
+      pdfBuffer = await renderToBuffer(pdfElement as any)
+    } catch (pdfError) {
+      console.error('Admin alert PDF generation failed:', pdfError)
+    }
+
+    const attachments = pdfBuffer ? [{
+      filename: `Rechnung-${data.orderNumber}.pdf`,
+      content: pdfBuffer,
+      contentType: 'application/pdf',
+    }] : undefined
+
+    return await this.sendSMTPEmail(ownerEmail, template, { attachments })
+  }
+
   async sendRestockNotification(data: RestockNotificationData): Promise<boolean> {
     const template = this.generateRestockNotificationTemplate(data)
     return await this.sendEmail(data.customerEmail, template)
