@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { v2 as cloudinary } from 'cloudinary'
 import { verifyToken } from '@/lib/auth'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dp1vaoeb',
+  api_key: process.env.CLOUDINARY_API_KEY || '546568288193999',
+  api_secret: process.env.CLOUDINARY_API_SECRET || '8v441vRRl6vZYc4Q_-7IQo_FgS4',
+  secure: true,
+})
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
@@ -35,20 +42,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-
-    if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json({ error: 'Storage not configured (missing Supabase URL or Key)' }, { status: 500 })
-    }
-
-    // Clean URL to prevent malformed path issues (remove quotes, spaces, trailing slashes, /rest/v1, /storage/v1)
-    let cleanUrl = supabaseUrl.trim().replace(/^["']|["']$/g, '').replace(/\/$/, '')
-    cleanUrl = cleanUrl.replace(/\/rest\/v1\/?$/i, '').replace(/\/storage\/v1\/?$/i, '')
-
-    const cleanKey = supabaseKey.trim().replace(/^["']|["']$/g, '')
-    const supabase = createClient(cleanUrl, cleanKey)
-
     const formData = await request.formData()
     const file = formData.get('file') as File
 
@@ -78,41 +71,27 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // Derive extension from MIME type
-    const mimeToExt: Record<string, string> = {
-      'image/jpeg': 'jpg',
-      'image/png': 'png',
-      'image/webp': 'webp',
-      'image/gif': 'gif',
-      'image/avif': 'avif',
-    }
-    const ext = mimeToExt[normalizedType] ?? 'jpg'
-    const fileName = `products/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    console.log(`[Upload API] Uploading ${file.name} (${file.size} bytes) to Cloudinary...`)
 
-    console.log(`[Upload API] Uploading ${file.name} (${file.size} bytes, ${normalizedType}) -> ${fileName} at ${cleanUrl}`)
+    const result = await new Promise<{ secure_url: string; public_id: string }>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'products',
+          resource_type: 'auto',
+        },
+        (error, res) => {
+          if (error || !res) {
+            reject(error || new Error('Upload to Cloudinary failed'))
+          } else {
+            resolve({ secure_url: res.secure_url, public_id: res.public_id })
+          }
+        }
+      )
+      uploadStream.end(buffer)
+    })
 
-    const { data, error } = await supabase.storage
-      .from('product-images')
-      .upload(fileName, buffer, {
-        contentType: normalizedType,
-        upsert: true,
-      })
-
-    if (error) {
-      console.error('[Upload API Error]', error)
-      return NextResponse.json({ error: `Upload failed: ${error.message}` }, { status: 500 })
-    }
-
-    if (!data?.path) {
-      return NextResponse.json({ error: 'Upload succeeded but no path returned' }, { status: 500 })
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(data.path)
-
-    console.log(`[Upload API Success] ${fileName} -> ${publicUrl}`)
-    return NextResponse.json({ url: publicUrl })
+    console.log(`[Upload API Success] ${file.name} -> ${result.secure_url}`)
+    return NextResponse.json({ url: result.secure_url, public_id: result.public_id })
   } catch (error) {
     console.error('[Upload API Exception]', error)
     const errorMsg = error instanceof Error ? error.message : String(error)

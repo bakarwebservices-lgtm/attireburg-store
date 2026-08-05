@@ -14,6 +14,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: '*.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
     ],
   },
 
@@ -41,8 +45,8 @@ const nextConfig = {
           // - default-src 'self': only load resources from same origin
           // - script-src: allow self + Google Pay + Google Identity + inline scripts Next.js needs
           // - style-src: allow self + inline styles (needed by Next.js)
-          // - img-src: allow self, data URIs, Supabase, Unsplash, placeholder
-          // - connect-src: allow API calls to Google, PayPal, Supabase
+          // - img-src: allow self, data URIs, Supabase, Cloudinary, Unsplash, placeholder
+          // - connect-src: allow API calls to Google, PayPal, Supabase, Cloudinary
           // - frame-ancestors 'none': same as X-Frame-Options DENY
           {
             key: 'Content-Security-Policy',
@@ -51,8 +55,8 @@ const nextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pay.google.com https://accounts.google.com https://www.paypal.com https://www.sandbox.paypal.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://via.placeholder.com https://www.paypalobjects.com",
-              "connect-src 'self' https://*.supabase.co https://www.googleapis.com https://accounts.google.com https://api.paypal.com https://api.sandbox.paypal.com https://www.paypal.com",
+              "img-src 'self' data: blob: https://*.supabase.co https://res.cloudinary.com https://images.unsplash.com https://via.placeholder.com https://www.paypalobjects.com",
+              "connect-src 'self' https://*.supabase.co https://api.cloudinary.com https://res.cloudinary.com https://www.googleapis.com https://accounts.google.com https://api.paypal.com https://api.sandbox.paypal.com https://www.paypal.com",
               "frame-src https://www.paypal.com https://www.sandbox.paypal.com https://pay.google.com",
               "frame-ancestors 'none'",
             ].join('; '),

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { emailService } from '@/lib/email/EmailService'
-import { createClient } from '@supabase/supabase-js'
+import { v2 as cloudinary } from 'cloudinary'
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dp1vaoeb',
+  api_key: process.env.CLOUDINARY_API_KEY || '546568288193999',
+  api_secret: process.env.CLOUDINARY_API_SECRET || '8v441vRRl6vZYc4Q_-7IQo_FgS4',
+  secure: true,
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,40 +35,27 @@ export async function POST(request: NextRequest) {
       fileName = file.name
       fileType = file.type
 
-      // Upload to Supabase Storage if configured
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      try {
+        console.log(`Uploading customize attachment ${fileName} to Cloudinary...`)
+        const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: 'customization-requests',
+              resource_type: 'auto',
+            },
+            (err, res) => {
+              if (err || !res) reject(err || new Error('Upload to Cloudinary failed'))
+              else resolve({ secure_url: res.secure_url })
+            }
+          )
+          uploadStream.end(fileBuffer)
+        })
 
-      if (supabaseUrl && supabaseKey) {
-        try {
-          const cleanUrl = supabaseUrl.replace(/\/$/, '')
-          const supabase = createClient(cleanUrl, supabaseKey)
-          const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-          // Place in a dedicated "customization-requests" folder
-          const storagePath = `customization-requests/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
-
-          console.log(`Uploading customize attachment ${storagePath} to Supabase...`)
-          const { data, error } = await supabase.storage
-            .from('product-images')
-            .upload(storagePath, fileBuffer, {
-              contentType: file.type || 'application/octet-stream',
-              upsert: true
-            })
-
-          if (error) {
-            console.error('Supabase customize file upload error:', error.message)
-          } else if (data?.path) {
-            const { data: { publicUrl } } = supabase.storage
-              .from('product-images')
-              .getPublicUrl(data.path)
-
-            fileUrl = publicUrl
-            console.log('Customize file uploaded successfully:', fileUrl)
-          }
-        } catch (storageErr) {
-          console.error('Supabase storage upload failed:', storageErr)
-          // Fallback to sending mail without publicUrl, just the attachment
-        }
+        fileUrl = result.secure_url
+        console.log('Customize file uploaded successfully to Cloudinary:', fileUrl)
+      } catch (storageErr) {
+        console.error('Cloudinary customize storage upload failed:', storageErr)
+        // Fallback to sending mail without publicUrl, just the attachment
       }
     }
 

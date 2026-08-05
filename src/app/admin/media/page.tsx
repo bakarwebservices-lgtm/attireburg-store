@@ -136,7 +136,7 @@ export default function MediaLibrary() {
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">Mediathek</h2>
               <p className="text-gray-600 mt-1">
-                Alle in Supabase Storage hochgeladenen Produktbilder — {files.length} Dateien
+                Alle in Cloudinary Storage hochgeladenen Produktbilder — {files.length} Dateien
               </p>
             </div>
             <div className="flex gap-2">

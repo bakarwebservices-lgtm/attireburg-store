@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { v2 as cloudinary } from 'cloudinary'
 import { verifyToken } from '@/lib/auth'
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!.replace(/\/$/, '')
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
-  return createClient(url, key)
-}
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dp1vaoeb',
+  api_key: process.env.CLOUDINARY_API_KEY || '546568288193999',
+  api_secret: process.env.CLOUDINARY_API_SECRET || '8v441vRRl6vZYc4Q_-7IQo_FgS4',
+  secure: true,
+})
 
-// GET — list all files in the product-images bucket
+// GET — list all files in Cloudinary (default folder: products)
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -17,51 +18,33 @@ export async function GET(request: NextRequest) {
     const user = verifyToken(token)
     if (!user || !user.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const supabase = getSupabase()
     const { searchParams } = new URL(request.url)
     const folder = searchParams.get('folder') || 'products'
 
-    const { data, error } = await supabase.storage
-      .from('product-images')
-      .list(folder, { limit: 200, sortBy: { column: 'created_at', order: 'desc' } })
+    const response = await cloudinary.api.resources({
+      type: 'upload',
+      prefix: folder ? `${folder}/` : '',
+      max_results: 500,
+    })
 
-    if (error) {
-      console.error('Supabase list error:', error)
-      return NextResponse.json({ files: [] })
-    }
+    const files = (response.resources || []).map((r: any) => ({
+      id: r.public_id,
+      name: r.public_id.split('/').pop() || r.public_id,
+      path: r.public_id,
+      url: r.secure_url,
+      size: r.bytes || 0,
+      mimeType: `${r.resource_type}/${r.format || 'jpg'}`,
+      createdAt: r.created_at || new Date().toISOString(),
+    }))
 
-    const files = (data || [])
-      .filter(f => f.name !== '.emptyFolderPlaceholder')
-      .map(f => {
-        const path = folder ? `${folder}/${f.name}` : f.name
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(path)
-
-        return {
-          id: f.id || f.name,
-          name: f.name,
-          path,
-          url: publicUrl,
-          size: f.metadata?.size || 0,
-          mimeType: f.metadata?.mimetype || 'image/jpeg',
-          createdAt: f.created_at || new Date().toISOString(),
-        }
-      })
-
-    // Also list any subfolders
-    const folders = (data || [])
-      .filter(f => !f.id) // folders have no id in Supabase list
-      .map(f => f.name)
-
-    return NextResponse.json({ files, folders })
+    return NextResponse.json({ files, folders: [] })
   } catch (error) {
-    console.error('Media GET error:', error)
+    console.error('Cloudinary media GET error:', error)
     return NextResponse.json({ files: [], folders: [] })
   }
 }
 
-// DELETE — remove a file from storage
+// DELETE — remove files from Cloudinary storage
 export async function DELETE(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -73,19 +56,11 @@ export async function DELETE(request: NextRequest) {
     const { paths } = await request.json()
     if (!paths?.length) return NextResponse.json({ error: 'No paths provided' }, { status: 400 })
 
-    const supabase = getSupabase()
-    const { error } = await supabase.storage
-      .from('product-images')
-      .remove(paths)
-
-    if (error) {
-      console.error('Supabase delete error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    await cloudinary.api.delete_resources(paths)
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Media DELETE error:', error)
+    console.error('Cloudinary media DELETE error:', error)
     return NextResponse.json({ error: String(error) }, { status: 500 })
   }
 }
