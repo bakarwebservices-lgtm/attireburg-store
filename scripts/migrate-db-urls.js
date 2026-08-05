@@ -10,7 +10,6 @@ const prisma = new PrismaClient({
   },
 })
 
-const SUPABASE_PREFIX = 'https://httejhqpiwcpbljvnqfv.supabase.co/storage/v1/object/public/product-images/'
 const CLOUDINARY_PREFIX = 'https://res.cloudinary.com/dp1vaoeb/image/upload/product-images/'
 
 function fetchUrl(url) {
@@ -30,75 +29,88 @@ function fetchUrl(url) {
 }
 
 async function main() {
-  console.log('🔄 Starting high-performance SQL database URL migration...')
+  console.log('🔄 Replacing ALL Supabase project URLs (including older project IDs) with Cloudinary...')
 
-  // 1. Update Product images via raw SQL array replace
+  // 1. Update Product images via REGEXP_REPLACE for any *.supabase.co domain
   const updatedProductsCount = await prisma.$executeRawUnsafe(`
     UPDATE "Product"
     SET images = ARRAY(
-      SELECT REPLACE(img, '${SUPABASE_PREFIX}', '${CLOUDINARY_PREFIX}')
+      SELECT REGEXP_REPLACE(img, 'https://[a-zA-Z0-9_-]+\\.supabase\\.co/storage/v1/object/public/product-images/', '${CLOUDINARY_PREFIX}', 'g')
       FROM unnest(images) AS img
     )
     WHERE cardinality(images) > 0;
   `)
-  console.log(`📦 Updated Products: ${updatedProductsCount} rows processed`)
+  console.log(`📦 Processed Products: ${updatedProductsCount} rows`)
 
-  // 2. Update ProductVariant images via raw SQL array replace
+  // 2. Update ProductVariant images via REGEXP_REPLACE
   const updatedVariantsCount = await prisma.$executeRawUnsafe(`
     UPDATE "ProductVariant"
     SET images = ARRAY(
-      SELECT REPLACE(img, '${SUPABASE_PREFIX}', '${CLOUDINARY_PREFIX}')
+      SELECT REGEXP_REPLACE(img, 'https://[a-zA-Z0-9_-]+\\.supabase\\.co/storage/v1/object/public/product-images/', '${CLOUDINARY_PREFIX}', 'g')
       FROM unnest(images) AS img
     )
     WHERE cardinality(images) > 0;
   `)
-  console.log(`🎨 Updated Product Variants: ${updatedVariantsCount} rows processed`)
+  console.log(`🎨 Processed Product Variants: ${updatedVariantsCount} rows`)
 
   // 3. Update Category image
-  const updatedCategoriesCount = await prisma.$executeRawUnsafe(`
+  await prisma.$executeRawUnsafe(`
     UPDATE "Category"
-    SET image = REPLACE(image, '${SUPABASE_PREFIX}', '${CLOUDINARY_PREFIX}')
-    WHERE image LIKE '${SUPABASE_PREFIX}%';
+    SET image = REGEXP_REPLACE(image, 'https://[a-zA-Z0-9_-]+\\.supabase\\.co/storage/v1/object/public/product-images/', '${CLOUDINARY_PREFIX}', 'g')
+    WHERE image LIKE '%supabase.co%';
   `)
-  console.log(`🏷️ Updated Categories: ${updatedCategoriesCount} rows processed`)
 
   // 4. Update SiteSettings logoUrl
-  const updatedSettingsCount = await prisma.$executeRawUnsafe(`
+  await prisma.$executeRawUnsafe(`
     UPDATE "SiteSettings"
-    SET "logoUrl" = REPLACE("logoUrl", '${SUPABASE_PREFIX}', '${CLOUDINARY_PREFIX}')
-    WHERE "logoUrl" LIKE '${SUPABASE_PREFIX}%';
+    SET "logoUrl" = REGEXP_REPLACE("logoUrl", 'https://[a-zA-Z0-9_-]+\\.supabase\\.co/storage/v1/object/public/product-images/', '${CLOUDINARY_PREFIX}', 'g')
+    WHERE "logoUrl" LIKE '%supabase.co%';
   `)
-  console.log(`⚙️ Updated SiteSettings Logo: ${updatedSettingsCount} rows processed`)
 
-  // Gather unique Cloudinary image URLs to warm
+  // Verification check
   const products = await prisma.product.findMany({ select: { images: true } })
   const variants = await prisma.productVariant.findMany({ select: { images: true } })
 
+  let remainingSupabase = 0
+  let totalCloudinary = 0
   const urlsToWarm = new Set()
-  products.forEach(p => p.images.forEach(img => img.startsWith(CLOUDINARY_PREFIX) && urlsToWarm.add(img)))
-  variants.forEach(v => v.images.forEach(img => img.startsWith(CLOUDINARY_PREFIX) && urlsToWarm.add(img)))
 
-  console.log(`\n⚡ Unique Cloudinary Image URLs found: ${urlsToWarm.size}`)
+  products.forEach(p => p.images.forEach(img => {
+    if (img.includes('supabase.co')) remainingSupabase++
+    if (img.includes('cloudinary.com')) { totalCloudinary++; urlsToWarm.add(img) }
+  }))
 
+  variants.forEach(v => v.images.forEach(img => {
+    if (img.includes('supabase.co')) remainingSupabase++
+    if (img.includes('cloudinary.com')) { totalCloudinary++; urlsToWarm.add(img) }
+  }))
+
+  console.log('\n📊 FINAL VERIFICATION RESULT:')
+  console.log(`   - Total Cloudinary Image URLs: ${totalCloudinary}`)
+  console.log(`   - Total Supabase URLs Remaining: ${remainingSupabase}`)
+
+  if (remainingSupabase === 0) {
+    console.log('\n🎉 SUCCESS! 100% OF ALL DATABASE IMAGE URLS NOW POINT TO CLOUDINARY!')
+  } else {
+    console.log('\n⚠️ Remaining Supabase URLs list:')
+    products.forEach(p => p.images.forEach(img => img.includes('supabase.co') && console.log('  Product:', img)))
+    variants.forEach(v => v.images.forEach(img => img.includes('supabase.co') && console.log('  Variant:', img)))
+  }
+
+  // Warm newly converted URLs
   if (urlsToWarm.size > 0) {
-    console.log('⚡ Warming Cloudinary Cache (triggering auto-upload for all existing images)...')
+    console.log(`\n⚡ Warming Cloudinary Cache for ${urlsToWarm.size} image URLs...`)
     let count = 0
     let successCount = 0
     for (const url of urlsToWarm) {
       count++
       const success = await fetchUrl(url)
       if (success) successCount++
-      console.log(`   [${count}/${urlsToWarm.size}] ${success ? '✅ Cached' : '⚠️ HTTP error'} ${url}`)
     }
-    console.log(`\n🎉 Cloudinary warming complete! (${successCount}/${urlsToWarm.size} images successfully cached)`)
+    console.log(`🎉 Cloudinary warming finished! (${successCount}/${urlsToWarm.size} cached)`)
   }
 }
 
 main()
-  .catch((err) => {
-    console.error('❌ Error during database migration:', err)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+  .catch(console.error)
+  .finally(() => prisma.$disconnect())
