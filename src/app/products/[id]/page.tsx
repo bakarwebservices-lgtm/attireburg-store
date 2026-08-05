@@ -343,15 +343,31 @@ export default function ProductDetail() {
   }
 
   // Get current images (variant images or product images)
-  // Only show variant images if a color has been explicitly selected
+  // If selected variant has images, use them; otherwise fallback to any variant of the same color, or main product images
   const getCurrentImages = () => {
     let images: string[] = []
-    if (selectedColor && selectedVariant?.images && selectedVariant.images.length > 0) {
+
+    // 1. Try selected variant images first
+    if (selectedVariant?.images && selectedVariant.images.length > 0) {
       images = selectedVariant.images.filter(img => typeof img === 'string' && img.trim().startsWith('http'))
     }
+
+    // 2. If selected variant has no images, search ANY variant of this product matching selectedColor
+    if (images.length === 0 && selectedColor && product?.variants) {
+      const colorMatch = product.variants.find(v => {
+        const vColor = v.attributes?.Farbe || v.attributes?.color || v.attributes?.Color || v.attributes?.farbe || ''
+        return vColor.toLowerCase() === selectedColor.toLowerCase() && v.images && v.images.length > 0
+      })
+      if (colorMatch?.images) {
+        images = colorMatch.images.filter(img => typeof img === 'string' && img.trim().startsWith('http'))
+      }
+    }
+
+    // 3. Fallback to main product images
     if (images.length === 0) {
       images = (product?.images || []).filter(img => typeof img === 'string' && img.trim().startsWith('http'))
     }
+
     return images
   }
 
