@@ -342,10 +342,14 @@ export default function ProductDetail() {
   // Get current images (variant images or product images)
   // Only show variant images if a color has been explicitly selected
   const getCurrentImages = () => {
+    let images: string[] = []
     if (selectedColor && selectedVariant?.images && selectedVariant.images.length > 0) {
-      return selectedVariant.images
+      images = selectedVariant.images.filter(img => typeof img === 'string' && img.trim().startsWith('http'))
     }
-    return product?.images || []
+    if (images.length === 0) {
+      images = (product?.images || []).filter(img => typeof img === 'string' && img.trim().startsWith('http'))
+    }
+    return images
   }
 
   // Get available attribute values
