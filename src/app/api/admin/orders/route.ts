@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
         price: i.price,
         size: i.size,
         color: i.color,
+        fit: i.fit,
       }))
     }))
 

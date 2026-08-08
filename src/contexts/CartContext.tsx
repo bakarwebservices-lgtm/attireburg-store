@@ -13,6 +13,7 @@ export interface CartItem {
   image: string
   size: string
   color?: string
+  fit?: string
   quantity: number
   stock: number
   attributes?: Record<string, string>
@@ -137,6 +138,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         item => item.productId === newItem.productId &&
                 item.size === newItem.size &&
                 item.color === newItem.color &&
+                item.fit === newItem.fit &&
                 item.variantId === newItem.variantId &&
                 item.isBackorder === newItem.isBackorder
       )
@@ -157,6 +159,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           item => item.productId === newItem.productId &&
                   item.size === newItem.size &&
                   item.color === newItem.color &&
+                  item.fit === newItem.fit &&
                   item.variantId === newItem.variantId &&
                   item.isBackorder === newItem.isBackorder
         )

@@ -153,6 +153,7 @@ export default function Cart() {
                         <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                           {item.size && <span>{t.cart.size}: {item.size}</span>}
                           {item.color && <span>{t.cart.color}: {item.color}</span>}
+                          {item.fit && <span>Passform: {item.fit}</span>}
                           {item.isBackorder && item.expectedFulfillmentDate && (
                             <span className="text-orange-600">
                               Lieferung: {new Intl.DateTimeFormat('de-DE', {
@@ -254,6 +255,7 @@ export default function Cart() {
                           <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                             {item.size && <span>{t.cart.size}: {item.size}</span>}
                             {item.color && <span>{t.cart.color}: {item.color}</span>}
+                            {item.fit && <span>Passform: {item.fit}</span>}
                             {item.expectedFulfillmentDate && (
                               <span className="text-orange-600 font-medium">
                                 Voraussichtliche Lieferung: {new Intl.DateTimeFormat('de-DE', {

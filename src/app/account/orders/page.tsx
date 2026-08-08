@@ -16,6 +16,7 @@ interface OrderItem {
   price: number
   size?: string
   color?: string
+  fit?: string
   image?: string
 }
 
@@ -158,6 +159,7 @@ export default function UserOrders() {
                         <p className="text-xs text-gray-500">
                           {item.size && `${lang === 'de' ? 'Größe' : 'Size'}: ${item.size}`}
                           {item.color && ` · ${item.color}`}
+                          {item.fit && ` · ${lang === 'de' ? 'Passform' : 'Fit'}: ${item.fit}`}
                           {` · ×${item.quantity}`}
                         </p>
                       </div>

@@ -388,6 +388,7 @@ export async function POST(request: NextRequest) {
                 quantity: item.quantity,
                 size: item.size || '',
                 color: item.color || null,
+                fit: item.fit || null,
                 price: item.salePrice || item.price,
               }))
             }

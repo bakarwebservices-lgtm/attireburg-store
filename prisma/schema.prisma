@@ -173,6 +173,7 @@ model OrderItem {
   quantity  Int
   size      String
   color     String?
+  fit       String?
   price     Float
 
   @@index([orderId])

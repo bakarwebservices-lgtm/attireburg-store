@@ -32,6 +32,7 @@ interface OrderConfirmationData {
     price: number
     size?: string
     color?: string
+    fit?: string
   }>
   totalAmount: number
   shippingAddress: string
@@ -72,6 +73,7 @@ class EmailService {
           ${item.name}
           ${item.size ? `<br><small>Größe: ${item.size}</small>` : ''}
           ${item.color ? `<br><small>Farbe: ${item.color}</small>` : ''}
+          ${item.fit ? `<br><small>Passform: ${item.fit}</small>` : ''}
         </td>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
@@ -170,7 +172,7 @@ vielen Dank für Ihre Bestellung bei Attireburg. Wir haben Ihre Bestellung erhal
 Bestellnummer: ${data.orderNumber}
 
 Bestellte Artikel:
-${data.items.map(item => `- ${item.name} ${item.size ? `(${item.size})` : ''} x${item.quantity} - ${new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(item.price * item.quantity)}`).join('\n')}
+${data.items.map(item => `- ${item.name} ${[item.size && `Größe: ${item.size}`, item.color && `Farbe: ${item.color}`, item.fit && `Passform: ${item.fit}`].filter(Boolean).join(', ')} x${item.quantity} - ${new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(item.price * item.quantity)}`).join('\n')}
 
 Gesamtbetrag: ${new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(data.totalAmount)}
 
@@ -433,7 +435,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
         items: data.items.map((item, i) => ({
           pos: i + 1,
           artikelNr: `100${String(1000000 + i).slice(1)}`,
-          description: `${item.name}${item.size ? ` [${item.size}]` : ''}${item.color ? ` [${item.color}]` : ''}`,
+          description: `${item.name}${item.size ? ` [${item.size}]` : ''}${item.color ? ` [${item.color}]` : ''}${item.fit ? ` [${item.fit}]` : ''}`,
           quantity: item.quantity,
           unitPriceNet: item.price / divisor,
           totalNet: (item.price * item.quantity) / divisor,
@@ -478,6 +480,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-
           <strong>${item.name}</strong>
           ${item.size ? `<br><small>Größe: ${item.size}</small>` : ''}
           ${item.color ? `<br><small>Farbe: ${item.color}</small>` : ''}
+          ${item.fit ? `<br><small>Passform: ${item.fit}</small>` : ''}
         </td>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
         <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">
@@ -661,7 +664,7 @@ ${adminOrdersUrl}
         items: data.items.map((item, i) => ({
           pos: i + 1,
           artikelNr: `100${String(1000000 + i).slice(1)}`,
-          description: `${item.name}${item.size ? ` [${item.size}]` : ''}${item.color ? ` [${item.color}]` : ''}`,
+          description: `${item.name}${item.size ? ` [${item.size}]` : ''}${item.color ? ` [${item.color}]` : ''}${item.fit ? ` [${item.fit}]` : ''}`,
           quantity: item.quantity,
           unitPriceNet: item.price / divisor,
           totalNet: (item.price * item.quantity) / divisor,

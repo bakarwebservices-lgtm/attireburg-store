@@ -180,6 +180,7 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true)
   const [selectedSize, setSelectedSize] = useState('')
   const [selectedColor, setSelectedColor] = useState('')
+  const [selectedFit, setSelectedFit] = useState('')
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [showReviews, setShowReviews] = useState(false)
@@ -278,7 +279,10 @@ export default function ProductDetail() {
 
   // Handle attribute selection (size, color, etc.)
   const handleAttributeChange = (attributeName: string, value: string) => {
-    const isColorAttr = attributeName.toLowerCase() === 'farbe' || attributeName.toLowerCase() === 'color' || attributeName.toLowerCase() === 'colour'
+    const nameLower = attributeName.toLowerCase().trim()
+    const isColorAttr = ['farbe', 'farben', 'color', 'colors', 'colour', 'colours'].includes(nameLower)
+    const isSizeAttr = ['größe', 'groesse', 'größen', 'size', 'sizes'].includes(nameLower)
+    const isFitAttr = ['passform', 'passformen', 'fit', 'fits'].includes(nameLower)
     
     // Toggle: if same color is clicked again, deselect it and show main images
     if (isColorAttr && selectedAttributes[attributeName] === value) {
@@ -296,12 +300,15 @@ export default function ProductDetail() {
     setSelectedAttributes(newAttributes)
     setImageError(false)
     
-    // Update legacy state for backward compatibility
-    if (attributeName === 'Größe' || attributeName === 'Size') {
+    // Update attribute states for backward compatibility and display
+    if (isSizeAttr) {
       setSelectedSize(value)
     }
     if (isColorAttr) {
       setSelectedColor(value)
+    }
+    if (isFitAttr) {
+      setSelectedFit(value)
     }
     
     // Find matching variant
@@ -451,6 +458,7 @@ export default function ProductDetail() {
         image: currentImages.length > 0 ? currentImages[selectedImage] : '',
         size: selectedSize,
         color: selectedColor,
+        fit: selectedFit || selectedVariant?.attributes?.fit || selectedVariant?.attributes?.Passform || undefined,
         quantity,
         stock: getCurrentStock(),
         attributes: selectedVariant ? selectedVariant.attributes : undefined

@@ -333,6 +333,7 @@ function CheckoutPage() {
                       quantity: item.quantity,
                       size: item.size,
                       color: item.color,
+                      fit: item.fit,
                     })),
                     shippingAddress: curState.shippingAddress,
                     billingAddress: curState.sameAsShipping ? curState.shippingAddress : curState.billingAddress,
@@ -636,6 +637,7 @@ function CheckoutPage() {
           quantity: item.quantity,
           size: item.size,
           color: item.color,
+          fit: item.fit,
         })),
         shippingAddress: sameAsShipping ? shippingAddress : shippingAddress,
         billingAddress: sameAsShipping ? shippingAddress : billingAddress,
@@ -870,6 +872,7 @@ function CheckoutPage() {
           quantity: item.quantity,
           size: item.size,
           color: item.color,
+          fit: item.fit,
         })),
         shippingAddress: dummyAddress,
         billingAddress: dummyAddress,
@@ -1620,6 +1623,7 @@ function CheckoutPage() {
                         <div className="text-sm text-gray-600">
                           {item.size && <span>Größe: {item.size}</span>}
                           {item.color && <span className="ml-4">Farbe: {item.color}</span>}
+                          {item.fit && <span className="ml-4">Passform: {item.fit}</span>}
                           <span className="ml-4">Anzahl: {item.quantity}</span>
                         </div>
                       </div>

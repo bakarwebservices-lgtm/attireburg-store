@@ -14,6 +14,7 @@ interface OrderItem {
   price: number
   size?: string
   color?: string
+  fit?: string
 }
 
 interface Order {
@@ -190,6 +191,7 @@ export default function AdminOrders() {
                               {item.name}
                               {item.size && <span className="text-gray-400 ml-1">({item.size})</span>}
                               {item.color && <span className="text-gray-400 ml-1">{item.color}</span>}
+                              {item.fit && <span className="text-gray-400 ml-1">[{item.fit}]</span>}
                               <span className="text-gray-500 ml-1">×{item.quantity}</span>
                             </span>
                             <span className="font-medium text-gray-900">{fmt(item.price * item.quantity)}</span>
