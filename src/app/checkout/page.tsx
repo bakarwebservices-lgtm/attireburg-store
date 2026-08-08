@@ -95,6 +95,7 @@ function CheckoutPage() {
   const [hasMounted, setHasMounted] = useState(false)
   const [isClientDemo, setIsClientDemo] = useState(false)
   const [checkoutId, setCheckoutId] = useState<string>('')
+  const [poolReservationWarning, setPoolReservationWarning] = useState<string | null>(null)
   const orderSubmittedRef = useRef(false)
 
   useEffect(() => {
@@ -133,6 +134,10 @@ function CheckoutPage() {
     setCheckoutId(id)
 
     if (items && items.length > 0 && id) {
+      // Fix 4: Await and check response — a 409 means a pool has insufficient
+      // stock for a soft-hold. Surface this as a warning rather than silently
+      // ignoring it. The transaction enforces real stock at order submit time,
+      // so this is non-blocking — but the customer should know their hold may be incomplete.
       fetch('/api/pool-reservations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -144,7 +149,15 @@ function CheckoutPage() {
             quantity: item.quantity
           }))
         })
-      }).catch(err => console.error('Failed to register pool reservation:', err))
+      }).then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          console.warn('[Pool reservation] Soft-hold incomplete:', body?.error || res.status)
+          setPoolReservationWarning(body?.error || 'Ein Artikel könnte nicht mehr verfügbar sein. Bitte prüfen Sie Ihren Warenkorb.')
+        }
+      }).catch(err => {
+        console.error('Failed to register pool reservation:', err)
+      })
     }
 
     const handleReleaseReservation = () => {
@@ -1084,6 +1097,32 @@ function CheckoutPage() {
                 {lang === 'de' ? 'Zurück zum Warenkorb' : 'Back to cart'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pool reservation warning — non-blocking: informs customer their soft-hold may be incomplete */}
+      {poolReservationWarning && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 w-full max-w-lg px-4">
+          <div className="bg-amber-50 border border-amber-300 rounded-xl shadow-lg px-5 py-4 flex items-start gap-3">
+            <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-amber-800">
+                {lang === 'de' ? 'Hinweis zur Verfügbarkeit' : 'Availability Notice'}
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">{poolReservationWarning}</p>
+            </div>
+            <button
+              onClick={() => setPoolReservationWarning(null)}
+              className="flex-shrink-0 text-amber-400 hover:text-amber-600 transition-colors"
+              aria-label="Dismiss"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       )}
