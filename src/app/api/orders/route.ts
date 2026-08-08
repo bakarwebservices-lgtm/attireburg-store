@@ -438,7 +438,8 @@ export async function POST(request: NextRequest) {
           quantity: item.quantity,
           price: item.salePrice || item.price,
           size: item.size,
-          color: item.color
+          color: item.color,
+          fit: item.fit
         })),
         totalAmount: totalAmount,  // already the gross final total
         shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.company ? shippingAddress.company + '\n' : ''}${shippingAddress.street}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.country}`,

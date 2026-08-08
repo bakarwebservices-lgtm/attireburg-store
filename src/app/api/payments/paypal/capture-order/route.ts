@@ -121,7 +121,8 @@ export async function POST(request: NextRequest) {
             quantity: item.quantity,
             price: item.price,
             size: item.size,
-            color: item.color
+            color: item.color,
+            fit: item.fit
           })),
           totalAmount: updatedOrder.totalAmount,
           shippingAddress: updatedOrder.shippingAddress,
